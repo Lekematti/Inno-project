@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+dog_page.html
+custom_page.html
 
 # next.js
 /.next/

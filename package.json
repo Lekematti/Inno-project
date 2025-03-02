@@ -9,10 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "dotenv": "^16.4.7",
+    "fs": "^0.0.1-security",
     "next": "15.2.0",
+    "open": "^10.1.0",
     "openai": "^4.86.1",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "react-native-dotenv": "^3.4.11"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -21,6 +25,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.2.0",
-    "typescript": "^5"
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.7.3"
   }
 }

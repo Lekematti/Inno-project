@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate": "ts-node -r dotenv/config src/app/inputGenerate.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

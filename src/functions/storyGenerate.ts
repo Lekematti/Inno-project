@@ -1,4 +1,4 @@
-import { generateStory } from './storyTest';
+import { generateStory } from './storyTest'; 
 
 async function testGenerateStory() {
     const prompt = "Once upon a time in a land far, far away...";

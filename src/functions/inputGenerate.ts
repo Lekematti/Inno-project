@@ -13,24 +13,86 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
-const questions = [
-    "What is the main theme of the website?",
-    "What title should appear in the header?",
-    "What sections should be included (e.g., Home, About, Contact)?",
-    "Should there be a hero section with a message? If so, describe it.",
-    "How many images should the gallery have?",
-    "Should the gallery have a carousel feature? (yes/no)",
-    "What kind of footer information should be displayed?",
-    "What's your primary brand color (hex code or color name)?",
-    "Do you need a contact form? (yes/no)",
-];
+// Define template categories
+const templates = {
+    restaurant: {
+        name: "Restaurant/Food/Catering",
+        questions: [
+            "What is the name of your restaurant or food business?",
+            "What type of cuisine do you specialize in?",
+            "Would you like to feature an online menu? (yes/no)",
+            "Do you want to include an online reservation system? (yes/no)",
+            "What are your business hours?",
+            "Would you like to showcase chef/team profiles? (yes/no)",
+            "Do you want a food gallery section? If so, how many dishes to display?",
+            "Would you like to include customer testimonials? (yes/no)",
+            "What's your restaurant's primary brand color (hex code or color name)?",
+            "Do you offer delivery or takeout services? Please describe."
+        ]
+    },
+    logistics: {
+        name: "Logistics/Transportation/Supply Chain",
+        questions: [
+            "What is the name of your logistics company?",
+            "What specific logistics services do you offer?",
+            "Do you want to include a shipment tracking feature? (yes/no)",
+            "Would you like to showcase your fleet/equipment? If so, how many images?",
+            "What geographic areas do you service?",
+            "Do you want to include client testimonials or case studies? (yes/no)",
+            "Would you like a service request form on the website? (yes/no)",
+            "What certifications or industry standards does your company adhere to?",
+            "What's your company's primary brand color (hex code or color name)?",
+            "Would you like to include a map of your service areas or locations? (yes/no)"
+        ]
+    },
+    professional: {
+        name: "Office/Legal/Professional Services",
+        questions: [
+            "What is the name of your professional practice or firm?",
+            "What specific professional services do you offer?",
+            "Would you like to include team member profiles? If so, how many?",
+            "Do you want to showcase case studies or success stories? (yes/no)",
+            "Would you like to include a client portal link? (yes/no)",
+            "Do you offer free consultations? Please describe your booking process.",
+            "What credentials, certifications, or affiliations should be highlighted?",
+            "Would you like a FAQ section on the website? (yes/no)",
+            "What's your firm's primary brand color (hex code or color name)?",
+            "Would you like to include a blog or resources section? (yes/no)"
+        ]
+    }
+};
 
-async function askQuestions(): Promise<string[]> {
+async function chooseTemplate(): Promise<string> {
+    return new Promise((resolve) => {
+        console.log("\nChoose a business template:");
+        console.log("1. Restaurant/Food/Catering");
+        console.log("2. Logistics/Transportation/Supply Chain");
+        console.log("3. Office/Legal/Professional Services");
+        
+        rl.question("Enter template number (1-3): ", (answer) => {
+            const templateNumber = parseInt(answer);
+            switch(templateNumber) {
+                case 1: resolve("restaurant"); break;
+                case 2: resolve("logistics"); break;
+                case 3: resolve("professional"); break;
+                default: 
+                    console.log("Invalid choice. Defaulting to Restaurant template.");
+                    resolve("restaurant");
+            }
+        });
+    });
+}
+
+async function askQuestions(templateType: string): Promise<string[]> {
+    const selectedTemplate = templates[templateType as keyof typeof templates];
     const answers: string[] = [];
-    for (const question of questions) {
+    
+    console.log(`\n📝 ${selectedTemplate.name} Website Questionnaire:`);
+    
+    for (const question of selectedTemplate.questions) {
         answers.push(await new Promise(resolve => rl.question(question + " ", resolve)));
     }
-    rl.close();
+    
     return answers;
 }
 
@@ -43,25 +105,96 @@ async function fetchImages(count: number): Promise<string[]> {
 }
 
 async function generateCustomPage(): Promise<void> {
-    console.log("Answer the following questions to generate your custom website:");
-    const answers = await askQuestions();
-    const imageUrls = await fetchImages(parseInt(answers[4]));
+    console.log("Welcome to the Business Website Generator!");
+    const templateType = await chooseTemplate();
+    const answers = await askQuestions(templateType);
+    rl.close();
+    
+    // Determine number of images based on template type and answers
+    let imageCount = 4; // Default
+    if (templateType === "restaurant" && answers[6]) {
+        const dishCountMatch = answers[6].match(/\d+/);
+        if (dishCountMatch) imageCount = parseInt(dishCountMatch[0]);
+    } else if (templateType === "logistics" && answers[3]) {
+        const fleetCountMatch = answers[3].match(/\d+/);
+        if (fleetCountMatch) imageCount = parseInt(fleetCountMatch[0]);
+    } else if (templateType === "professional" && answers[2]) {
+        const teamCountMatch = answers[2].match(/\d+/);
+        if (teamCountMatch) imageCount = parseInt(teamCountMatch[0]);
+    }
+    
+    const imageUrls = await fetchImages(imageCount);
+    
+    // Create template-specific prompt
+    let specificPrompt = "";
+    if (templateType === "restaurant") {
+        specificPrompt = `
+        - Restaurant name: ${answers[0]}
+        - Cuisine type: ${answers[1]}
+        - Online menu: ${answers[2] === 'yes' ? 'Include an attractive online menu section' : 'No online menu needed'}
+        - Reservation system: ${answers[3] === 'yes' ? 'Include a reservation form or system' : 'No reservation system needed'}
+        - Business hours: ${answers[4]}
+        - Chef/team profiles: ${answers[5] === 'yes' ? 'Include profiles for key staff members' : 'No profiles needed'}
+        - Food gallery: ${answers[6]}
+        - Testimonials: ${answers[7] === 'yes' ? 'Include a customer testimonials section' : 'No testimonials section needed'}
+        - Delivery/takeout info: ${answers[9]}
+        
+        ADDITIONAL REQUIREMENTS:
+        1. Create a mouth-watering, appetizing design appropriate for food businesses
+        2. Emphasize high-quality food imagery
+        3. Make the menu section easily readable and visually appealing
+        4. Include a prominent call-to-action for reservations or ordering
+        5. Ensure the business hours are clearly visible
+        `;
+    } else if (templateType === "logistics") {
+        specificPrompt = `
+        - Company name: ${answers[0]}
+        - Logistics services: ${answers[1]}
+        - Shipment tracking: ${answers[2] === 'yes' ? 'Include a tracking feature or link' : 'No tracking feature needed'}
+        - Fleet/equipment showcase: ${answers[3]}
+        - Service areas: ${answers[4]}
+        - Testimonials/case studies: ${answers[5] === 'yes' ? 'Include a client testimonials or case studies section' : 'No testimonials section needed'}
+        - Service request form: ${answers[6] === 'yes' ? 'Include a service request form' : 'No service request form needed'}
+        - Certifications/standards: ${answers[7]}
+        - Service area map: ${answers[9] === 'yes' ? 'Include a map section showing service areas' : 'No map needed'}
+        
+        ADDITIONAL REQUIREMENTS:
+        1. Create a professional, trustworthy design appropriate for logistics businesses
+        2. Emphasize reliability, efficiency, and global/regional reach
+        3. Use icons or graphics to represent different logistics services
+        4. Include a prominent call-to-action for quote requests
+        5. If including a map, use a placeholder image with caption "Interactive map would be placed here"
+        `;
+    } else { // professional
+        specificPrompt = `
+        - Firm name: ${answers[0]}
+        - Professional services: ${answers[1]}
+        - Team profiles: ${answers[2]}
+        - Case studies: ${answers[3] === 'yes' ? 'Include a case studies or success stories section' : 'No case studies section needed'}
+        - Client portal: ${answers[4] === 'yes' ? 'Include a prominent link to a client portal' : 'No client portal link needed'}
+        - Consultation info: ${answers[5]}
+        - Credentials/affiliations: ${answers[6]}
+        - FAQ section: ${answers[7] === 'yes' ? 'Include a FAQ section' : 'No FAQ section needed'}
+        - Blog/resources: ${answers[9] === 'yes' ? 'Include a blog or resources section' : 'No blog/resources section needed'}
+        
+        ADDITIONAL REQUIREMENTS:
+        1. Create a sophisticated, professional design appropriate for business services
+        2. Emphasize expertise, trust, and professionalism
+        3. Use a clean, minimal layout with adequate whitespace
+        4. Include a prominent call-to-action for consultations
+        5. Ensure credentials and qualifications are clearly displayed
+        `;
+    }
     
     const prompt = `
-    Create a professional, production-ready HTML webpage using the Bootstrap 5 CSS framework (https://getbootstrap.com/).
+    Create a professional, production-ready HTML webpage using the Bootstrap 5 CSS framework (https://getbootstrap.com/) for a ${templates[templateType as keyof typeof templates].name} business.
 
     SPECIFICATIONS:
-    - Theme: ${answers[0]}
-    - Header title: ${answers[1]}
-    - Sections: ${answers[2]}
-    - Hero section: ${answers[3]}
-    - Gallery with ${answers[4]} images ${answers[5] === 'yes' ? 'in a carousel' : 'in a grid layout'}.
-    - Footer: ${answers[6]}
-    - Primary brand color: ${answers[7]}
-    - Contact form: ${answers[8] === 'yes' ? 'Include a contact form with name, email, subject and message fields' : 'No contact form needed'}
+    ${specificPrompt}
+    - Primary brand color: ${answers[8]}
     - Gallery images: ${imageUrls.join(', ')}
 
-    REQUIREMENTS:
+    GENERAL REQUIREMENTS:
     1. Use Bootstrap 5 CSS framework for styling (include the CDN link)
     2. Create fully semantic HTML5 structure (header, nav, section, article, footer, etc.)
     3. Include meta tags for SEO and viewport
@@ -74,29 +207,16 @@ async function generateCustomPage(): Promise<void> {
     10. Ensure the site loads quickly and efficiently
     11. Create clean, indented, and properly formatted code
     
-    CAROUSEL IMPLEMENTATION:
-    1. If using a carousel, properly implement the Bootstrap Carousel with the following options:
-       - Use the standard Bootstrap carousel structure with 'carousel' class
-       - Include proper controls (arrows) and indicators (dots)
-       - Set a 2-second interval for auto-sliding
-       - Make it responsive and full-width
-       - Ensure proper initialization with data attributes or JavaScript
-       - Include proper carousel caption for each slide
-    2. If using a grid layout, create a responsive Bootstrap grid system
-    
-    MOBILE MENU IMPLEMENTATION:
-    1. Include proper Bootstrap navbar with toggler for mobile devices
-    2. Ensure the menu collapses and expands correctly on mobile devices
-    3. Use appropriate Bootstrap classes for responsive behavior
-
     DO NOT include any AI-generated comments or placeholder text. All content should be production-ready.
     DO NOT add instructional comments about how the code works.
     ONLY return the complete HTML file with no markdown, explanations, or additional text.
     `;
 
     try {
+        console.log("\n🔄 Generating your custom website...");
+        
         const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model: "gpt-4o",
             messages: [{ role: "user", content: prompt }],
             temperature: 0.7,
             max_tokens: 4000,
@@ -107,11 +227,12 @@ async function generateCustomPage(): Promise<void> {
         if (htmlContent) {
             // Clean up any remaining markdown code blocks if present
             htmlContent = htmlContent.replace(/```html|```/g, "").trim();
+            
+            const filename = `${templateType}_website.html`;
+            fs.writeFileSync(filename, htmlContent);
+            console.log(`\n✅ Professional ${templates[templateType as keyof typeof templates].name} website generated successfully: ${filename}`);
            
-            fs.writeFileSync("custom_page.html", htmlContent);
-            console.log("✅ Professional website generated successfully: custom_page.html");
-           
-            await open("custom_page.html");
+            await open(filename);
         } else {
             console.error("❌ Error: Generated content is undefined.");
         }

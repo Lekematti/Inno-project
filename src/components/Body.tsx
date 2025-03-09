@@ -9,28 +9,55 @@ export const Body = () => {
 			}}
 		>
 			<div style={{ margin: 20 }}>
-				<h1>Welcome to AiWebsiteBuildr</h1>
-				<p>
-					Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse
-					finibus eget enim viverra ornare. Quisque mattis augue id arcu tempor,
-					ac varius enim rutrum. Ut commodo enim tellus, id posuere justo mollis
-					quis. Nullam volutpat, sem ac varius varius, metus massa dapibus est,
-					vitae suscipit tortor purus molestie augue. Sed rhoncus tempor orci eu
-					sollicitudin. Curabitur at felis vel nisl lobortis convallis.
-					Pellentesque quis laoreet ligula. Nullam justo urna, imperdiet at
-					fermentum eu, tincidunt at erat. Phasellus ut leo nec massa congue
-					auctor a at leo. Ut aliquet pulvinar fermentum. Sed mauris eros,
-					suscipit a ultricies quis, euismod nec lorem. Etiam egestas ultricies
-					mauris, sit amet consectetur ipsum. Nullam id consectetur libero.
-					Donec eget interdum odio, vel placerat lectus. Duis tempus nisi sit
-					amet libero euismod, et cursus mauris volutpat. Maecenas aliquam in
-					arcu vel egestas. Nullam eget hendrerit ante, eu fringilla lectus.
-					Pellentesque sed ex molestie ante porttitor dapibus. Phasellus semper,
-					orci sed euismod mollis, ligula velit condimentum est, in rutrum
-					ligula diam vel turpis. Nullam non ex varius ipsum fringilla
-					tincidunt. Quisque mi lectus, tincidunt non ex eu, pellentesque rutrum
-					leo.
+				<h1 style={{ color: '#84CC16' }}>
+					Build Smarter, Faster, and Effortlessly with AI
+				</h1>
+				<p
+					style={{
+						textAlign: 'center',
+						justifyContent: 'center',
+						display: 'flex',
+						marginTop: '10px',
+					}}
+				>
+					Welcome to AiWebsiteBuildr, the future of website creation powered by
+					artificial intelligence. Whether you're a small business owner,
+					entrepreneur, or designer, our AI-driven platform makes building
+					stunning, responsive, and fully customizable websites effortless—no
+					coding required.
 				</p>
+				<section
+					style={{
+						textAlign: 'left',
+						justifyContent: 'center',
+						display: 'flex',
+						marginTop: '10px',
+					}}
+				>
+					<ul style={{ listStyle: 'none' }}>
+						<li>
+							<strong>✅ AI-Powered Design</strong> – Instantly generate
+							beautiful, mobile-friendly websites in minutes.
+						</li>
+						<li>
+							<strong>✅ Drag & Drop Simplicity</strong> – Customize layouts,
+							colors, and content with ease.
+						</li>
+						<li>
+							<strong>✅ SEO & Performance Optimized</strong> – Rank higher and
+							load faster with built-in best practices.
+						</li>
+						<li>
+							<strong>✅ Accessibility First</strong> – Our websites comply with
+							WCAG standards, ensuring inclusivity for all users.
+						</li>
+						<li>
+							<strong>✅ Secure & Scalable</strong> – From personal portfolios
+							to eCommerce stores, we provide a solid foundation for growth.
+						</li>
+					</ul>
+				</section>
+				<p>✨ Get started today and let AI build your perfect website!</p>
 			</div>
 			<div id="Demo" style={{ margin: 20 }}>
 				<h1>Here you can demo the functions</h1>

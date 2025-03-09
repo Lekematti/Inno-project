@@ -10,12 +10,14 @@
     "generate": "ts-node -r dotenv/config src/functions/inputGenerate.ts"
   },
   "dependencies": {
+    "bootstrap": "^5.3.3",
     "dotenv": "^16.4.7",
     "fs": "^0.0.1-security",
     "next": "15.2.0",
     "open": "^10.1.0",
     "openai": "^4.86.1",
     "react": "^19.0.0",
+    "react-bootstrap": "^2.10.9",
     "react-dom": "^19.0.0",
     "react-native-dotenv": "^3.4.11"
   },

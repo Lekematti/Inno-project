@@ -61,23 +61,28 @@ const templates = {
     }
 };
 
-async function chooseTemplate(): Promise<string> {
+async function chooseTemplate(): Promise<{ templateType: string, skipQuestions: boolean }> {
     return new Promise((resolve) => {
         console.log("\nChoose a business template:");
         console.log("1. Restaurant/Food/Catering");
         console.log("2. Logistics/Transportation/Supply Chain");
         console.log("3. Office/Legal/Professional Services");
+        console.log("4. Skip questions and generate a blank website structure");
         
-        rl.question("Enter template number (1-3): ", (answer) => {
+        rl.question("Enter template number (1-4): ", (answer) => {
             const templateNumber = parseInt(answer);
+            let templateType = "";
+            let skipQuestions = false;
             switch(templateNumber) {
-                case 1: resolve("restaurant"); break;
-                case 2: resolve("logistics"); break;
-                case 3: resolve("professional"); break;
+                case 1: templateType = "restaurant"; break;
+                case 2: templateType = "logistics"; break;
+                case 3: templateType = "professional"; break;
+                case 4: skipQuestions = true; break;
                 default: 
-                    console.log("Invalid choice. Defaulting to Restaurant template.");
-                    resolve("restaurant");
+                    console.log("Invalid choice. Defaulting to blank website structure.");
+                    skipQuestions = true;
             }
+            resolve({ templateType, skipQuestions });
         });
     });
 }
@@ -89,7 +94,7 @@ async function askQuestions(templateType: string): Promise<string[]> {
     console.log(`\n📝 ${selectedTemplate.name} Website Questionnaire:`);
     
     for (const question of selectedTemplate.questions) {
-        answers.push(await new Promise(resolve => rl.question(question + " ", resolve)));
+        answers.push(await new Promise(resolve => rl.question(question + "", resolve)));
     }
     
     return answers;
@@ -105,8 +110,8 @@ async function fetchImages(count: number): Promise<string[]> {
 
 async function generateCustomPage(): Promise<void> {
     console.log("Welcome to the Business Website Generator!");
-    const templateType = await chooseTemplate();
-    const answers = await askQuestions(templateType);
+    const { templateType, skipQuestions } = await chooseTemplate();
+    const answers = skipQuestions ? Array(templates[templateType as keyof typeof templates]?.questions.length || 0).fill('') : await askQuestions(templateType);
     rl.close();
     
     // Determine number of images based on template type and answers
@@ -126,7 +131,28 @@ async function generateCustomPage(): Promise<void> {
     
     // Create template-specific prompt
     let specificPrompt = "";
-    if (templateType === "restaurant") {
+    if (skipQuestions) {
+        specificPrompt = `
+        Create a blank HTML website structure with semantic elements ready to use.
+        
+        GENERAL REQUIREMENTS:
+        1. Use Bootstrap 5 CSS framework for styling (include the CDN link)
+        2. Create fully semantic HTML5 structure (header, nav, section, article, footer, etc.)
+        3. Include meta tags for SEO and viewport
+        4. Make the site fully responsive across all devices
+        5. Create a navigation bar with a mobile-friendly toggler menu
+        6. Add appropriate ARIA attributes for accessibility
+        7. Include Bootstrap icons or Font Awesome icons where appropriate (via CDN)
+        8. Implement smooth scrolling for navigation links
+        9. Add minimal custom CSS only when necessary and place it in a <style> tag in the head
+        10. Ensure the site loads quickly and efficiently
+        11. Create clean, indented, and properly formatted code
+        
+        DO NOT include any AI-generated comments or placeholder text. All content should be production-ready.
+        DO NOT add instructional comments about how the code works.
+        ONLY return the complete HTML file with no markdown, explanations, or additional text.
+        `;
+    } else if (templateType === "restaurant") {
         specificPrompt = `
         - Restaurant name: ${answers[0]}
         - Cuisine type: ${answers[1]}
@@ -186,7 +212,7 @@ async function generateCustomPage(): Promise<void> {
     }
     
     const prompt = `
-    Create a professional, production-ready HTML webpage using the Bootstrap 5 CSS framework (https://getbootstrap.com/) for a ${templates[templateType as keyof typeof templates].name} business.
+    Create a professional, production-ready HTML webpage using the Bootstrap 5 CSS framework (https://getbootstrap.com/) for a ${skipQuestions ? "blank" : templates[templateType as keyof typeof templates].name} business.
 
     SPECIFICATIONS:
     ${specificPrompt}
@@ -233,9 +259,10 @@ async function generateCustomPage(): Promise<void> {
              }
             //const filename = `${templateType}_website.html`; 
             // Write the HTML content to the 'gen_comp' directory
-            const filename = `${gen_comp}/${templateType}_website.html`;
+            const filename = `${gen_comp}/${templateType || "blank"}_website.html`;
+          
             fs.writeFileSync(filename, htmlContent);
-            console.log(`\n✅ Professional ${templates[templateType as keyof typeof templates].name} website generated successfully: ${filename}`);
+            console.log(`\n✅ Professional ${skipQuestions ? "blank" : templates[templateType as keyof typeof templates].name} website generated successfully: ${filename}`);
            
             await open(filename);
         } else {

@@ -3,7 +3,6 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import open from 'open';
 import readline from 'readline';
-
 dotenv.config();
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY as string });
@@ -253,8 +252,15 @@ async function generateCustomPage(): Promise<void> {
         if (htmlContent) {
             // Clean up any remaining markdown code blocks if present
             htmlContent = htmlContent.replace(/```html|```/g, "").trim();
-            
-            const filename = `${templateType || "blank"}_website.html`;
+             // Ensure the 'gen_comp' directory exists
+             const gen_comp = 'gen_comp'; // Define the directory path
+             if (!fs.existsSync(gen_comp)) {
+                 fs.mkdirSync(gen_comp);
+             }
+            //const filename = `${templateType}_website.html`; 
+            // Write the HTML content to the 'gen_comp' directory
+            const filename = `${gen_comp}/${templateType || "blank"}_website.html`;
+          
             fs.writeFileSync(filename, htmlContent);
             console.log(`\n✅ Professional ${skipQuestions ? "blank" : templates[templateType as keyof typeof templates].name} website generated successfully: ${filename}`);
            

@@ -5,11 +5,11 @@ export const Header = () => {
 				width: '100%',
 				padding: 10,
 				display: 'flex',
-				background: '#bcf7e1',
+				background: '#3B82F6',
 				alignItems: 'center',
 			}}
 		>
-			<p style={{ color: 'black' }}>AiWebsiteBuildr</p>
+			<p style={{ color: '#1F2937', fontWeight: 'bold' }}>AiWebsiteBuildr</p>
 			<ul
 				style={{
 					display: 'flex',
@@ -22,9 +22,7 @@ export const Header = () => {
 			>
 				<li
 					style={{
-						background: 'blue',
 						padding: 5,
-						borderRadius: '5px',
 						marginRight: 2,
 						marginLeft: 2,
 					}}
@@ -33,9 +31,7 @@ export const Header = () => {
 				</li>
 				<li
 					style={{
-						background: 'blue',
 						padding: 5,
-						borderRadius: '5px',
 						marginRight: 2,
 						marginLeft: 2,
 					}}
@@ -44,9 +40,7 @@ export const Header = () => {
 				</li>
 				<li
 					style={{
-						background: 'blue',
 						padding: 5,
-						borderRadius: '5px',
 						marginRight: 2,
 						marginLeft: 2,
 					}}

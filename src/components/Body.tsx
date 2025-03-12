@@ -1,3 +1,9 @@
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
+import Container from 'react-bootstrap/Container';
+import Button from 'react-bootstrap/Button';
+import { AiGenComponent } from './AiGenComponent';
+
 export const Body = () => {
 	return (
 		<div
@@ -34,7 +40,7 @@ export const Body = () => {
 						marginTop: '10px',
 					}}
 				>
-					<ul style={{ listStyle: 'none' }}>
+					<ul>
 						<li>
 							<strong>✅ AI-Powered Design</strong> – Instantly generate
 							beautiful, mobile-friendly websites in minutes.
@@ -59,30 +65,22 @@ export const Body = () => {
 				</section>
 				<p>✨ Get started today and let AI build your perfect website!</p>
 			</div>
-			<div id="Demo" style={{ margin: 20 }}>
+			<div id="Demo">
 				<h1>Here you can demo the functions</h1>
-				<p>
-					Vestibulum euismod faucibus metus, a varius nisi porta molestie.
-					Maecenas mattis risus at enim lobortis, id mollis est maximus. Donec
-					dui felis, finibus at est ac, cursus pellentesque quam. Maecenas
-					scelerisque diam purus, ac dapibus lectus eleifend ac. Donec elit
-					dolor, finibus quis gravida id, cursus eu risus. Praesent mollis ante
-					et nisi ornare ultricies. Mauris posuere lobortis risus sed finibus.
-					Nulla at congue urna, eget auctor felis. Etiam ut egestas massa, eu
-					porta purus. Vestibulum nisl nibh, lobortis ut consequat in, interdum
-					eu dui. Etiam consectetur metus ac cursus posuere. Nullam eu venenatis
-					eros, id ornare lacus. Donec semper quam mauris, eget maximus magna
-					lacinia vitae. Sed at orci viverra, blandit nibh in, eleifend risus.
-					Integer porttitor libero odio, nec dictum quam maximus vitae. Integer
-					cursus enim non lorem tristique sagittis. Donec ultrices varius leo
-					sollicitudin tempus. Sed ut odio sit amet augue varius tincidunt at
-					non ligula. Maecenas ac dapibus libero. Ut venenatis ornare maximus.
-					Aenean elit dolor, pretium convallis sapien sit amet, ornare porttitor
-					nulla. In eget porta tellus. Vestibulum euismod blandit magna eu
-					varius. Suspendisse rutrum fringilla leo eget consequat. Aliquam purus
-					augue, sodales et volutpat nec, gravida eu neque. Aenean eu luctus
-					lacus.
-				</p>
+				<Container>
+					<Row>
+						<Col style={{ height: '250px' }}>
+							<div style={{ backgroundColor: 'blue', height: '100%' }}>
+								<Button>Cool button</Button>
+							</div>
+						</Col>
+						<Col>
+							<div style={{ backgroundColor: 'red', height: '100%' }}>
+								<AiGenComponent />
+							</div>
+						</Col>
+					</Row>
+				</Container>
 			</div>
 		</div>
 	);

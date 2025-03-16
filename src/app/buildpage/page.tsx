@@ -4,6 +4,12 @@ import { useState } from 'react'
 import { Col, Row, Container, Form, Button } from 'react-bootstrap'
 import { AiGenComponent } from './../../components/AiGenComponent'
 
+const [formData, setFormData] = useState({})
+
+const handleChange = (e) => {
+  setFormData({ ...formData, [e.target.name]: e.target.value })
+}
+
 export default function buildPage() {
   const [isReady, setIsReady] = useState(false)
   return (
@@ -55,7 +61,7 @@ export default function buildPage() {
                 <label htmlFor="input-3">Email</label>
                 <input
                   className="form-control"
-                  type="text"
+                  type="email"
                   placeholder="mail@example.com"
                   id="input-3"
                 />

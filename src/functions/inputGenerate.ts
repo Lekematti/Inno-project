@@ -108,7 +108,7 @@ async function fetchImages(count: number): Promise<string[]> {
     return imageUrls;
 }
 
-async function generateCustomPage(): Promise<void> {
+export async function generateCustomPage(): Promise<void> {
     console.log("Welcome to the Business Website Generator!");
     const { templateType, skipQuestions } = await chooseTemplate();
     const answers = skipQuestions ? Array(templates[templateType as keyof typeof templates]?.questions.length || 0).fill('') : await askQuestions(templateType);

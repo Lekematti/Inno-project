@@ -1,10 +1,5 @@
+'use client'
 import { Header } from '@/components/Header'
-import Row from 'react-bootstrap/Row'
-import Col from 'react-bootstrap/Col'
-import Container from 'react-bootstrap/Container'
-import Button from 'react-bootstrap/Button'
-import { AiGenComponent } from '../components/AiGenComponent'
-
 export default function Home() {
   return (
     <div>
@@ -70,20 +65,6 @@ export default function Home() {
         </div>
         <div id="Demo">
           <h1>Here you can demo the functions</h1>
-          <Container>
-            <Row>
-              <Col style={{ height: '250px' }}>
-                <div style={{ backgroundColor: 'blue', height: '100%' }}>
-                  <Button>Cool button</Button>
-                </div>
-              </Col>
-              <Col>
-                <div style={{ backgroundColor: 'red', height: '100%' }}>
-                  <AiGenComponent />
-                </div>
-              </Col>
-            </Row>
-          </Container>
         </div>
       </div>
     </div>

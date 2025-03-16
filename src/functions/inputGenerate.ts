@@ -96,14 +96,40 @@ async function askQuestions(templateType: string): Promise<string[]> {
     for (const question of selectedTemplate.questions) {
         answers.push(await new Promise(resolve => rl.question(question + "", resolve)));
     }
+
+    // Ask for image descriptions and styles if needed
+    if (templateType === "restaurant" && answers[6]) {
+        const dishCount = parseInt(answers[6].match(/\d+/)?.[0] || "0");
+        for (let i = 0; i < dishCount; i++) {
+            answers.push(await new Promise(resolve => rl.question(`Describe image ${i + 1} for the food gallery: `, resolve)));
+            answers.push(await new Promise(resolve => rl.question(`Choose style for image ${i + 1} (real/artistic): `, resolve)));
+        }
+    } else if (templateType === "logistics" && answers[3]) {
+        const fleetCount = parseInt(answers[3].match(/\d+/)?.[0] || "0");
+        for (let i = 0; i < fleetCount; i++) {
+            answers.push(await new Promise(resolve => rl.question(`Describe image ${i + 1} for the fleet showcase: `, resolve)));
+            answers.push(await new Promise(resolve => rl.question(`Choose style for image ${i + 1} (real/artistic): `, resolve)));
+        }
+    } else if (templateType === "professional" && answers[2]) {
+        const teamCount = parseInt(answers[2].match(/\d+/)?.[0] || "0");
+        for (let i = 0; i < teamCount; i++) {
+            answers.push(await new Promise(resolve => rl.question(`Describe image ${i + 1} for the team profiles: `, resolve)));
+            answers.push(await new Promise(resolve => rl.question(`Choose style for image ${i + 1} (real/artistic): `, resolve)));
+        }
+    }
     
     return answers;
 }
 
-async function fetchImages(count: number): Promise<string[]> {
+async function fetchImages(count: number, descriptions: string[], styles: string[]): Promise<string[]> {
     const imageUrls: string[] = [];
     for (let i = 0; i < count; i++) {
-        imageUrls.push(`https://picsum.photos/800/600?random=${i}`);
+        const description = descriptions[i];
+        const style = styles[i];
+        const width = 800; // Default width
+        const height = 600; // Default height
+        const url = `https://webweave-imagegen.onrender.com/jukka/images/${description}.jpg?description=${description}&width=${width}&height=${height}&style=${style}`;
+        imageUrls.push(url);
     }
     return imageUrls;
 }
@@ -116,18 +142,26 @@ async function generateCustomPage(): Promise<void> {
     
     // Determine number of images based on template type and answers
     let imageCount = 4; // Default
+    let descriptions: string[] = [];
+    let styles: string[] = [];
     if (templateType === "restaurant" && answers[6]) {
         const dishCountMatch = answers[6].match(/\d+/);
         if (dishCountMatch) imageCount = parseInt(dishCountMatch[0]);
+        descriptions = answers.slice(10, 10 + imageCount * 2).filter((_, index) => index % 2 === 0);
+        styles = answers.slice(10, 10 + imageCount * 2).filter((_, index) => index % 2 !== 0);
     } else if (templateType === "logistics" && answers[3]) {
         const fleetCountMatch = answers[3].match(/\d+/);
         if (fleetCountMatch) imageCount = parseInt(fleetCountMatch[0]);
+        descriptions = answers.slice(10, 10 + imageCount * 2).filter((_, index) => index % 2 === 0);
+        styles = answers.slice(10, 10 + imageCount * 2).filter((_, index) => index % 2 !== 0);
     } else if (templateType === "professional" && answers[2]) {
         const teamCountMatch = answers[2].match(/\d+/);
         if (teamCountMatch) imageCount = parseInt(teamCountMatch[0]);
+        descriptions = answers.slice(10, 10 + imageCount * 2).filter((_, index) => index % 2 === 0);
+        styles = answers.slice(10, 10 + imageCount * 2).filter((_, index) => index % 2 !== 0);
     }
     
-    const imageUrls = await fetchImages(imageCount);
+    const imageUrls = await fetchImages(imageCount, descriptions, styles);
     
     // Create template-specific prompt
     let specificPrompt = "";

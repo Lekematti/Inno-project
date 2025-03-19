@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Col, Row, Container, Form, Button } from 'react-bootstrap'
 import { AiGenComponent } from './../../components/AiGenComponent'
 
-export default function buildPage() {
+export default function BuildPage() {
   const [isReady, setIsReady] = useState(false)
   return (
     <div>

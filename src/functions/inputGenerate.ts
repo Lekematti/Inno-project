@@ -99,19 +99,22 @@ async function askQuestions(templateType: string): Promise<string[]> {
 
     // Ask for image descriptions and styles if needed
     if (templateType === "restaurant" && answers[6]) {
-        const dishCount = parseInt(answers[6].match(/\d+/)?.[0] || "0");
+        const dishCountMatch = /\d+/.exec(answers[6]);
+        const dishCount = parseInt(dishCountMatch?.[0] ?? "0");
         for (let i = 0; i < dishCount; i++) {
             answers.push(await new Promise(resolve => rl.question(`Describe image ${i + 1} for the food gallery: `, resolve)));
             answers.push(await new Promise(resolve => rl.question(`Choose style for image ${i + 1} (real/artistic): `, resolve)));
         }
     } else if (templateType === "logistics" && answers[3]) {
-        const fleetCount = parseInt(answers[3].match(/\d+/)?.[0] || "0");
+        const fleetCountMatch = /\d+/.exec(answers[3]);
+        const fleetCount = parseInt(fleetCountMatch?.[0] ?? "0");
         for (let i = 0; i < fleetCount; i++) {
             answers.push(await new Promise(resolve => rl.question(`Describe image ${i + 1} for the fleet showcase: `, resolve)));
             answers.push(await new Promise(resolve => rl.question(`Choose style for image ${i + 1} (real/artistic): `, resolve)));
         }
     } else if (templateType === "professional" && answers[2]) {
-        const teamCount = parseInt(answers[2].match(/\d+/)?.[0] || "0");
+        const teamCountMatch = /\d+/.exec(answers[2]);
+        const teamCount = parseInt(teamCountMatch?.[0] ?? "0");
         for (let i = 0; i < teamCount; i++) {
             answers.push(await new Promise(resolve => rl.question(`Describe image ${i + 1} for the team profiles: `, resolve)));
             answers.push(await new Promise(resolve => rl.question(`Choose style for image ${i + 1} (real/artistic): `, resolve)));
@@ -139,32 +142,50 @@ async function generateCustomPage(): Promise<void> {
     const { templateType, skipQuestions } = await chooseTemplate();
     const answers = skipQuestions ? Array(templates[templateType as keyof typeof templates]?.questions.length || 0).fill('') : await askQuestions(templateType);
     rl.close();
-    
-    // Determine number of images based on template type and answers
+
+    const { imageCount, descriptions, styles } = determineImageDetails(templateType, answers);
+    const imageUrls = await fetchImages(imageCount, descriptions, styles);
+    const prompt = createPrompt(templateType, skipQuestions, answers, imageUrls);
+
+    await generateWebsite(prompt, templateType, skipQuestions);
+}
+
+function determineImageDetails(templateType: string, answers: string[]): { imageCount: number, descriptions: string[], styles: string[] } {
     let imageCount = 4; // Default
     let descriptions: string[] = [];
     let styles: string[] = [];
+
     if (templateType === "restaurant" && answers[6]) {
-        const dishCountMatch = answers[6].match(/\d+/);
+        const dishCountMatch = /\d+/.exec(answers[6]);
         if (dishCountMatch) imageCount = parseInt(dishCountMatch[0]);
-        descriptions = answers.slice(10, 10 + imageCount * 2).filter((_, index) => index % 2 === 0);
-        styles = answers.slice(10, 10 + imageCount * 2).filter((_, index) => index % 2 !== 0);
+        descriptions = extractDescriptions(answers, imageCount);
+        styles = extractStyles(answers, imageCount);
     } else if (templateType === "logistics" && answers[3]) {
-        const fleetCountMatch = answers[3].match(/\d+/);
+        const fleetCountMatch = /\d+/.exec(answers[3]);
         if (fleetCountMatch) imageCount = parseInt(fleetCountMatch[0]);
-        descriptions = answers.slice(10, 10 + imageCount * 2).filter((_, index) => index % 2 === 0);
-        styles = answers.slice(10, 10 + imageCount * 2).filter((_, index) => index % 2 !== 0);
+        descriptions = extractDescriptions(answers, imageCount);
+        styles = extractStyles(answers, imageCount);
     } else if (templateType === "professional" && answers[2]) {
-        const teamCountMatch = answers[2].match(/\d+/);
+        const teamCountMatch = /\d+/.exec(answers[2]);
         if (teamCountMatch) imageCount = parseInt(teamCountMatch[0]);
-        descriptions = answers.slice(10, 10 + imageCount * 2).filter((_, index) => index % 2 === 0);
-        styles = answers.slice(10, 10 + imageCount * 2).filter((_, index) => index % 2 !== 0);
+        descriptions = extractDescriptions(answers, imageCount);
+        styles = extractStyles(answers, imageCount);
     }
-    
-    const imageUrls = await fetchImages(imageCount, descriptions, styles);
-    
-    // Create template-specific prompt
+
+    return { imageCount, descriptions, styles };
+}
+
+function extractDescriptions(answers: string[], imageCount: number): string[] {
+    return answers.slice(10, 10 + imageCount * 2).filter((_, index) => index % 2 === 0);
+}
+
+function extractStyles(answers: string[], imageCount: number): string[] {
+    return answers.slice(10, 10 + imageCount * 2).filter((_, index) => index % 2 !== 0);
+}
+
+function createPrompt(templateType: string, skipQuestions: boolean, answers: string[], imageUrls: string[]): string {
     let specificPrompt = "";
+
     if (skipQuestions) {
         specificPrompt = `
         Create a blank HTML website structure with semantic elements ready to use.
@@ -186,66 +207,11 @@ async function generateCustomPage(): Promise<void> {
         DO NOT add instructional comments about how the code works.
         ONLY return the complete HTML file with no markdown, explanations, or additional text.
         `;
-    } else if (templateType === "restaurant") {
-        specificPrompt = `
-        - Restaurant name: ${answers[0]}
-        - Cuisine type: ${answers[1]}
-        - Online menu: ${answers[2] === 'yes' ? 'Include an attractive online menu section' : 'No online menu needed'}
-        - Reservation system: ${answers[3] === 'yes' ? 'Include a reservation form or system' : 'No reservation system needed'}
-        - Business hours: ${answers[4]}
-        - Chef/team profiles: ${answers[5] === 'yes' ? 'Include profiles for key staff members' : 'No profiles needed'}
-        - Food gallery: ${answers[6]}
-        - Testimonials: ${answers[7] === 'yes' ? 'Include a customer testimonials section' : 'No testimonials section needed'}
-        - Delivery/takeout info: ${answers[9]}
-        
-        ADDITIONAL REQUIREMENTS:
-        1. Create a mouth-watering, appetizing design appropriate for food businesses
-        2. Emphasize high-quality food imagery
-        3. Make the menu section easily readable and visually appealing
-        4. Include a prominent call-to-action for reservations or ordering
-        5. Ensure the business hours are clearly visible
-        `;
-    } else if (templateType === "logistics") {
-        specificPrompt = `
-        - Company name: ${answers[0]}
-        - Logistics services: ${answers[1]}
-        - Shipment tracking: ${answers[2] === 'yes' ? 'Include a tracking feature or link' : 'No tracking feature needed'}
-        - Fleet/equipment showcase: ${answers[3]}
-        - Service areas: ${answers[4]}
-        - Testimonials/case studies: ${answers[5] === 'yes' ? 'Include a client testimonials or case studies section' : 'No testimonials section needed'}
-        - Service request form: ${answers[6] === 'yes' ? 'Include a service request form' : 'No service request form needed'}
-        - Certifications/standards: ${answers[7]}
-        - Service area map: ${answers[9] === 'yes' ? 'Include a map section showing service areas' : 'No map needed'}
-        
-        ADDITIONAL REQUIREMENTS:
-        1. Create a professional, trustworthy design appropriate for logistics businesses
-        2. Emphasize reliability, efficiency, and global/regional reach
-        3. Use icons or graphics to represent different logistics services
-        4. Include a prominent call-to-action for quote requests
-        5. If including a map, use a placeholder image with caption "Interactive map would be placed here"
-        `;
-    } else { // professional
-        specificPrompt = `
-        - Firm name: ${answers[0]}
-        - Professional services: ${answers[1]}
-        - Team profiles: ${answers[2]}
-        - Case studies: ${answers[3] === 'yes' ? 'Include a case studies or success stories section' : 'No case studies section needed'}
-        - Client portal: ${answers[4] === 'yes' ? 'Include a prominent link to a client portal' : 'No client portal link needed'}
-        - Consultation info: ${answers[5]}
-        - Credentials/affiliations: ${answers[6]}
-        - FAQ section: ${answers[7] === 'yes' ? 'Include a FAQ section' : 'No FAQ section needed'}
-        - Blog/resources: ${answers[9] === 'yes' ? 'Include a blog or resources section' : 'No blog/resources section needed'}
-        
-        ADDITIONAL REQUIREMENTS:
-        1. Create a sophisticated, professional design appropriate for business services
-        2. Emphasize expertise, trust, and professionalism
-        3. Use a clean, minimal layout with adequate whitespace
-        4. Include a prominent call-to-action for consultations
-        5. Ensure credentials and qualifications are clearly displayed
-        `;
+    } else {
+        specificPrompt = createSpecificPrompt(templateType, answers);
     }
-    
-    const prompt = `
+
+    return `
     Create a professional, production-ready HTML webpage using the Bootstrap 5 CSS framework (https://getbootstrap.com/) for a ${skipQuestions ? "blank" : templates[templateType as keyof typeof templates].name} business.
 
     SPECIFICATIONS:
@@ -270,7 +236,70 @@ async function generateCustomPage(): Promise<void> {
     DO NOT add instructional comments about how the code works.
     ONLY return the complete HTML file with no markdown, explanations, or additional text.
     `;
+}
 
+function createSpecificPrompt(templateType: string, answers: string[]): string {
+    if (templateType === "restaurant") {
+        return `
+        - Restaurant name: ${answers[0]}
+        - Cuisine type: ${answers[1]}
+        - Online menu: ${answers[2] === 'yes' ? 'Include an attractive online menu section' : 'No online menu needed'}
+        - Reservation system: ${answers[3] === 'yes' ? 'Include a reservation form or system' : 'No reservation system needed'}
+        - Business hours: ${answers[4]}
+        - Chef/team profiles: ${answers[5] === 'yes' ? 'Include profiles for key staff members' : 'No profiles needed'}
+        - Food gallery: ${answers[6]}
+        - Testimonials: ${answers[7] === 'yes' ? 'Include a customer testimonials section' : 'No testimonials section needed'}
+        - Delivery/takeout info: ${answers[9]}
+        
+        ADDITIONAL REQUIREMENTS:
+        1. Create a mouth-watering, appetizing design appropriate for food businesses
+        2. Emphasize high-quality food imagery
+        3. Make the menu section easily readable and visually appealing
+        4. Include a prominent call-to-action for reservations or ordering
+        5. Ensure the business hours are clearly visible
+        `;
+    } else if (templateType === "logistics") {
+        return `
+        - Company name: ${answers[0]}
+        - Logistics services: ${answers[1]}
+        - Shipment tracking: ${answers[2] === 'yes' ? 'Include a tracking feature or link' : 'No tracking feature needed'}
+        - Fleet/equipment showcase: ${answers[3]}
+        - Service areas: ${answers[4]}
+        - Testimonials/case studies: ${answers[5] === 'yes' ? 'Include a client testimonials or case studies section' : 'No testimonials section needed'}
+        - Service request form: ${answers[6] === 'yes' ? 'Include a service request form' : 'No service request form needed'}
+        - Certifications/standards: ${answers[7]}
+        - Service area map: ${answers[9] === 'yes' ? 'Include a map section showing service areas' : 'No map needed'}
+        
+        ADDITIONAL REQUIREMENTS:
+        1. Create a professional, trustworthy design appropriate for logistics businesses
+        2. Emphasize reliability, efficiency, and global/regional reach
+        3. Use icons or graphics to represent different logistics services
+        4. Include a prominent call-to-action for quote requests
+        5. If including a map, use a placeholder image with caption "Interactive map would be placed here"
+        `;
+    } else { // professional
+        return `
+        - Firm name: ${answers[0]}
+        - Professional services: ${answers[1]}
+        - Team profiles: ${answers[2]}
+        - Case studies: ${answers[3] === 'yes' ? 'Include a case studies or success stories section' : 'No case studies section needed'}
+        - Client portal: ${answers[4] === 'yes' ? 'Include a prominent link to a client portal' : 'No client portal link needed'}
+        - Consultation info: ${answers[5]}
+        - Credentials/affiliations: ${answers[6]}
+        - FAQ section: ${answers[7] === 'yes' ? 'Include a FAQ section' : 'No FAQ section needed'}
+        - Blog/resources: ${answers[9] === 'yes' ? 'Include a blog or resources section' : 'No blog/resources section needed'}
+        
+        ADDITIONAL REQUIREMENTS:
+        1. Create a sophisticated, professional design appropriate for business services
+        2. Emphasize expertise, trust, and professionalism
+        3. Use a clean, minimal layout with adequate whitespace
+        4. Include a prominent call-to-action for consultations
+        5. Ensure credentials and qualifications are clearly displayed
+        `;
+    }
+}
+
+async function generateWebsite(prompt: string, templateType: string, skipQuestions: boolean): Promise<void> {
     try {
         console.log("\n🔄 Generating your custom website...");
         

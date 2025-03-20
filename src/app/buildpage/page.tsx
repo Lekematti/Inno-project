@@ -96,7 +96,6 @@ export default function BuildPage() {
       }
     }
   }, [step, formData, checkAllQuestionsAnswered, generateWebsite, isLoading, isReady]);
-
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement

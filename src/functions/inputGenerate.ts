@@ -49,7 +49,6 @@ export const templates = {
         ]
     }
 };
-
 export interface FormData {
     businessType: string;
     address: string;

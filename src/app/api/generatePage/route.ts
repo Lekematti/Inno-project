@@ -12,7 +12,7 @@ const generationCache = {
   timestamp: 0
 };
 
-async function generateCustomPage(formData: {
+export async function generateCustomPage(formData: {
   businessType: string;
   address: string;
   phone: string;

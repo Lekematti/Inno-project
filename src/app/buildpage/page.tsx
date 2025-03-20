@@ -1,7 +1,7 @@
 'use client'
 import { Header } from '@/components/Header'
 import { useState, useEffect, useCallback } from 'react'
-import { Col, Row, Container, Form, Button } from 'react-bootstrap'
+import { Col, Row, Container, Form, Button, ProgressBar } from 'react-bootstrap'
 import { AiGenComponent } from '@/components/AiGenComponent'
 import { templates } from '@/functions/inputGenerate'
 
@@ -147,6 +147,12 @@ export default function BuildPage() {
     setStep(4);
   }
 
+  const handleBack = () => {
+    if (step > 1) {
+      setStep(step - 1);
+    }
+  };
+
   const noPage = () => {
     return (
       <div
@@ -178,8 +184,12 @@ export default function BuildPage() {
     const template = templates[formData.businessType.toLowerCase() as TemplateType];
     return template ? template.questions : [];
   }
-
+  
   const questions = getQuestions();
+  // Calculate progress percentage
+  const totalQuestions = questions.length;
+  const answeredQuestions = Object.keys(formData).filter(key => key.startsWith('question') && formData[key as keyof typeof formData].trim() !== '').length;
+  const progress = Math.round((answeredQuestions / totalQuestions) * 100);
 
   // Render yes/no dropdown for appropriate questions
   const renderQuestionInput = (question: string, index: number) => {
@@ -222,6 +232,9 @@ export default function BuildPage() {
       <Container style={{ margin: 10, padding: 10, height: '100%' }} fluid>
         <Row style={{ height: '75vh', maxHeight: '80vh' }}>
           <Col md={4}>
+            {step > 1 && (
+              <ProgressBar now={progress} label={`${progress}%`} style={{ marginBottom: 20 }} />
+            )}
             {step === 1 && (
               <Form style={{ width: '100%' }}>
                 <div
@@ -300,7 +313,7 @@ export default function BuildPage() {
               <Form style={{ width: '100%' }}>
                 {questions.slice(0, 5).map((question, index) => (
                   <div
-                    key={index}
+                    key={question}
                     className="form-group"
                     style={{ marginTop: 5, marginBottom: 5 }}
                   >
@@ -308,12 +321,22 @@ export default function BuildPage() {
                     {renderQuestionInput(question, index)}
                   </div>
                 ))}
-                <Button
-                  style={{ marginTop: 5, marginBottom: 5 }}
-                  onClick={handleSubmitStep2}
-                >
-                  Next
-                </Button>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  {step > 1 && (
+                    <Button
+                      style={{ marginTop: 5, marginBottom: 5, marginRight: 5 }}
+                      onClick={handleBack}
+                    >
+                      Back
+                    </Button>
+                  )}
+                  <Button
+                    style={{ marginTop: 5, marginBottom: 5 }}
+                    onClick={handleSubmitStep2}
+                  >
+                    Next
+                  </Button>
+                </div>
                 {error && <p className="text-danger mt-2">{error}</p>}
               </Form>
             )}
@@ -321,7 +344,7 @@ export default function BuildPage() {
               <Form style={{ width: '100%' }}>
                 {questions.slice(5).map((question, index) => (
                   <div
-                    key={index + 5}
+                    key={question}
                     className="form-group"
                     style={{ marginTop: 5, marginBottom: 5 }}
                   >
@@ -329,12 +352,22 @@ export default function BuildPage() {
                     {renderQuestionInput(question, index + 5)}
                   </div>
                 ))}
-                <Button
-                  style={{ marginTop: 5, marginBottom: 5 }}
-                  onClick={handleSubmitStep3}
-                >
-                  Finish
-                </Button>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  {step > 1 && (
+                    <Button
+                      style={{ marginTop: 5, marginBottom: 5, marginRight: 5 }}
+                      onClick={handleBack}
+                    >
+                      Back
+                    </Button>
+                  )}
+                  <Button
+                    style={{ marginTop: 5, marginBottom: 5 }}
+                    onClick={handleSubmitStep3}
+                  >
+                    Finish
+                  </Button>
+                </div>
                 {error && <p className="text-danger mt-2">{error}</p>}
               </Form>
             )}
@@ -380,9 +413,9 @@ export default function BuildPage() {
                 }}>
                   <div>
                     <p>Generating your website...</p>
-                    <div className="spinner-border" role="status">
+                    <output className="spinner-border">
                       <span className="visually-hidden">Loading...</span>
-                    </div>
+                    </output>
                   </div>
                 </div>
               ) : isReady ? (

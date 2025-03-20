@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateCustomPage } from '../../functions/inputGenerate';
+import { generateCustomPage } from '../api/generatePage/route';
 
 export async function POST(request: NextRequest) {
   try {

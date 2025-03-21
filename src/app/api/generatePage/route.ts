@@ -130,7 +130,7 @@ export async function generateCustomPage(formData: {
     <div class="container">
     <p>&copy; ${currentYear} Your Company Name. All rights reserved.</p>
     </div>
-    </footer>
+    </footer
 
     SPECIFICATIONS:
     ${specificPrompt}
@@ -149,6 +149,8 @@ export async function generateCustomPage(formData: {
     11. Implement form validation with user-friendly error handling
     12. Ensure cross-browser compatibility
     13. Optimize for page speed (lightweight assets, proper resource loading)
+    14. Ensure full keyboard navigation support for accessibility. The keyboard navigation must:
+    - Allow users to navigate between focusable elements (e.g., buttons, links, inputs) using the "Tab", "ArrowUp", and "ArrowDown" keys.
     
     CODE QUALITY REQUIREMENTS:
     1. Write clean, properly indented HTML with logical structure

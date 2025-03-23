@@ -17,9 +17,10 @@ export async function generateCustomPage(formData: {
   address: string;
   phone: string;
   email: string;
-  [key: string]: string;
+  imageUrls?: string[];
+  [key: string]: unknown;
 }): Promise<string> {
-    const { businessType, address, phone, email } = formData;
+    const { businessType, address, phone, email, imageUrls = [] } = formData;
     const templateType = businessType.toLowerCase();
     const answers = [];
     
@@ -117,24 +118,39 @@ export async function generateCustomPage(formData: {
     }
     
     const currentYear = new Date().getFullYear();
+    const imageInstructions = imageUrls.length > 0 ? `CRITICAL IMAGE INSTRUCTIONS: 
+    I have pre-generated these exact image URLs that MUST be used in the website:
+    ${imageUrls.map((url, i) => `${i+1}. ${url}`).join('\n')}
+    
+    For each image URL above:
+    - Copy and paste the EXACT URL into an <img> tag
+    - Example: <img src="${imageUrls[0] || 'https://example.com/image.jpg'}" alt="Description" class="img-fluid">
+    - Do NOT modify the URLs in any way
+    - Do NOT replace these URLs with placeholder images
+    - These images will load correctly when viewed in a browser
+    `
+      : 'No custom images provided.';
     const prompt = `
     You are an expert frontend developer specializing in creating visually stunning, conversion-optimized websites. Create a production-ready HTML webpage using the Bootstrap 5 framework for a ${templateType} business.
 
-    BUSINESS CONTACT INFORMATION:
-    - Business name: ${answers[0] || "Company Name"}
+    BUSINESS DETAILS:
+    - Name: ${answers[0] || "Company Name"}
     - Address: ${address}
     - Phone: ${phone}
     - Email: ${email}
 
-    <footer class="footer text-center">
-    <div class="container">
-    <p>&copy; ${currentYear} Your Company Name. All rights reserved.</p>
-    </div>
-    </footer
+    SPECIFIC CONTENT:
+    ${specificPrompt}
+
+    IMAGE INTEGRATION:
+    ${imageInstructions}
+
+    FOOTER REQUIREMENT:
+    Include a footer with copyright information: © ${currentYear} [Company Name]. All rights reserved.
 
     SPECIFICATIONS:
     ${specificPrompt}
-
+    
     TECHNICAL REQUIREMENTS:
     1. Use Bootstrap 5 CSS framework with custom CSS enhancements where needed
     2. Implement a fully semantic HTML5 structure with proper hierarchy
@@ -149,9 +165,8 @@ export async function generateCustomPage(formData: {
     11. Implement form validation with user-friendly error handling
     12. Ensure cross-browser compatibility
     13. Optimize for page speed (lightweight assets, proper resource loading)
-    14. Ensure full keyboard navigation support for accessibility. The keyboard navigation must:
-    - Allow users to navigate between focusable elements (e.g., buttons, links, inputs) using the "Tab", "ArrowUp", and "ArrowDown" keys.
-    
+    14. Ensure full keyboard navigation support for accessibility
+
     CODE QUALITY REQUIREMENTS:
     1. Write clean, properly indented HTML with logical structure
     2. Use semantic class names and BEM methodology for custom CSS
@@ -161,7 +176,7 @@ export async function generateCustomPage(formData: {
     6. Use HTML5 input types with appropriate attributes
     7. Create CSS variables for consistent color and typography usage
     8. Implement CSS animations using best practices
-    
+
     ONLY return the complete HTML file with no markdown, explanations, or additional text.
     The code must be production-ready with no placeholders or TODO comments.
     `;
@@ -198,38 +213,111 @@ export async function generateCustomPage(formData: {
     }
 }
 
+async function fetchImages(count: number, descriptions: string[], styles: string[]): Promise<string[]> {
+  if (count === 0 || !descriptions.length) return [];
+  
+  const imageUrls: string[] = [];
+  console.log("🖼️ Generating images...");
+  
+  try {
+    for (let i = 0; i < descriptions.length; i++) {
+      const description = descriptions[i];
+      const style = styles[i] || 'real';
+      
+      try {
+        // Construct URL for image generation service
+        const width = 800;
+        const height = 600;
+        const encodedDescription = encodeURIComponent(description);
+        const url = `https://webweave-imagegen.onrender.com/jukka/images/${encodedDescription}.jpg?description=${encodedDescription}&width=${width}&height=${height}&style=${style}`;
+        
+        console.log(`Generating ${style} image: ${url}`);
+        
+        // Don't validate - just use the URL directly
+        // This is important because some image generation services don't respond to HEAD requests properly
+        // but will generate the image when directly accessed in an <img> tag
+        imageUrls.push(url);
+        console.log(`✅ Added image URL to list: ${url}`);
+      } catch (err) {
+        console.error(`❌ Error processing image for "${description}":`, err);
+        imageUrls.push(`https://via.placeholder.com/800x600?text=${encodeURIComponent(description)}`);
+      }
+    }
+    
+    return imageUrls;
+  } catch (error) {
+    console.error("Error in image generation process:", error);
+    return descriptions.map(desc => `https://via.placeholder.com/800x600?text=${encodeURIComponent(desc)}`);
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.json();
-    const htmlContent = await generateCustomPage(formData);
+    const requestData = await request.json();
+    console.log("Received form data:", JSON.stringify(requestData));
     
-    // Format the timestamp to a readable format
+    // Extract image data
+    const { imageData } = requestData;
+    console.log("Image data:", JSON.stringify(imageData));
+    
+    // Generate images
+    let imageUrls: string[] = [];
+    if (imageData && Array.isArray(imageData.descriptions) && imageData.descriptions.length > 0) {
+      console.log(`Generating ${imageData.descriptions.length} images...`);
+      imageUrls = await fetchImages(
+        imageData.descriptions.length,
+        imageData.descriptions,
+        imageData.styles || []
+      );
+    }
+    
+    console.log("Generated image URLs:", imageUrls);
+    
+    // Add imageUrls to formData
+    const dataWithImages = {
+      ...requestData,
+      imageUrls
+    };
+    
+    // Generate HTML
+    const htmlContent = await generateCustomPage(dataWithImages);
+    
+    // Inside your POST function, add this after generating the HTML
+    console.log("HTML contains images?", 
+      imageUrls.every(url => htmlContent.includes(url)) 
+        ? "✅ All images included" 
+        : "❌ Some images missing");
+
+    if (!imageUrls.every(url => htmlContent.includes(url))) {
+      const missingImages = imageUrls.filter(url => !htmlContent.includes(url));
+      console.log("Missing images:", missingImages);
+    }
+    
+    // Rest of your code for saving the file
     const now = new Date();
     const formattedTimestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const uniqueSuffix = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`; // Add time to ensure uniqueness
-    const businessType = formData.businessType.toLowerCase();
+    const uniqueSuffix = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`;
+    const businessType = requestData.businessType.toLowerCase();
     const fileName = `${businessType}-${formattedTimestamp}-${uniqueSuffix}.html`;
     
-    // Define the output directory - adjust this path as needed
     const outputDir = path.join(process.cwd(), 'gen_comp');
     
-    // Create the directory if it doesn't exist
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
     
-    // Write the file
     const filePath = path.join(outputDir, fileName);
     fs.writeFileSync(filePath, htmlContent);
     
     return NextResponse.json({ 
       htmlContent,
-      filePath: `/gen_comp/${fileName}` // Return the relative path to access the file
+      filePath: `/gen_comp/${fileName}`,
+      imageUrls  // Include image URLs in response for debugging
     });
   } catch (error) {
-    console.error('Error generating page:', error);
+    console.error('Error processing request:', error);
     return NextResponse.json(
-      { error: 'Error generating page.' },
+      { error: 'Error generating page: ' + (error instanceof Error ? error.message : String(error)) },
       { status: 500 }
     );
   }

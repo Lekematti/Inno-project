@@ -1,101 +1,39 @@
 'use client'
 import { Header } from '@/components/Header'
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect } from 'react'
 import { Col, Row, Container, Form, Button, ProgressBar } from 'react-bootstrap'
 import { AiGenComponent } from '@/components/AiGenComponent'
-import { templates } from '@/functions/inputGenerate'
-
-type TemplateType = 'restaurant' | 'logistics' | 'professional';
+import { useFormHandlers } from './useFormHandlers'
+import { getQuestions} from './pageUtils'
 
 export default function BuildPage() {
-  const [formData, setFormData] = useState({
-    businessType: '',
-    address: '',
-    phone: '',
-    email: '',
-    question1: '',
-    question2: '',
-    question3: '',
-    question4: '',
-    question5: '',
-    question6: '',
-    question7: '',
-    question8: '',
-    question9: '',
-    question10: ''
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [isReady, setIsReady] = useState(false);
-  const [generatedHtml, setGeneratedHtml] = useState('');
-  const [error, setError] = useState('');
-  const [step, setStep] = useState(1);
-  const [allQuestionsAnswered, setAllQuestionsAnswered] = useState(false);
+  const {
+    formData,
+    setFormData,
+    isLoading,
+    isReady,
+    generatedHtml,
+    error,
+    step,
+    setStep,
+    /*allQuestionsAnswered,*/
+    setAllQuestionsAnswered,
+    checkAllQuestionsAnswered,
+    generateWebsite,
+    setError,
+    getImageCount, // Add this
+  } = useFormHandlers();
 
-  const checkAllQuestionsAnswered = useCallback(() => {
-    // Check if essential fields are filled
-    if (!formData.businessType || !formData.address || !formData.phone || !formData.email) {
-      return false;
-    }
-    
-    // Get the questions for the selected template
-    const template = templates[formData.businessType.toLowerCase() as TemplateType];
-    const questions = template ? template.questions : [];
-    
-    // Check if all applicable questions are answered
-    for (let i = 0; i < questions.length; i++) {
-      const fieldName = `question${i + 1}` as keyof typeof formData;
-      if (!formData[fieldName] || formData[fieldName].trim() === '') {
-        return false;
-      }
-    }
-    
-    return true;
-  }, [formData]);
-
-  // Use useCallback for generateWebsite to avoid recreating it on each render
-  const generateWebsite = useCallback(async () => {
-    // Don't regenerate if we're already loading
-    if (isLoading) return;
-    
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      const response = await fetch('/api/generatePage', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Error: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      setGeneratedHtml(data.htmlContent);
-      setIsReady(true);
-    } catch (err) {
-      console.error('Error generating page:', err);
-      setError('Failed to generate website. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [formData, isLoading]);
-
-  // Fixed useEffect with all dependencies properly declared
   useEffect(() => {
-    if (step === 4 && formData.businessType) {
+    if (step === 5 && formData.businessType) { // Changed from step 4 to step 5
       const hasAllAnswers = checkAllQuestionsAnswered();
       setAllQuestionsAnswered(hasAllAnswers);
-      
-      // Generate website automatically when all questions are answered
       if (hasAllAnswers && !isLoading && !isReady) {
         generateWebsite();
       }
     }
-  }, [step, formData, checkAllQuestionsAnswered, generateWebsite, isLoading, isReady]);
+  }, [step, formData, checkAllQuestionsAnswered, generateWebsite, isLoading, isReady, setAllQuestionsAnswered]);
+
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -106,19 +44,16 @@ export default function BuildPage() {
   }
 
   const handleSubmitStep1 = () => {
-    // Validate if all fields have values
     if (!formData.businessType || !formData.address || !formData.phone || !formData.email) {
       setError('Please fill out all required fields');
       return;
     }
-    
     setError('');
     setStep(2);
   }
 
   const handleSubmitStep2 = () => {
-    // Check if all questions in this step are answered
-    const questions = getQuestions();
+    const questions = getQuestions(formData.businessType);
     for (let i = 0; i < 5; i++) {
       const fieldName = `question${i + 1}` as keyof typeof formData;
       if (i < questions.length && (!formData[fieldName] || formData[fieldName].trim() === '')) {
@@ -126,14 +61,12 @@ export default function BuildPage() {
         return;
       }
     }
-    
     setError('');
     setStep(3);
   }
 
   const handleSubmitStep3 = () => {
-    // Check if all questions in this step are answered
-    const questions = getQuestions();
+    const questions = getQuestions(formData.businessType);
     for (let i = 5; i < 10; i++) {
       const fieldName = `question${i + 1}` as keyof typeof formData;
       if (i < questions.length && (!formData[fieldName] || formData[fieldName].trim() === '')) {
@@ -141,10 +74,32 @@ export default function BuildPage() {
         return;
       }
     }
+    setError('');
+    setStep(4); // Move to the image collection step
+  }
+
+  const handleSubmitStep4 = () => {
+    const imageCount = getImageCount();
+    if (imageCount > 0) {
+      // Validate that at least one image has a description if images are required
+      let hasDescription = false;
+      for (let i = 1; i <= imageCount; i++) {
+        const descField = `imageDescription${i}` as keyof typeof formData;
+        if (formData[descField] && formData[descField].trim() !== '') {
+          hasDescription = true;
+          break;
+        }
+      }
+      
+      if (!hasDescription) {
+        setError('Please add at least one image description');
+        return;
+      }
+    }
     
     setError('');
-    setStep(4);
-  }
+    setStep(5); // Now move to the final generation step
+  };
 
   const handleBack = () => {
     if (step > 1) {
@@ -152,47 +107,17 @@ export default function BuildPage() {
     }
   };
 
-  const noPage = () => {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          height: '100%',
-          width: '100%',
-          justifyContent: 'center',
-          alignItems: 'center',
-          flexDirection: 'column',
-        }}
-      >
-        {isLoading ? (
-          <div style={{ textAlign: 'center' }}>
-            <p>Generating your website...</p>
-            <div className="spinner-border" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-          </div>
-        ) : (
-          <p>Complete all questions to generate your website</p>
-        )}
-        {error && <p className="text-danger mt-2">{error}</p>}
-      </div>
-    )
-  }
-
-  const getQuestions = () => {
-    const template = templates[formData.businessType.toLowerCase() as TemplateType];
-    return template ? template.questions : [];
-  }
-  
-  const questions = getQuestions();
-  // Calculate progress percentage
+  const questions = getQuestions(formData.businessType);
   const totalQuestions = questions.length;
   const answeredQuestions = Object.keys(formData).filter(key => key.startsWith('question') && formData[key as keyof typeof formData].trim() !== '').length;
-  const progress = Math.round((answeredQuestions / totalQuestions) * 100);
+  // Prevent division by zero
+  const progress = totalQuestions > 0 
+    ? Math.round((answeredQuestions / totalQuestions) * 100) 
+    : 0;
 
-  // Render yes/no dropdown for appropriate questions
   const renderQuestionInput = (question: string, index: number) => {
     const fieldName = `question${index + 1}` as keyof typeof formData;
+    const fieldValue = formData[fieldName] || '';
     
     if (question.toLowerCase().includes('(yes/no)')) {
       return (
@@ -200,7 +125,7 @@ export default function BuildPage() {
           name={fieldName}
           className="form-control"
           onChange={handleChange}
-          value={formData[fieldName]}
+          value={fieldValue}
         >
           <option value="">Select an option</option>
           <option value="yes">Yes</option>
@@ -215,10 +140,37 @@ export default function BuildPage() {
           type="text"
           placeholder={`Answer to question ${index + 1}`}
           onChange={handleChange}
-          value={formData[fieldName]}
+          value={fieldValue}
         />
       );
     }
+  };
+
+  const noPage = (isLoading: boolean, error: string) => {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          height: '100%',
+          width: '100%',
+          justifyContent: 'center',
+          alignItems: 'center',
+          flexDirection: 'column',
+        }}
+      >
+        {isLoading ? (
+          <div style={{ textAlign: 'center' }}>
+            <p>Generating your website...</p>
+            <output className="spinner-border">
+              <span className="visually-hidden">Loading...</span>
+            </output>
+          </div>
+        ) : (
+          <p>Complete all questions to generate your website</p>
+        )}
+        {error && <p className="text-danger mt-2">{error}</p>}
+      </div>
+    );
   };
 
   return (
@@ -364,33 +316,117 @@ export default function BuildPage() {
                     style={{ marginTop: 5, marginBottom: 5 }}
                     onClick={handleSubmitStep3}
                   >
-                    Finish
+                    Next
                   </Button>
                 </div>
                 {error && <p className="text-danger mt-2">{error}</p>}
               </Form>
             )}
             {step === 4 && (
-              <div style={{ width: '100%', textAlign: 'center', padding: 20 }}>
-                <h3>All Questions Completed!</h3>
-                <p>Your website is being generated based on your answers.</p>
-                {!isReady && !isLoading && (
-                  <Button
-                    style={{ marginTop: 5, marginBottom: 5 }}
-                    onClick={generateWebsite}
-                  >
-                    Generate Website Now
-                  </Button>
-                )}
+              <Form style={{ width: '100%' }}>
+                <h3>Image Information</h3>
+                {(() => {
+                  const imageCount = getImageCount();
+                  if (imageCount === 0) {
+                    return (
+                      <div style={{ marginBottom: 15 }}>
+                        <p>Based on your answers, no images are needed for your website.</p>
+                        <Button
+                          style={{ marginTop: 5 }}
+                          onClick={generateWebsite}
+                        >
+                          Generate Website
+                        </Button>
+                      </div>
+                    );
+                  }
+                  
+                  const imageElements = [];
+                  
+                  for (let i = 1; i <= imageCount; i++) {
+                    const descField = `imageDescription${i}` as keyof typeof formData;
+                    const styleField = `imageStyle${i}` as keyof typeof formData;
+                    let label = '';
+                    if (formData.businessType === 'restaurant') {
+                      label = `Food image ${i} description`;
+                    } else if (formData.businessType === 'logistics') {
+                      label = `Fleet/equipment image ${i} description`;
+                    } else {
+                      label = `Team member ${i} description`;
+                    }
+                    
+                    imageElements.push(
+                      <div key={`image-${i}`} className="form-group mb-3">
+                        <label htmlFor={descField}>
+                          {label}
+                        </label>
+                        <input
+                          name={descField}
+                          id={descField}
+                          className="form-control mb-2"
+                          type="text"
+                          placeholder="Describe the image in detail"
+                          onChange={handleChange}
+                          value={formData[descField] || ''}
+                        />
+                        <div className="form-check form-check-inline">
+                          <input
+                            className="form-check-input"
+                            type="radio"
+                            name={styleField}
+                            id={`${styleField}-real`}
+                            value="real"
+                            checked={formData[styleField] === 'real'}
+                            onChange={handleChange}
+                          />
+                          <label className="form-check-label" htmlFor={`${styleField}-real`}>Realistic</label>
+                        </div>
+                        <div className="form-check form-check-inline">
+                          <input
+                            className="form-check-input"
+                            type="radio"
+                            name={styleField}
+                            id={`${styleField}-artistic`}
+                            value="artistic"
+                            checked={formData[styleField] === 'artistic'}
+                            onChange={handleChange}
+                          />
+                          <label className="form-check-label" htmlFor={`${styleField}-artistic`}>Artistic</label>
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  return (
+                    <>
+                      <p>Add descriptions for images to enhance your website:</p>
+                      {imageElements}
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Button
+                          style={{ marginTop: 5, marginBottom: 5, marginRight: 5 }}
+                          onClick={handleBack}
+                        >
+                          Back
+                        </Button>
+                        <Button
+                          style={{ marginTop: 5, marginBottom: 5 }}
+                          onClick={handleSubmitStep4}
+                        >
+                          Generate Website
+                        </Button>
+                      </div>
+                    </>
+                  );
+                })()}
                 {error && <p className="text-danger mt-2">{error}</p>}
-              </div>
+              </Form>
             )}
           </Col>
           <Col>
             <div
               style={{
                 backgroundColor: 'lightblue',
-                padding: 0, // Removed padding to maximize content space
+                padding: 0,
                 margin: 5,
                 height: '100%',
                 maxHeight: '75vh',
@@ -402,28 +438,34 @@ export default function BuildPage() {
                 flexDirection: 'column',
               }}
             >
-              {isLoading ? (
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  alignItems: 'center', 
-                  flexGrow: 1,
-                  textAlign: 'center' 
-                }}>
-                  <div>
-                    <p>Generating your website...</p>
-                    <output className="spinner-border">
-                      <span className="visually-hidden">Loading...</span>
-                    </output>
-                  </div>
-                </div>
-              ) : isReady ? (
-                <div style={{ width: '100%', height: '100%' }}>
-                  <AiGenComponent htmlContent={generatedHtml} />
-                </div>
-              ) : (
-                noPage()
-              )}
+              {(() => {
+                if (isLoading) {
+                  return (
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      alignItems: 'center', 
+                      flexGrow: 1,
+                      textAlign: 'center' 
+                    }}>
+                      <div>
+                        <p>Generating your website...</p>
+                        <output className="spinner-border">
+                          <span className="visually-hidden">Loading...</span>
+                        </output>
+                      </div>
+                    </div>
+                  );
+                } else if (isReady) {
+                  return (
+                    <div style={{ width: '100%', height: '100%' }}>
+                      <AiGenComponent htmlContent={generatedHtml} />
+                    </div>
+                  );
+                } else {
+                  return noPage(isLoading, error);
+                }
+              })()}
             </div>
           </Col>
         </Row>

@@ -54,8 +54,6 @@ export interface FormData {
     address: string;
     phone: string;
     email: string;
+    imageInstructions?: string; // Single field for all image descriptions
     [key: string]: string | string[] | undefined;
-    // Add new fields for image handling
-    imageDescriptions?: string[];
-    imageStyles?: string[];
 }

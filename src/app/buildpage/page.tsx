@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { Col, Row, Container, Form, Button, ProgressBar } from 'react-bootstrap'
 import { AiGenComponent } from '@/components/AiGenComponent'
 import { useFormHandlers } from './useFormHandlers'
-import { getQuestions} from './pageUtils'
+import { getQuestions } from './pageUtils'
 
 export default function BuildPage() {
   const {
@@ -21,90 +21,120 @@ export default function BuildPage() {
     checkAllQuestionsAnswered,
     generateWebsite,
     setError,
-  } = useFormHandlers();
+  } = useFormHandlers()
 
   useEffect(() => {
-    if (step === 5 && formData.businessType) { // Changed from step 4 to step 5
-      const hasAllAnswers = checkAllQuestionsAnswered();
-      setAllQuestionsAnswered(hasAllAnswers);
+    if (step === 5 && formData.businessType) {
+      // Changed from step 4 to step 5
+      const hasAllAnswers = checkAllQuestionsAnswered()
+      setAllQuestionsAnswered(hasAllAnswers)
       if (hasAllAnswers && !isLoading && !isReady) {
-        generateWebsite();
+        generateWebsite()
       }
     }
-  }, [step, formData, checkAllQuestionsAnswered, generateWebsite, isLoading, isReady, setAllQuestionsAnswered]);
+  }, [
+    step,
+    formData,
+    checkAllQuestionsAnswered,
+    generateWebsite,
+    isLoading,
+    isReady,
+    setAllQuestionsAnswered,
+  ])
 
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    const { name, value } = e.target
+    setFormData({ ...formData, [name]: value })
   }
 
   const handleSubmitStep1 = () => {
-    if (!formData.businessType || !formData.address || !formData.phone || !formData.email) {
-      setError('Please fill out all required fields');
-      return;
+    if (
+      !formData.businessType ||
+      !formData.address ||
+      !formData.phone ||
+      !formData.email
+    ) {
+      setError('Please fill out all required fields')
+      return
     }
-    setError('');
-    setStep(2);
+    setError('')
+    setStep(2)
   }
 
   const handleSubmitStep2 = () => {
-    const questions = getQuestions(formData.businessType);
+    const questions = getQuestions(formData.businessType)
     for (let i = 0; i < 5; i++) {
-      const fieldName = `question${i + 1}` as keyof typeof formData;
-      if (i < questions.length && (!formData[fieldName] || formData[fieldName].trim() === '')) {
-        setError('Please answer all questions before proceeding');
-        return;
+      const fieldName = `question${i + 1}` as keyof typeof formData
+      if (
+        i < questions.length &&
+        (!formData[fieldName] || formData[fieldName].trim() === '')
+      ) {
+        setError('Please answer all questions before proceeding')
+        return
       }
     }
-    setError('');
-    setStep(3);
+    setError('')
+    setStep(3)
   }
 
   const handleSubmitStep3 = () => {
-    const questions = getQuestions(formData.businessType);
+    const questions = getQuestions(formData.businessType)
     for (let i = 5; i < 10; i++) {
-      const fieldName = `question${i + 1}` as keyof typeof formData;
-      if (i < questions.length && (!formData[fieldName] || formData[fieldName].trim() === '')) {
-        setError('Please answer all questions before proceeding');
-        return;
+      const fieldName = `question${i + 1}` as keyof typeof formData
+      if (
+        i < questions.length &&
+        (!formData[fieldName] || formData[fieldName].trim() === '')
+      ) {
+        setError('Please answer all questions before proceeding')
+        return
       }
     }
-    setError('');
-    setStep(4); // Move to the image collection step
+    setError('')
+    setStep(4) // Move to the image collection step
   }
 
   const handleSubmitStep4 = () => {
-    if (!formData.imageInstructions || formData.imageInstructions.trim() === '') {
-      setError('Please describe your image requirements or enter "none" if you don\'t need images');
-      return;
+    if (
+      !formData.imageInstructions ||
+      formData.imageInstructions.trim() === ''
+    ) {
+      setError(
+        'Please describe your image requirements or enter "none" if you don\'t need images'
+      )
+      return
     }
-    
-    setError('');
-    setStep(5); // Move to the final generation step
-  };
+
+    setError('')
+    setStep(5) // Move to the final generation step
+  }
 
   const handleBack = () => {
     if (step > 1) {
-      setStep(step - 1);
+      setStep(step - 1)
     }
-  };
+  }
 
-  const questions = getQuestions(formData.businessType);
-  const totalQuestions = questions.length;
-  const answeredQuestions = Object.keys(formData).filter(key => key.startsWith('question') && formData[key as keyof typeof formData].trim() !== '').length;
+  const questions = getQuestions(formData.businessType)
+  const totalQuestions = questions.length
+  const answeredQuestions = Object.keys(formData).filter(
+    (key) =>
+      key.startsWith('question') &&
+      formData[key as keyof typeof formData].trim() !== ''
+  ).length
   // Prevent division by zero
-  const progress = totalQuestions > 0 
-    ? Math.round((answeredQuestions / totalQuestions) * 100) 
-    : 0;
+  const progress =
+    totalQuestions > 0
+      ? Math.round((answeredQuestions / totalQuestions) * 100)
+      : 0
 
   const renderQuestionInput = (question: string, index: number) => {
-    const fieldName = `question${index + 1}` as keyof typeof formData;
-    const fieldValue = formData[fieldName] || '';
-    
+    const fieldName = `question${index + 1}` as keyof typeof formData
+    const fieldValue = formData[fieldName] || ''
+
     if (question.toLowerCase().includes('(yes/no)')) {
       return (
         <select
@@ -117,7 +147,7 @@ export default function BuildPage() {
           <option value="yes">Yes</option>
           <option value="no">No</option>
         </select>
-      );
+      )
     } else {
       return (
         <input
@@ -128,9 +158,9 @@ export default function BuildPage() {
           onChange={handleChange}
           value={fieldValue}
         />
-      );
+      )
     }
-  };
+  }
 
   const noPage = (isLoading: boolean, error: string) => {
     return (
@@ -156,21 +186,27 @@ export default function BuildPage() {
         )}
         {error && <p className="text-danger mt-2">{error}</p>}
       </div>
-    );
-  };
+    )
+  }
 
   return (
     <div>
       <Header />
       <div style={{ width: '100%', textAlign: 'center', margin: 10 }}>
         <h1>Welcome to the Business Website Generator!</h1>
-        {formData.businessType && <h2>Selected Template: {formData.businessType}</h2>}
+        {formData.businessType && (
+          <h2>Selected Template: {formData.businessType}</h2>
+        )}
       </div>
       <Container style={{ margin: 10, padding: 10, height: '100%' }} fluid>
         <Row style={{ height: '75vh', maxHeight: '80vh' }}>
           <Col md={4}>
             {step > 1 && (
-              <ProgressBar now={progress} label={`${progress}%`} style={{ marginBottom: 20 }} />
+              <ProgressBar
+                now={progress}
+                label={`${progress}%`}
+                style={{ marginBottom: 20 }}
+              />
             )}
             {step === 1 && (
               <Form style={{ width: '100%' }}>
@@ -258,7 +294,9 @@ export default function BuildPage() {
                     {renderQuestionInput(question, index)}
                   </div>
                 ))}
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between' }}
+                >
                   {step > 1 && (
                     <Button
                       style={{ marginTop: 5, marginBottom: 5, marginRight: 5 }}
@@ -289,7 +327,9 @@ export default function BuildPage() {
                     {renderQuestionInput(question, index + 5)}
                   </div>
                 ))}
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between' }}
+                >
                   {step > 1 && (
                     <Button
                       style={{ marginTop: 5, marginBottom: 5, marginRight: 5 }}
@@ -325,10 +365,14 @@ export default function BuildPage() {
                     value={formData.imageInstructions || ''}
                   />
                   <small className="form-text text-muted mt-2">
-                    <strong>Tip:</strong> For realistic images, keep descriptions simple. For unique visuals, choose artistic style.
+                    <strong>Tip:</strong> For realistic images, keep
+                    descriptions simple. For unique visuals, choose artistic
+                    style.
                   </small>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between' }}
+                >
                   <Button
                     style={{ marginTop: 5, marginBottom: 5, marginRight: 5 }}
                     onClick={handleBack}
@@ -365,13 +409,15 @@ export default function BuildPage() {
               {(() => {
                 if (isLoading) {
                   return (
-                    <div style={{ 
-                      display: 'flex', 
-                      justifyContent: 'center', 
-                      alignItems: 'center', 
-                      flexGrow: 1,
-                      textAlign: 'center' 
-                    }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        flexGrow: 1,
+                        textAlign: 'center',
+                      }}
+                    >
                       <div>
                         <p>Generating your website...</p>
                         <output className="spinner-border">
@@ -379,15 +425,15 @@ export default function BuildPage() {
                         </output>
                       </div>
                     </div>
-                  );
+                  )
                 } else if (isReady) {
                   return (
                     <div style={{ width: '100%', height: '100%' }}>
                       <AiGenComponent htmlContent={generatedHtml} />
                     </div>
-                  );
+                  )
                 } else {
-                  return noPage(isLoading, error);
+                  return noPage(isLoading, error)
                 }
               })()}
             </div>

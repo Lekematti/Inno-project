@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
+import { fetchImages } from '@/app/buildpage/imageProcessor';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY as string });
 
@@ -213,95 +214,27 @@ export async function generateCustomPage(formData: {
     }
 }
 
-async function fetchImages(count: number, descriptions: string[], styles: string[]): Promise<string[]> {
-  if (count === 0 || !descriptions.length) return [];
-  
-  const imageUrls: string[] = [];
-  console.log("🖼️ Generating images...");
-  
-  try {
-    for (let i = 0; i < descriptions.length; i++) {
-      const description = descriptions[i];
-      const style = styles[i] || 'real';
-      
-      try {
-        // Construct URL for image generation service
-        const width = 800;
-        const height = 600;
-        const encodedDescription = encodeURIComponent(description);
-        const url = `https://webweave-imagegen.onrender.com/jukka/images/${encodedDescription}.jpg?description=${encodedDescription}&width=${width}&height=${height}&style=${style}`;
-        
-        console.log(`Generating ${style} image: ${url}`);
-        
-        // Don't validate - just use the URL directly
-        // This is important because some image generation services don't respond to HEAD requests properly
-        // but will generate the image when directly accessed in an <img> tag
-        imageUrls.push(url);
-        console.log(`✅ Added image URL to list: ${url}`);
-      } catch (err) {
-        console.error(`❌ Error processing image for "${description}":`, err);
-        imageUrls.push(`https://via.placeholder.com/800x600?text=${encodeURIComponent(description)}`);
-      }
-    }
-    
-    return imageUrls;
-  } catch (error) {
-    console.error("Error in image generation process:", error);
-    return descriptions.map(desc => `https://via.placeholder.com/800x600?text=${encodeURIComponent(desc)}`);
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const requestData = await request.json();
-    console.log("Received form data:", JSON.stringify(requestData));
+    const { imageInstructions, ...formData } = requestData;
     
-    // Extract image data
-    const { imageData } = requestData;
-    console.log("Image data:", JSON.stringify(imageData));
+    // Process image instructions
+    const imageUrls = await fetchImages(imageInstructions || '');
     
-    // Generate images
-    let imageUrls: string[] = [];
-    if (imageData && Array.isArray(imageData.descriptions) && imageData.descriptions.length > 0) {
-      console.log(`Generating ${imageData.descriptions.length} images...`);
-      imageUrls = await fetchImages(
-        imageData.descriptions.length,
-        imageData.descriptions,
-        imageData.styles || []
-      );
-    }
-    
-    console.log("Generated image URLs:", imageUrls);
-    
-    // Add imageUrls to formData
-    const dataWithImages = {
-      ...requestData,
+    // Generate HTML with images
+    const htmlContent = await generateCustomPage({
+      ...formData,
       imageUrls
-    };
+    });
     
-    // Generate HTML
-    const htmlContent = await generateCustomPage(dataWithImages);
-    
-    // Inside your POST function, add this after generating the HTML
-    console.log("HTML contains images?", 
-      imageUrls.every(url => htmlContent.includes(url)) 
-        ? "✅ All images included" 
-        : "❌ Some images missing");
-
-    if (!imageUrls.every(url => htmlContent.includes(url))) {
-      const missingImages = imageUrls.filter(url => !htmlContent.includes(url));
-      console.log("Missing images:", missingImages);
-    }
-    
-    // Rest of your code for saving the file
+    // Save the generated HTML
     const now = new Date();
-    const formattedTimestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const uniqueSuffix = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`;
-    const businessType = requestData.businessType.toLowerCase();
-    const fileName = `${businessType}-${formattedTimestamp}-${uniqueSuffix}.html`;
+    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const suffix = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`; 
+    const fileName = `${formData.businessType.toLowerCase()}-${timestamp}-${suffix}.html`;
     
     const outputDir = path.join(process.cwd(), 'gen_comp');
-    
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
@@ -312,12 +245,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       htmlContent,
       filePath: `/gen_comp/${fileName}`,
-      imageUrls  // Include image URLs in response for debugging
+      imageUrls
     });
   } catch (error) {
-    console.error('Error processing request:', error);
+    console.error('Error generating page:', error);
     return NextResponse.json(
-      { error: 'Error generating page: ' + (error instanceof Error ? error.message : String(error)) },
+      { error: 'Error generating page.' },
       { status: 500 }
     );
   }

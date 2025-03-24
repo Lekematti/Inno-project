@@ -21,7 +21,6 @@ export default function BuildPage() {
     checkAllQuestionsAnswered,
     generateWebsite,
     setError,
-    getImageCount, // Add this
   } = useFormHandlers();
 
   useEffect(() => {
@@ -79,26 +78,13 @@ export default function BuildPage() {
   }
 
   const handleSubmitStep4 = () => {
-    const imageCount = getImageCount();
-    if (imageCount > 0) {
-      // Validate that at least one image has a description if images are required
-      let hasDescription = false;
-      for (let i = 1; i <= imageCount; i++) {
-        const descField = `imageDescription${i}` as keyof typeof formData;
-        if (formData[descField] && formData[descField].trim() !== '') {
-          hasDescription = true;
-          break;
-        }
-      }
-      
-      if (!hasDescription) {
-        setError('Please add at least one image description');
-        return;
-      }
+    if (!formData.imageInstructions || formData.imageInstructions.trim() === '') {
+      setError('Please describe your image requirements or enter "none" if you don\'t need images');
+      return;
     }
     
     setError('');
-    setStep(5); // Now move to the final generation step
+    setStep(5); // Move to the final generation step
   };
 
   const handleBack = () => {
@@ -325,99 +311,37 @@ export default function BuildPage() {
             {step === 4 && (
               <Form style={{ width: '100%' }}>
                 <h3>Image Information</h3>
-                {(() => {
-                  const imageCount = getImageCount();
-                  if (imageCount === 0) {
-                    return (
-                      <div style={{ marginBottom: 15 }}>
-                        <p>Based on your answers, no images are needed for your website.</p>
-                        <Button
-                          style={{ marginTop: 5 }}
-                          onClick={generateWebsite}
-                        >
-                          Generate Website
-                        </Button>
-                      </div>
-                    );
-                  }
-                  
-                  const imageElements = [];
-                  
-                  for (let i = 1; i <= imageCount; i++) {
-                    const descField = `imageDescription${i}` as keyof typeof formData;
-                    const styleField = `imageStyle${i}` as keyof typeof formData;
-                    let label = '';
-                    if (formData.businessType === 'restaurant') {
-                      label = `Food image ${i} description`;
-                    } else if (formData.businessType === 'logistics') {
-                      label = `Fleet/equipment image ${i} description`;
-                    } else {
-                      label = `Team member ${i} description`;
-                    }
-                    
-                    imageElements.push(
-                      <div key={`image-${i}`} className="form-group mb-3">
-                        <label htmlFor={descField}>
-                          {label}
-                        </label>
-                        <input
-                          name={descField}
-                          id={descField}
-                          className="form-control mb-2"
-                          type="text"
-                          placeholder="Describe the image in detail"
-                          onChange={handleChange}
-                          value={formData[descField] || ''}
-                        />
-                        <div className="form-check form-check-inline">
-                          <input
-                            className="form-check-input"
-                            type="radio"
-                            name={styleField}
-                            id={`${styleField}-real`}
-                            value="real"
-                            checked={formData[styleField] === 'real'}
-                            onChange={handleChange}
-                          />
-                          <label className="form-check-label" htmlFor={`${styleField}-real`}>Realistic</label>
-                        </div>
-                        <div className="form-check form-check-inline">
-                          <input
-                            className="form-check-input"
-                            type="radio"
-                            name={styleField}
-                            id={`${styleField}-artistic`}
-                            value="artistic"
-                            checked={formData[styleField] === 'artistic'}
-                            onChange={handleChange}
-                          />
-                          <label className="form-check-label" htmlFor={`${styleField}-artistic`}>Artistic</label>
-                        </div>
-                      </div>
-                    );
-                  }
-                  
-                  return (
-                    <>
-                      <p>Add descriptions for images to enhance your website:</p>
-                      {imageElements}
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <Button
-                          style={{ marginTop: 5, marginBottom: 5, marginRight: 5 }}
-                          onClick={handleBack}
-                        >
-                          Back
-                        </Button>
-                        <Button
-                          style={{ marginTop: 5, marginBottom: 5 }}
-                          onClick={handleSubmitStep4}
-                        >
-                          Generate Website
-                        </Button>
-                      </div>
-                    </>
-                  );
-                })()}
+                <div className="form-group mb-4">
+                  <label htmlFor="imageInstructions">
+                    Describe the images you want for your website
+                  </label>
+                  <textarea
+                    name="imageInstructions"
+                    id="imageInstructions"
+                    className="form-control"
+                    rows={6}
+                    placeholder="Describe how many images you need, what they should show, and preferred style (realistic or artistic). Example: 'I need 3 images: a restaurant interior (realistic), our signature dish (artistic), and our chef team (realistic).'"
+                    onChange={handleChange}
+                    value={formData.imageInstructions || ''}
+                  />
+                  <small className="form-text text-muted mt-2">
+                    <strong>Tip:</strong> For realistic images, keep descriptions simple. For unique visuals, choose artistic style.
+                  </small>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Button
+                    style={{ marginTop: 5, marginBottom: 5, marginRight: 5 }}
+                    onClick={handleBack}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    style={{ marginTop: 5, marginBottom: 5 }}
+                    onClick={handleSubmitStep4}
+                  >
+                    Generate Website
+                  </Button>
+                </div>
                 {error && <p className="text-danger mt-2">{error}</p>}
               </Form>
             )}

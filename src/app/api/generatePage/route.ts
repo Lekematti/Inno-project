@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import fs from 'fs';
 import path from 'path';
+import { fetchImages } from '@/app/buildpage/imageProcessor';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY as string });
 
@@ -48,15 +49,15 @@ export async function generateCustomPage(formData: {
     let specificPrompt = "";
     if (templateType === "restaurant") {
         specificPrompt = `
-        - Restaurant name: ${answers[0] || address}
-        - Cuisine type: ${answers[1] || 'Not specified'}
+        - Restaurant name: ${typeof answers[0] === 'string' ? answers[0] : address}
+        - Cuisine type: ${typeof answers[1] === 'string' ? answers[1] : 'Not specified'}
         - Online menu: ${answers[2] === 'yes' ? 'Include an attractive, well-structured online menu with sections for appetizers, main courses, desserts, and beverages' : 'No online menu needed'}
         - Reservation system: ${answers[3] === 'yes' ? 'Include an elegant reservation form with date/time picker and party size selection' : 'No reservation system needed'}
-        - Business hours: ${answers[4] || 'Not specified'}
+        - Business hours: ${typeof answers[4] === 'string' ? answers[4] : 'Not specified'}
         - Chef/team profiles: ${answers[5] === 'yes' ? 'Include professional profiles for key staff with high-quality image placeholders' : 'No profiles needed'}
         - Food gallery: ${answers[6] === 'yes' ? 'Create a visually appealing masonry-style gallery with lightbox functionality' : 'No gallery needed'}
         - Testimonials: ${answers[7] === 'yes' ? 'Include a testimonials carousel with customer quotes and ratings' : 'No testimonials section needed'}
-        - Primary brand color: ${answers[8] || '#8D5524'}
+        - Primary brand color: ${typeof answers[8] === 'string' ? answers[8] : '#8D5524'}
         - Delivery/takeout info: ${answers[9] === 'yes' ? 'Include an online ordering section with delivery radius information' : 'No delivery information needed'}
         
         ADDITIONAL REQUIREMENTS:
@@ -71,15 +72,15 @@ export async function generateCustomPage(formData: {
         `;
     } else if (templateType === "logistics") {
         specificPrompt = `
-        - Company name: ${answers[0] || address}
-        - Logistics services: ${answers[1] || 'Not specified'}
+        - Company name: ${typeof answers[0] === 'string' ? answers[0] : address}
+        - Logistics services: ${typeof answers[1] === 'string' ? answers[1] : 'Not specified'}
         - Shipment tracking: ${answers[2] === 'yes' ? 'Include a professional tracking interface with order ID input field' : 'No tracking feature needed'}
         - Fleet/equipment showcase: ${answers[3] === 'yes' ? 'Create a visually appealing carousel showcasing transportation assets' : 'No fleet showcase needed'}
-        - Service areas: ${answers[4] || 'Not specified'}
+        - Service areas: ${typeof answers[4] === 'string' ? answers[4] : 'Not specified'}
         - Testimonials/case studies: ${answers[5] === 'yes' ? 'Include a metrics-focused case studies section with client logos and quantifiable results' : 'No testimonials section needed'}
         - Service request form: ${answers[6] === 'yes' ? 'Include a multi-step service request form with shipment details fields' : 'No service request form needed'}
-        - Certifications/standards: ${answers[7] || 'Not specified'}
-        - Primary brand color: ${answers[8] || '#1C3D5A'}
+        - Certifications/standards: ${typeof answers[7] === 'string' ? answers[7] : 'Not specified'}
+        - Primary brand color: ${typeof answers[8] === 'string' ? answers[8] : '#1C3D5A'}
         - Service area map: ${answers[9] === 'yes' ? 'Include an interactive map visualization with service coverage highlighting' : 'No map needed'}
         
         ADDITIONAL REQUIREMENTS:
@@ -94,15 +95,15 @@ export async function generateCustomPage(formData: {
         `;
     } else if (templateType === "professional") {
         specificPrompt = `
-        - Firm name: ${answers[0] || address}
-        - Professional services: ${answers[1] || 'Not specified'}
+        - Firm name: ${typeof answers[0] === 'string' ? answers[0] : address}
+        - Professional services: ${typeof answers[1] === 'string' ? answers[1] : 'Not specified'}
         - Team profiles: ${answers[2] === 'yes' ? 'Include elegant team profiles with professional headshots, credentials, and specialties' : 'No team profiles needed'}
         - Case studies: ${answers[3] === 'yes' ? 'Include detailed case studies with problem-solution-result structure' : 'No case studies section needed'}
         - Client portal: ${answers[4] === 'yes' ? 'Include a sophisticated client portal login section with secure access messaging' : 'No client portal link needed'}
         - Consultation info: ${answers[5] === 'yes' ? 'Feature a prominent consultation booking system with availability calendar' : 'Include standard contact information'}
-        - Credentials/affiliations: ${answers[6] || 'Not specified'}
+        - Credentials/affiliations: ${typeof answers[6] === 'string' ? answers[6] : 'Not specified'}
         - FAQ section: ${answers[7] === 'yes' ? 'Include an accordion-style FAQ section with comprehensive information' : 'No FAQ section needed'}
-        - Primary brand color: ${answers[8] || '#2E5984'}
+        - Primary brand color: ${typeof answers[8] === 'string' ? answers[8] : '#2E5984'}
         - Blog/resources: ${answers[9] === 'yes' ? 'Include a content-rich resources section with categorized articles' : 'No blog/resources section needed'}
         
         ADDITIONAL REQUIREMENTS:
@@ -134,7 +135,7 @@ export async function generateCustomPage(formData: {
     You are an expert frontend developer specializing in creating visually stunning, conversion-optimized websites. Create a production-ready HTML webpage using the Bootstrap 5 framework for a ${templateType} business.
 
     BUSINESS DETAILS:
-    - Name: ${answers[0] || "Company Name"}
+    - Name: ${typeof answers[0] === 'string' ? answers[0] : "Company Name"}
     - Address: ${address}
     - Phone: ${phone}
     - Email: ${email}
@@ -213,95 +214,27 @@ export async function generateCustomPage(formData: {
     }
 }
 
-async function fetchImages(count: number, descriptions: string[], styles: string[]): Promise<string[]> {
-  if (count === 0 || !descriptions.length) return [];
-  
-  const imageUrls: string[] = [];
-  console.log("🖼️ Generating images...");
-  
-  try {
-    for (let i = 0; i < descriptions.length; i++) {
-      const description = descriptions[i];
-      const style = styles[i] || 'real';
-      
-      try {
-        // Construct URL for image generation service
-        const width = 800;
-        const height = 600;
-        const encodedDescription = encodeURIComponent(description);
-        const url = `https://webweave-imagegen.onrender.com/jukka/images/${encodedDescription}.jpg?description=${encodedDescription}&width=${width}&height=${height}&style=${style}`;
-        
-        console.log(`Generating ${style} image: ${url}`);
-        
-        // Don't validate - just use the URL directly
-        // This is important because some image generation services don't respond to HEAD requests properly
-        // but will generate the image when directly accessed in an <img> tag
-        imageUrls.push(url);
-        console.log(`✅ Added image URL to list: ${url}`);
-      } catch (err) {
-        console.error(`❌ Error processing image for "${description}":`, err);
-        imageUrls.push(`https://via.placeholder.com/800x600?text=${encodeURIComponent(description)}`);
-      }
-    }
-    
-    return imageUrls;
-  } catch (error) {
-    console.error("Error in image generation process:", error);
-    return descriptions.map(desc => `https://via.placeholder.com/800x600?text=${encodeURIComponent(desc)}`);
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const requestData = await request.json();
-    console.log("Received form data:", JSON.stringify(requestData));
+    const { imageInstructions, ...formData } = requestData;
     
-    // Extract image data
-    const { imageData } = requestData;
-    console.log("Image data:", JSON.stringify(imageData));
+    // Process image instructions
+    const imageUrls = await fetchImages(imageInstructions || '');
     
-    // Generate images
-    let imageUrls: string[] = [];
-    if (imageData && Array.isArray(imageData.descriptions) && imageData.descriptions.length > 0) {
-      console.log(`Generating ${imageData.descriptions.length} images...`);
-      imageUrls = await fetchImages(
-        imageData.descriptions.length,
-        imageData.descriptions,
-        imageData.styles || []
-      );
-    }
-    
-    console.log("Generated image URLs:", imageUrls);
-    
-    // Add imageUrls to formData
-    const dataWithImages = {
-      ...requestData,
+    // Generate HTML with images
+    const htmlContent = await generateCustomPage({
+      ...formData,
       imageUrls
-    };
+    });
     
-    // Generate HTML
-    const htmlContent = await generateCustomPage(dataWithImages);
-    
-    // Inside your POST function, add this after generating the HTML
-    console.log("HTML contains images?", 
-      imageUrls.every(url => htmlContent.includes(url)) 
-        ? "✅ All images included" 
-        : "❌ Some images missing");
-
-    if (!imageUrls.every(url => htmlContent.includes(url))) {
-      const missingImages = imageUrls.filter(url => !htmlContent.includes(url));
-      console.log("Missing images:", missingImages);
-    }
-    
-    // Rest of your code for saving the file
+    // Save the generated HTML
     const now = new Date();
-    const formattedTimestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const uniqueSuffix = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`;
-    const businessType = requestData.businessType.toLowerCase();
-    const fileName = `${businessType}-${formattedTimestamp}-${uniqueSuffix}.html`;
+    const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const suffix = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`; 
+    const fileName = `${formData.businessType.toLowerCase()}-${timestamp}-${suffix}.html`;
     
     const outputDir = path.join(process.cwd(), 'gen_comp');
-    
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
@@ -312,12 +245,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       htmlContent,
       filePath: `/gen_comp/${fileName}`,
-      imageUrls  // Include image URLs in response for debugging
+      imageUrls
     });
   } catch (error) {
-    console.error('Error processing request:', error);
+    console.error('Error generating page:', error);
     return NextResponse.json(
-      { error: 'Error generating page: ' + (error instanceof Error ? error.message : String(error)) },
+      { error: 'Error generating page.' },
       { status: 500 }
     );
   }

@@ -10,6 +10,7 @@
     "generate": "ts-node -r dotenv/config src/functions/inputGenerate.ts"
   },
   "dependencies": {
+    "@azure/storage-blob": "^12.27.0",
     "@types/axios": "^0.9.36",
     "bootstrap": "^5.3.3",
     "dotenv": "^16.4.7",

@@ -1,5 +1,8 @@
 'use client'
 import { Header } from '@/components/Header'
+import { Button } from 'react-bootstrap'
+import fetchBlob from '../functions/blobStorage'
+
 export default function Home() {
   return (
     <div>
@@ -65,6 +68,13 @@ export default function Home() {
         </div>
         <div id="Demo">
           <h1>Here you can demo the functions</h1>
+          <Button
+            onClick={() => {
+              fetchBlob()
+            }}
+          >
+            TEST
+          </Button>
         </div>
       </div>
     </div>

@@ -1,22 +1,24 @@
 'use client'
 import { Header } from '@/components/Header'
 import { useEffect } from 'react'
-import { Col, Row, Container, Form, Button, ProgressBar } from 'react-bootstrap'
+import { Col, Row, Container, Form, Button, ProgressBar, Tab, Tabs } from 'react-bootstrap'
 import { AiGenComponent } from '@/components/AiGenComponent'
 import { useFormHandlers } from './useFormHandlers'
 import { getQuestions } from './pageUtils'
+import { ImageUploadComponent } from '@/components/ImageUploadComponent'
 
 export default function BuildPage() {
   const {
     formData,
     setFormData,
+    uploadedImages,
+    handleImagesSelected,
     isLoading,
     isReady,
     generatedHtml,
     error,
     step,
     setStep,
-    /*allQuestionsAnswered,*/
     setAllQuestionsAnswered,
     checkAllQuestionsAnswered,
     generateWebsite,
@@ -24,6 +26,7 @@ export default function BuildPage() {
   } = useFormHandlers()
 
   useEffect(() => {
+    console.log('Step changed:', step)
     if (step === 5 && formData.businessType) {
       // Changed from step 4 to step 5
       const hasAllAnswers = checkAllQuestionsAnswered()
@@ -48,6 +51,7 @@ export default function BuildPage() {
     >
   ) => {
     const { name, value } = e.target
+    console.log(`Field changed: ${name}, Value: ${value}`)
     setFormData({ ...formData, [name]: value })
   }
 
@@ -98,16 +102,22 @@ export default function BuildPage() {
   }
 
   const handleSubmitStep4 = () => {
-    if (
-      !formData.imageInstructions ||
-      formData.imageInstructions.trim() === ''
-    ) {
+    console.log('Submitting Step 4:', formData);
+    console.log('Image source:', formData.imageSource);
+    console.log('Image instructions:', formData.imageInstructions);
+    if (formData.imageSource === 'ai' && 
+        (!formData.imageInstructions || formData.imageInstructions.trim() === '')) {
       setError(
         'Please describe your image requirements or enter "none" if you don\'t need images'
       )
       return
     }
-
+    
+    if (formData.imageSource === 'upload' && uploadedImages.length === 0) {
+      setError('Please upload at least one image or switch to AI-generated images')
+      return
+    }
+    console.log('Step 4 validation passed. Proceeding to Step 5...');
     setError('')
     setStep(5) // Move to the final generation step
   }
@@ -116,6 +126,11 @@ export default function BuildPage() {
     if (step > 1) {
       setStep(step - 1)
     }
+  }
+
+  const handleImageSourceChange = (source: string) => {
+    console.log('Image source changed to:', source)
+    setFormData({ ...formData, imageSource: source })
   }
 
   const questions = getQuestions(formData.businessType)
@@ -134,6 +149,7 @@ export default function BuildPage() {
   const renderQuestionInput = (question: string, index: number) => {
     const fieldName = `question${index + 1}` as keyof typeof formData
     const fieldValue = formData[fieldName] || ''
+    console.log(`Rendering question ${index + 1}:`, question)
 
     if (question.toLowerCase().includes('(yes/no)')) {
       return (
@@ -163,6 +179,7 @@ export default function BuildPage() {
   }
 
   const noPage = (isLoading: boolean, error: string) => {
+    console.log('Rendering noPage component. isLoading:', isLoading, 'Error:', error)
     return (
       <div
         style={{
@@ -350,26 +367,49 @@ export default function BuildPage() {
             )}
             {step === 4 && (
               <Form style={{ width: '100%' }}>
-                <h3>Image Information</h3>
-                <div className="form-group mb-4">
-                  <label htmlFor="imageInstructions">
-                    Describe the images you want for your website
-                  </label>
-                  <textarea
-                    name="imageInstructions"
-                    id="imageInstructions"
-                    className="form-control"
-                    rows={6}
-                    placeholder="Describe how many images you need, what they should show, and preferred style (realistic or artistic). Example: 'I need 3 images: a restaurant interior (realistic), our signature dish (artistic), and our chef team (realistic).'"
-                    onChange={handleChange}
-                    value={formData.imageInstructions || ''}
-                  />
-                  <small className="form-text text-muted mt-2">
-                    <strong>Tip:</strong> For realistic images, keep
-                    descriptions simple. For unique visuals, choose artistic
-                    style.
-                  </small>
+                <h3>Website Images</h3>
+                <div className="mb-4">
+                  <Form.Group>
+                    <Form.Label>Choose an image source:</Form.Label>
+                  </Form.Group>
                 </div>
+
+                <Tabs
+                  activeKey={formData.imageSource}
+                  id="image-source-tabs"
+                  className="mb-3"
+                  onSelect={(k) => k && handleImageSourceChange(k)}
+                >
+                  <Tab eventKey="ai" title="AI-Generated">
+                    <div className="form-group mb-4">
+                      <label htmlFor="imageInstructions">
+                        Describe the images you want for your website
+                      </label>
+                      <textarea
+                        name="imageInstructions"
+                        id="imageInstructions"
+                        className="form-control"
+                        rows={6}
+                        placeholder="Describe how many images you need, what they should show, and preferred style (realistic or artistic). Example: 'I need 3 images: a restaurant interior (realistic), our signature dish (artistic), and our chef team (realistic).'"
+                        onChange={handleChange}
+                        value={formData.imageInstructions || ''}
+                        disabled={formData.imageSource !== 'ai'}
+                      />
+                      <small className="form-text text-muted mt-2">
+                        <strong>Tip:</strong> For realistic images, keep
+                        descriptions simple. For unique visuals, choose artistic
+                        style.
+                      </small>
+                    </div>
+                  </Tab>
+                  <Tab eventKey="upload" title="Upload Images">
+                    <ImageUploadComponent 
+                      onImagesSelected={handleImagesSelected}
+                      maxImages={5}
+                    />
+                  </Tab>
+                </Tabs>
+
                 <div
                   style={{ display: 'flex', justifyContent: 'space-between' }}
                 >
@@ -408,6 +448,7 @@ export default function BuildPage() {
             >
               {(() => {
                 if (isLoading) {
+                  console.log('Loading state active...')
                   return (
                     <div
                       style={{
@@ -427,6 +468,7 @@ export default function BuildPage() {
                     </div>
                   )
                 } else if (isReady) {
+                  console.log('Website generation complete. Rendering HTML...')
                   return (
                     <div style={{ width: '100%', height: '100%' }}>
                       <AiGenComponent htmlContent={generatedHtml} />

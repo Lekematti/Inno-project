@@ -19,9 +19,28 @@ export async function generateCustomPage(formData: {
   phone: string
   email: string
   imageUrls?: string[]
+  userImages?: string[]
+  imageInstructions?: string
+  useAIImages?: boolean
   [key: string]: unknown
 }): Promise<string> {
-  const { businessType, address, phone, email, imageUrls = [] } = formData
+  const { 
+    businessType, 
+    address, 
+    phone, 
+    email, 
+    imageUrls = [], 
+    userImages = [],
+    imageInstructions = '',
+    useAIImages = false
+  } = formData
+  console.log('🖼️ Image URLs passed to generateCustomPage:', imageUrls);
+  console.log('📋 Form data received:', formData);
+  // Additional logic for generating the page...
+  console.log('🔄 Generating HTML content...');
+  const htmlContent = `<html><body><h1>${businessType} Website</h1></body></html>`;
+  console.log('✅ HTML content generated.');
+  
   const templateType = businessType.toLowerCase()
   const answers = []
 
@@ -48,6 +67,30 @@ export async function generateCustomPage(formData: {
     }
   }
 
+  // Determine which image set to use based on the useAIImages flag or user's choice
+  let imagesToUse: string[] = []
+  let imageSourceExplanation = ''
+  
+  if (userImages && userImages.length > 0) {
+    // User uploaded images take priority
+    imagesToUse = userImages
+    imageSourceExplanation = 'User-uploaded images will be used exclusively.'
+    console.log('🖼️ Using user-uploaded images:', imagesToUse.length)
+  } else if (useAIImages && imageUrls && imageUrls.length > 0) {
+    // Only use AI images if explicitly requested and available
+    imagesToUse = imageUrls
+    imageSourceExplanation = 'AI-generated images will be used.'
+    console.log('🖼️ Using AI-generated images:', imagesToUse.length)
+  } else if (imageInstructions) {
+    // Use AI instructions to generate images
+    imageSourceExplanation = 'No images provided. Using AI-generated placeholders based on instructions.'
+    console.log('🖼️ No images provided. Using placeholders.')
+  } else {
+    imageSourceExplanation = 'No images provided. Using standard placeholders.'
+    console.log('🖼️ No images provided. Using standard placeholders.')
+  }
+  
+    
   // Create template-specific prompt
   let specificPrompt = ''
   if (templateType === 'restaurant') {
@@ -210,24 +253,54 @@ export async function generateCustomPage(formData: {
         8. Create a polished footer with comprehensive site navigation and contact details
         `
   }
-
+  
   const currentYear = new Date().getFullYear()
-  const imageInstructions =
-    imageUrls.length > 0
-      ? `CRITICAL IMAGE INSTRUCTIONS: 
-    I have pre-generated these exact image URLs that MUST be used in the website:
-    ${imageUrls.map((url, i) => `${i + 1}. ${url}`).join('\n')}
+  
+  // Create enhanced image instructions
+  const imageInstructionsContent = imagesToUse.length > 0
+    ? `CRITICAL IMAGE INSTRUCTIONS: 
+    I have these exact ${imagesToUse.length} images that MUST be used in the website:
+    ${imagesToUse.map((url, i) => `${i + 1}. ${url}`).join('\n')}
     
-    For each image URL above:
-    - Copy and paste the EXACT URL into an <img> tag
-    - Example: <img src="${
-      imageUrls[0] || 'https://example.com/image.jpg'
-    }" alt="Description" class="img-fluid">
-    - Do NOT modify the URLs in any way
-    - Do NOT replace these URLs with placeholder images
-    - These images will load correctly when viewed in a browser
+    IMAGE INTEGRATION REQUIREMENTS:
+    1. EXCLUSIVELY use ONLY the exact image URLs provided above - do not generate or suggest any other images
+    2. Copy and paste the EXACT URLs into <Image> tags
+    3. Example: <img src="${imagesToUse[0] || 'https://example.com/image.jpg'}" alt="Descriptive text" class="img-fluid">
+    4. DO NOT modify these URLs in any way
+    5. DO NOT use placeholder images or references in place of these provided URLs
+    6. These images will load correctly when viewed in a browser
+    
+    IMAGE LAYOUT AND CONSISTENCY REQUIREMENTS:
+    1. Images in the SAME SECTION must have EXACTLY the same dimensions (width and height)
+    2. Hero/background images should be full width with consistent height (e.g., "width: 100%; height: 500px; object-fit: cover;")
+    3. Team/profile images must be identical in size (e.g., all exactly 300x300px with consistent styling)
+    4. Gallery/portfolio images must be uniform in size within their container
+    5. Use inline CSS to enforce exact dimensions where appropriate (width and height attributes)
+    6. Use CSS object-fit property to maintain aspect ratios
+    7. Create CSS classes for different image types (hero, gallery, team, etc.) with specific dimensions
+    
+    IMAGE PLACEMENT GUIDELINES:
+    1. Hero section: ${imagesToUse.length > 0 ? 'Use first image as hero/background' : 'Use placeholder'}
+    2. Gallery/portfolio: ${imagesToUse.length > 2 ? 'Use at least 3 images in gallery section' : 'Use available images or placeholders'}
+    3. Team/about: ${imagesToUse.length > 3 ? 'Use appropriate images for team members' : 'Use available images or placeholders'}
+    4. Services/products: ${imagesToUse.length > 0 ? 'Use relevant images for service sections' : 'Use placeholders'}
+    
+    CSS CLASSES FOR IMAGE CONSISTENCY:
+    Create and use these specific image classes:
+    1. .hero-image { width: 100%; height: 500px; object-fit: cover; }
+    2. .gallery-image { width: 300px; height: 200px; object-fit: cover; }
+    3. .team-image { width: 250px; height: 250px; object-fit: cover; border-radius: 50%; }
+    4. .service-image { width: 400px; height: 300px; object-fit: cover; }
     `
-      : 'No custom images provided.'
+    : `NO CUSTOM IMAGES PROVIDED:
+    1. Use appropriate stock image placeholders relevant to ${templateType} business
+    2. Create consistent image dimensions within each section
+    3. Apply the same CSS classes and rules for image consistency as you would with custom images
+    4. Hero images should be 100% width with 500px height
+    5. Gallery images should be exactly 300x200px
+    6. Team/profile images should be exactly 250x250px
+    7. Service images should be exactly 400x300px`;
+
   const prompt = `
     You are an expert frontend developer specializing in creating visually stunning, conversion-optimized websites. Create a production-ready HTML webpage using the Bootstrap 5 framework for a ${templateType} business.
 
@@ -241,14 +314,19 @@ export async function generateCustomPage(formData: {
     ${specificPrompt}
 
     IMAGE INTEGRATION:
-    ${imageInstructions}
+    ${imageSourceExplanation}
+    ${imageInstructionsContent}
 
     FOOTER REQUIREMENT:
     Include a footer with copyright information: © ${currentYear} [Company Name]. All rights reserved.
 
-    SPECIFICATIONS:
-    ${specificPrompt}
-    
+    IMAGE CONSISTENCY AND LAYOUT STANDARDS:
+    1. All images in the same section MUST have IDENTICAL dimensions
+    2. Create specific CSS classes for each image type (hero, gallery, team, etc.)
+    3. Use flexbox or grid layouts for consistent image galleries
+    4. Implement proper responsive behavior for all images
+    5. Add appropriate alt text for every image
+
     TECHNICAL REQUIREMENTS:
     1. Use Bootstrap 5 CSS framework with custom CSS enhancements where needed
     2. Implement a fully semantic HTML5 structure with proper hierarchy
@@ -275,83 +353,140 @@ export async function generateCustomPage(formData: {
     7. Create CSS variables for consistent color and typography usage
     8. Implement CSS animations using best practices
 
+    SECTION CONSISTENCY STANDARDS:
+    1. Use consistent padding and margins throughout sections
+    2. Implement uniform spacing between elements
+    3. Maintain consistent typography hierarchy (h1, h2, h3, etc.)
+    4. Use the same animation styles for similar elements
+    5. Ensure button styles are consistent throughout the site
+
     ONLY return the complete HTML file with no markdown, explanations, or additional text.
     The code must be production-ready with no placeholders or TODO comments.
     `
-
-  try {
-    console.log('\n🔄 Generating your custom website...')
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7,
-      max_tokens: 4000,
-    })
-
-    let htmlContent: string | null | undefined =
-      completion.choices[0]?.message?.content
-
-    if (htmlContent) {
-      // Clean up any remaining markdown code blocks if present
-      htmlContent = htmlContent.replace(/```html|```/g, '').trim()
-
-      // Update cache
-      generationCache.lastRequest = requestKey
-      generationCache.lastResult = htmlContent
-      generationCache.timestamp = now
-
-      return htmlContent
-    } else {
-      console.error('❌ Error: Generated content is undefined.')
-      return 'Error generating content. Please try again.'
+    
+    try {
+      console.log('\n🔄 Generating your custom website...')
+  
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: 4000,
+      })
+  
+      let htmlContent: string | null | undefined =
+        completion.choices[0]?.message?.content
+  
+      if (htmlContent) {
+        htmlContent = htmlContent.replace(/```html|```/g, '').trim()
+  
+        generationCache.lastRequest = requestKey
+        generationCache.lastResult = htmlContent
+        generationCache.timestamp = now
+  
+        return htmlContent
+      } else {
+        console.error('❌ Error: Generated content is undefined.')
+        return 'Error generating content. Please try again.'
+      }
+    } catch (error) {
+      console.error('❌ Error generating page:', error)
+      return 'Error generating page. Please check your inputs and try again.'
     }
-  } catch (error) {
-    console.error('❌ Error generating page:', error)
-    return 'Error generating page. Please check your inputs and try again.'
   }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const requestData = await request.json()
-    const { imageInstructions, ...formData } = requestData
-
-    // Process image instructions
-    const imageUrls = await fetchImages(imageInstructions || '')
-
-    // Generate HTML with images
-    const htmlContent = await generateCustomPage({
-      ...formData,
-      imageUrls,
-    })
-
-    // Save the generated HTML
-    const now = new Date()
-    const timestamp = `${now.getFullYear()}-${String(
-      now.getMonth() + 1
-    ).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-    const suffix = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`
-    const fileName = `${formData.businessType.toLowerCase()}-${timestamp}-${suffix}.html`
-
-    const outputDir = path.join(process.cwd(), 'gen_comp')
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true })
+ 
+  export async function POST(request: NextRequest) {
+    try {
+      const requestData = await request.json();
+      const {
+        imageInstructions,
+        userUploads = [],
+        useAIImages = false,
+        ...formData
+      } = requestData;
+  
+      console.log('📋 Received request data:', requestData);
+  
+      let imageUrls: string[] = [];
+      let userImages: string[] = [];
+  
+      // Process user-uploaded images
+      if (Array.isArray(userUploads) && userUploads.length > 0) {
+        userImages = userUploads.map((image) => image.url || image);
+        console.log('📸 User uploaded images detected:', userImages.length);
+      }
+  
+      // Fetch AI-generated images if requested
+      if (useAIImages && imageInstructions) {
+        console.log('🎨 Fetching AI-generated images...');
+        try {
+          imageUrls = await fetchImages(imageInstructions);
+          if (imageUrls.length > 0) {
+            console.log('✅ AI-generated images fetched:', imageUrls);
+          } else {
+            console.warn('⚠️ No AI-generated images were fetched.');
+          }
+        } catch (error) {
+          console.error('❌ Error fetching AI-generated images:', error);
+          throw new Error('Failed to fetch AI-generated images.');
+        }
+      }
+  
+      // Determine the final set of images to use
+      let finalImages: string[] = [];
+      if (useAIImages && imageUrls.length > 0) {
+        finalImages = imageUrls;
+        console.log('✅ Using AI-generated images.');
+      } else if (userImages.length > 0) {
+        finalImages = userImages;
+        console.log('✅ Using user-uploaded images.');
+      } else {
+        console.log('⚠️ No images found. Using placeholders.');
+      }
+  
+      // Ensure that we wait for the images to be ready before generating the HTML
+      if (useAIImages && imageUrls.length === 0) {
+        throw new Error('AI image generation failed. No images were generated.');
+      }
+  
+      // Generate the HTML content with the selected images
+      console.log('🔄 Generating HTML content with images:', finalImages);
+      const htmlContent = await generateCustomPage({
+        ...formData,
+        imageUrls: finalImages,
+        userImages,
+        useAIImages,
+      });
+  
+      // Generate a timestamped filename for the HTML output
+      const now = new Date();
+      const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const suffix = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`;
+      const fileName = `${formData.businessType.toLowerCase()}-${timestamp}-${suffix}.html`;
+  
+      // Ensure the output directory exists
+      const outputDir = path.join(process.cwd(), 'gen_comp');
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+  
+      // Save the generated HTML file
+      const filePath = path.join(outputDir, fileName);
+      fs.writeFileSync(filePath, htmlContent);
+  
+      // Return the response with the generated HTML and image details
+      return NextResponse.json({
+        htmlContent,
+        filePath: `/gen_comp/${fileName}`,
+        imageSource: finalImages.length > 0 ? (useAIImages ? 'ai' : 'user') : 'none',
+        imageUrls: finalImages,
+      });
+    } catch (error) {
+      console.error('❌ Error generating page:', error);
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : 'Error generating page.' },
+        { status: 500 }
+      );
     }
-
-    const filePath = path.join(outputDir, fileName)
-    fs.writeFileSync(filePath, htmlContent)
-
-    return NextResponse.json({
-      htmlContent,
-      filePath: `/gen_comp/${fileName}`,
-      imageUrls,
-    })
-  } catch (error) {
-    console.error('Error generating page:', error)
-    return NextResponse.json(
-      { error: 'Error generating page.' },
-      { status: 500 }
-    )
   }
-}
+  

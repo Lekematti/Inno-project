@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../app/context/AuthContext'
 import Link from 'next/link'
 
 export default function LoginForm() {

@@ -18,6 +18,9 @@ gen_comp/
 dog_page.html
 custom_page.html
 
+# images 
+/public/uploads/
+
 # next.js
 /.next/
 /out/

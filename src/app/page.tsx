@@ -12,6 +12,7 @@ export default function Home() {
     }
   }
   const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     if (!selectedFile) {
       alert('Submit a file!')
       return

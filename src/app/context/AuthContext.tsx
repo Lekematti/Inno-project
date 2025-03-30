@@ -70,9 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Store user in localStorage (use a more secure method in production)
         localStorage.setItem('user', JSON.stringify(user))
+        // WIP testing fix for login cookies
+        document.cookie = 'authenticated=true; path=/'
 
         setAuthState({ user, isLoading: false, error: null })
-        router.push('/dashboard')
+        router.push('/profile')
       } else {
         setAuthState({
           ...authState,
@@ -99,9 +101,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Store user in localStorage (use a more secure method in production)
         localStorage.setItem('user', JSON.stringify(user))
+        // WIP testing fix for login cookies
+        document.cookie = 'authenticated=true; path=/'
 
         setAuthState({ user, isLoading: false, error: null })
-        router.push('/dashboard')
+        router.push('/profile')
       } else {
         setAuthState({
           ...authState,
@@ -123,9 +127,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       // Clear user from localStorage
       localStorage.removeItem('user')
+      // WIP testing fix for login cookies
+      document.cookie = 'authenticated=false; path=/'
 
       setAuthState({ user: null, isLoading: false, error: null })
-      router.push('/login')
+      router.push('/profile')
     } catch (error) {
       setAuthState({ ...authState, isLoading: false, error: 'Logout failed' })
     }

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useAuth } from '../app/context/AuthContext'
-import Link from 'next/link'
 
 export default function LoginForm() {
   const [credentials, setCredentials] = useState({ email: '', password: '' })
@@ -17,60 +16,69 @@ export default function LoginForm() {
   }
 
   return (
-    <div className="max-w-md w-full mx-auto p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-center">Log In</h2>
+    <div className="card">
+      <div className="card-body">
+        <h2 className="card-title text-center mb-4">
+          Login with existing user
+        </h2>
+        {error && (
+          <div className="alert alert-danger" role="alert">
+            {error}
+          </div>
+        )}
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>
-      )}
+        <form onSubmit={handleSubmit}>
+          <div className="mb-3">
+            <label htmlFor="email" className="form-label">
+              Email
+            </label>
+            <input
+              type="email"
+              className="form-control"
+              id="email"
+              name="email"
+              value={credentials.email}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label htmlFor="email" className="block text-gray-700 mb-2">
-            Email
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={credentials.email}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+          <div className="mb-3">
+            <label htmlFor="password" className="form-label">
+              Password
+            </label>
+            <input
+              type="password"
+              className="form-control"
+              id="password"
+              name="password"
+              value={credentials.password}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-        <div className="mb-6">
-          <label htmlFor="password" className="block text-gray-700 mb-2">
-            Password
-          </label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            value={credentials.password}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full py-2 px-4 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50"
-        >
-          {isLoading ? 'Logging in...' : 'Log In'}
-        </button>
-      </form>
-
-      <div className="mt-4 text-center">
-        <p className="text-gray-600">
-          Don't have an account?{' '}
-          <Link href="/register" className="text-blue-500 hover:text-blue-700">
-            Register
-          </Link>
-        </p>
+          <div className="d-grid gap-2">
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <span
+                    className="spinner-border spinner-border-sm me-2"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
+                  Logging in...
+                </>
+              ) : (
+                'Log In'
+              )}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )

@@ -1,99 +1,109 @@
-//This file contains a custom React hook that manages the state and logic for the website generation form. 
+/**
+ * Custom React hook that manages form state and logic for website generation
+ */
 import { useState, useCallback } from 'react';
 import { templates } from '@/functions/inputGenerate';
+import { 
+  FormData,
+  FormHandlerHook, 
+  BusinessType,
+  defaultFormData 
+} from '@/types/formData';
 
-type TemplateType = 'restaurant' | 'logistics' | 'professional';
+/**
+ * Hook for managing website generation form state and operations
+ */
+export const useFormHandlers = (): FormHandlerHook => {
+  // State management
+  const [formData, setFormData] = useState<FormData>(defaultFormData);
+  
+  // UI state
+  const [isLoading, setIsLoading] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [generatedHtml, setGeneratedHtml] = useState('');
+  const [error, setError] = useState('');
+  const [step, setStep] = useState(1);
+  const [allQuestionsAnswered, setAllQuestionsAnswered] = useState(false);
 
-export function useFormHandlers() {
-    const [formData, setFormData] = useState({
-        businessType: '',
-        address: '',
-        phone: '',
-        email: '',
-        question1: '',
-        question2: '',
-        question3: '',
-        question4: '',
-        question5: '',
-        question6: '',
-        question7: '',
-        question8: '',
-        question9: '',
-        question10: '',
-        imageInstructions: '', // Single field for all image instructions
+  /**
+   * Validates that all required form fields are completed
+   */
+  const checkAllQuestionsAnswered = useCallback((): boolean => {
+    if (!formData.businessType || !formData.address || !formData.phone || !formData.email) {
+      return false;
+    }
+    
+    const businessType = formData.businessType.toLowerCase() as BusinessType;
+    if (!['restaurant', 'logistics', 'professional'].includes(businessType)) {
+      return false;
+    }
+    
+    const template = templates[businessType];
+    const questions = template?.questions || [];
+    
+    return questions.every((_, i) => {
+      const fieldName = `question${i + 1}` as keyof FormData;
+      return formData[fieldName]?.trim() !== '';
     });
-    const [isLoading, setIsLoading] = useState(false);
-    const [isReady, setIsReady] = useState(false);
-    const [generatedHtml, setGeneratedHtml] = useState('');
-    const [error, setError] = useState('');
-    const [step, setStep] = useState(1);
-    const [allQuestionsAnswered, setAllQuestionsAnswered] = useState(false);
+  }, [formData]);
 
-    // Check if all required questions are answered
-    const checkAllQuestionsAnswered = useCallback(() => {
-        if (!formData.businessType || !formData.address || !formData.phone || !formData.email) {
-            return false;
-        }
-        
-        const businessType = formData.businessType.toLowerCase();
-        if (businessType !== 'restaurant' && businessType !== 'logistics' && businessType !== 'professional') {
-            return false;
-        }
-        
-        const template = templates[businessType as TemplateType];
-        const questions = template ? template.questions : [];
-        
-        for (let i = 0; i < questions.length; i++) {
-            const fieldName = `question${i + 1}` as keyof typeof formData;
-            if (!formData[fieldName] || formData[fieldName].trim() === '') {
-                return false;
-            }
-        }
-        return true;
-    }, [formData]);
+  /**
+   * Sends form data to the API endpoint to generate website
+   */
+  const generateWebsite = useCallback(async (): Promise<void> => {
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch('/api/generatePage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      if (data.htmlContent) {
+        setGeneratedHtml(data.htmlContent);
+        setFormData(prev => ({
+          ...prev,
+          filePath: data.filePath
+        }));
+        setIsReady(true);
+      } else {
+        throw new Error('No HTML content received');
+      }
+    } catch (err) {
+      console.error('Error generating website:', err instanceof Error ? err.message : String(err));
+      setError('Failed to generate website. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [formData, isLoading]);
 
-    // Generate website with image instructions
-    const generateWebsite = useCallback(async () => {
-        if (isLoading) return;
-        
-        setIsLoading(true);
-        setError('');
-        
-        try {
-          const response = await fetch('/api/generatePage', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData),
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
-          }
-          
-          const data = await response.json();
-          setGeneratedHtml(data.htmlContent);
-          setIsReady(true);
-        } catch (err) {
-          console.error('Error:', err instanceof Error ? err.message : String(err));
-          setError('Failed to generate website. Please try again.');
-        } finally {
-          setIsLoading(false);
-        }
-    }, [formData, isLoading]);
-
-    return {
-        formData,
-        setFormData,
-        isLoading,
-        isReady,
-        generatedHtml,
-        error,
-        step,
-        setStep,
-        allQuestionsAnswered,
-        setAllQuestionsAnswered,
-        checkAllQuestionsAnswered,
-        generateWebsite,
-        setError,
-    };
-}
+  return {
+    formData,
+    setFormData,
+    isLoading,
+    isReady,
+    generatedHtml,
+    error,
+    step,
+    setStep,
+    allQuestionsAnswered,
+    setAllQuestionsAnswered,
+    checkAllQuestionsAnswered,
+    generateWebsite,
+    setError,
+  };
+};

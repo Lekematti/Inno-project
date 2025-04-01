@@ -104,11 +104,6 @@ export async function POST(req: Request) {
       { error: 'Failed to post blob to Azure Blob Storage' },
       { status: 500 }
     )
-    console.error('Azure Blob Storage Post Error:', error)
-    return NextResponse.json(
-      { error: 'Failed to post blob to Azure Blob Storage' },
-      { status: 500 }
-    )
   }
 }
 

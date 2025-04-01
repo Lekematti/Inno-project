@@ -3,11 +3,6 @@ import OpenAI from 'openai'
 import fs from 'fs'
 import path from 'path'
 import { fetchImages } from '@/app/build/imageProcessor'
-import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
-import fs from 'fs'
-import path from 'path'
-import { fetchImages } from '@/app/build/imageProcessor'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY as string });
 
@@ -25,12 +20,6 @@ const generationCache: CacheEntry = {
 };
 
 export async function generateCustomPage(formData: {
-  businessType: string
-  address: string
-  phone: string
-  email: string
-  imageUrls?: string[]
-  [key: string]: unknown
   businessType: string
   address: string
   phone: string
@@ -65,52 +54,6 @@ export async function generateCustomPage(formData: {
     }
   }
 
-  // Create template-specific prompt
-  let specificPrompt = ''
-  if (templateType === 'restaurant') {
-    specificPrompt = `
-        - Restaurant name: ${
-          typeof answers[0] === 'string' ? answers[0] : address
-        }
-        - Cuisine type: ${
-          typeof answers[1] === 'string' ? answers[1] : 'Not specified'
-        }
-        - Online menu: ${
-          answers[2] === 'yes'
-            ? 'Include an attractive, well-structured online menu with sections for appetizers, main courses, desserts, and beverages'
-            : 'No online menu needed'
-        }
-        - Reservation system: ${
-          answers[3] === 'yes'
-            ? 'Include an elegant reservation form with date/time picker and party size selection'
-            : 'No reservation system needed'
-        }
-        - Business hours: ${
-          typeof answers[4] === 'string' ? answers[4] : 'Not specified'
-        }
-        - Chef/team profiles: ${
-          answers[5] === 'yes'
-            ? 'Include professional profiles for key staff with high-quality image placeholders'
-            : 'No profiles needed'
-        }
-        - Food gallery: ${
-          answers[6] === 'yes'
-            ? 'Create a visually appealing masonry-style gallery with lightbox functionality'
-            : 'No gallery needed'
-        }
-        - Testimonials: ${
-          answers[7] === 'yes'
-            ? 'Include a testimonials carousel with customer quotes and ratings'
-            : 'No testimonials section needed'
-        }
-        - Primary brand color: ${
-          typeof answers[8] === 'string' ? answers[8] : '#8D5524'
-        }
-        - Delivery/takeout info: ${
-          answers[9] === 'yes'
-            ? 'Include an online ordering section with delivery radius information'
-            : 'No delivery information needed'
-        }
   // Create template-specific prompt
   let specificPrompt = ''
   if (templateType === 'restaurant') {
@@ -379,8 +322,6 @@ export async function generateCustomPage(formData: {
     `
       : 'No custom images provided.'
   const prompt = `
-      : 'No custom images provided.'
-  const prompt = `
     You are an expert frontend developer specializing in creating visually stunning, conversion-optimized websites. Create a production-ready HTML webpage using the Bootstrap 5 framework for a ${templateType} business.
 
     BUSINESS DETAILS:
@@ -522,7 +463,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: 'Error generating page.' },
       { status: 500 }
-    )
     )
   }
 }

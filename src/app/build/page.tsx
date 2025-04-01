@@ -21,6 +21,7 @@ export default function BuildPage() {
     error,
     step,
     setStep,
+    /*allQuestionsAnswered,*/
     setAllQuestionsAnswered,
     checkAllQuestionsAnswered,
     generateWebsite,
@@ -29,7 +30,6 @@ export default function BuildPage() {
 
   console.log('Form Data Submitted:', formData);
   
-
   useEffect(() => {
     if (step === 5 && formData.businessType) {
       const hasAllAnswers = checkAllQuestionsAnswered()

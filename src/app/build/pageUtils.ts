@@ -102,4 +102,3 @@ export const calculateProgress = (formData: FormData, businessType: string): For
     totalQuestions,
     percentage: totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0
   };
-};

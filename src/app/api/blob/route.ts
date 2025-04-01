@@ -54,11 +54,15 @@ export async function GET() {
 
     // Check if the blob exists
     const exists = await blobClient.exists()
+    const exists = await blobClient.exists()
     if (!exists) {
+      return NextResponse.json({ error: 'Blob not found' }, { status: 404 })
       return NextResponse.json({ error: 'Blob not found' }, { status: 404 })
     }
 
     // Download the blob content
+    const downloadResponse = await blobClient.download()
+    const text = await streamToString(downloadResponse.readableStreamBody!)
     const downloadResponse = await blobClient.download()
     const text = await streamToString(downloadResponse.readableStreamBody!)
 
@@ -103,6 +107,11 @@ export async function POST(req: Request) {
       { error: 'Failed to post blob to Azure Blob Storage' },
       { status: 500 }
     )
+    console.error('Azure Blob Storage Post Error:', error)
+    return NextResponse.json(
+      { error: 'Failed to post blob to Azure Blob Storage' },
+      { status: 500 }
+    )
   }
 }
 
@@ -110,7 +119,17 @@ export async function POST(req: Request) {
 async function streamToString(
   readableStream: NodeJS.ReadableStream
 ): Promise<string> {
+async function streamToString(
+  readableStream: NodeJS.ReadableStream
+): Promise<string> {
   return new Promise((resolve, reject) => {
+    const chunks: Uint8Array[] = []
+    readableStream.on('data', (chunk) => chunks.push(chunk))
+    readableStream.on('end', () =>
+      resolve(Buffer.concat(chunks).toString('utf-8'))
+    )
+    readableStream.on('error', reject)
+  })
     const chunks: Uint8Array[] = []
     readableStream.on('data', (chunk) => chunks.push(chunk))
     readableStream.on('end', () =>

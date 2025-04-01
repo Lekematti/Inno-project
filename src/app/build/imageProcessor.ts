@@ -316,13 +316,11 @@ export function parseImageInstructions(instructions: string): Array<{
   if (!instructions || instructions.trim().toLowerCase() === 'none') {
     return [];
   }
-
   const results = [];
   const segments = instructions
     .split(/[.;,\n]+/)
     .map(s => s.trim())
     .filter(s => s.length > 10);
-
   for (const segment of segments) {
     // Skip segments that don't seem to describe images
     if (!/image|photo|picture|logo|banner|gallery|visual/i.test(segment)) {
@@ -363,7 +361,6 @@ export function parseImageInstructions(instructions: string): Array<{
       width: 800, height: 600
     });
   }
-
   return results;
 }
 

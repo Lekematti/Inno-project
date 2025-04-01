@@ -3,6 +3,11 @@ import OpenAI from 'openai'
 import fs from 'fs'
 import path from 'path'
 import { fetchImages } from '@/app/build/imageProcessor'
+import { NextRequest, NextResponse } from 'next/server'
+import OpenAI from 'openai'
+import fs from 'fs'
+import path from 'path'
+import { fetchImages } from '@/app/build/imageProcessor'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY as string });
 
@@ -20,6 +25,12 @@ const generationCache: CacheEntry = {
 };
 
 export async function generateCustomPage(formData: {
+  businessType: string
+  address: string
+  phone: string
+  email: string
+  imageUrls?: string[]
+  [key: string]: unknown
   businessType: string
   address: string
   phone: string
@@ -100,6 +111,52 @@ export async function generateCustomPage(formData: {
             ? 'Include an online ordering section with delivery radius information'
             : 'No delivery information needed'
         }
+  // Create template-specific prompt
+  let specificPrompt = ''
+  if (templateType === 'restaurant') {
+    specificPrompt = `
+        - Restaurant name: ${
+          typeof answers[0] === 'string' ? answers[0] : address
+        }
+        - Cuisine type: ${
+          typeof answers[1] === 'string' ? answers[1] : 'Not specified'
+        }
+        - Online menu: ${
+          answers[2] === 'yes'
+            ? 'Include an attractive, well-structured online menu with sections for appetizers, main courses, desserts, and beverages'
+            : 'No online menu needed'
+        }
+        - Reservation system: ${
+          answers[3] === 'yes'
+            ? 'Include an elegant reservation form with date/time picker and party size selection'
+            : 'No reservation system needed'
+        }
+        - Business hours: ${
+          typeof answers[4] === 'string' ? answers[4] : 'Not specified'
+        }
+        - Chef/team profiles: ${
+          answers[5] === 'yes'
+            ? 'Include professional profiles for key staff with high-quality image placeholders'
+            : 'No profiles needed'
+        }
+        - Food gallery: ${
+          answers[6] === 'yes'
+            ? 'Create a visually appealing masonry-style gallery with lightbox functionality'
+            : 'No gallery needed'
+        }
+        - Testimonials: ${
+          answers[7] === 'yes'
+            ? 'Include a testimonials carousel with customer quotes and ratings'
+            : 'No testimonials section needed'
+        }
+        - Primary brand color: ${
+          typeof answers[8] === 'string' ? answers[8] : '#8D5524'
+        }
+        - Delivery/takeout info: ${
+          answers[9] === 'yes'
+            ? 'Include an online ordering section with delivery radius information'
+            : 'No delivery information needed'
+        }
         
         ADDITIONAL REQUIREMENTS:
         1. Create a sophisticated, mouth-watering design with premium aesthetics
@@ -113,7 +170,47 @@ export async function generateCustomPage(formData: {
         `
   } else if (templateType === 'logistics') {
     specificPrompt = `
+        `
+  } else if (templateType === 'logistics') {
+    specificPrompt = `
         - Company name: ${typeof answers[0] === 'string' ? answers[0] : address}
+        - Logistics services: ${
+          typeof answers[1] === 'string' ? answers[1] : 'Not specified'
+        }
+        - Shipment tracking: ${
+          answers[2] === 'yes'
+            ? 'Include a professional tracking interface with order ID input field'
+            : 'No tracking feature needed'
+        }
+        - Fleet/equipment showcase: ${
+          answers[3] === 'yes'
+            ? 'Create a visually appealing carousel showcasing transportation assets'
+            : 'No fleet showcase needed'
+        }
+        - Service areas: ${
+          typeof answers[4] === 'string' ? answers[4] : 'Not specified'
+        }
+        - Testimonials/case studies: ${
+          answers[5] === 'yes'
+            ? 'Include a metrics-focused case studies section with client logos and quantifiable results'
+            : 'No testimonials section needed'
+        }
+        - Service request form: ${
+          answers[6] === 'yes'
+            ? 'Include a multi-step service request form with shipment details fields'
+            : 'No service request form needed'
+        }
+        - Certifications/standards: ${
+          typeof answers[7] === 'string' ? answers[7] : 'Not specified'
+        }
+        - Primary brand color: ${
+          typeof answers[8] === 'string' ? answers[8] : '#1C3D5A'
+        }
+        - Service area map: ${
+          answers[9] === 'yes'
+            ? 'Include an interactive map visualization with service coverage highlighting'
+            : 'No map needed'
+        }
         - Logistics services: ${
           typeof answers[1] === 'string' ? answers[1] : 'Not specified'
         }
@@ -164,7 +261,49 @@ export async function generateCustomPage(formData: {
         `
   } else if (templateType === 'professional') {
     specificPrompt = `
+        `
+  } else if (templateType === 'professional') {
+    specificPrompt = `
         - Firm name: ${typeof answers[0] === 'string' ? answers[0] : address}
+        - Professional services: ${
+          typeof answers[1] === 'string' ? answers[1] : 'Not specified'
+        }
+        - Team profiles: ${
+          answers[2] === 'yes'
+            ? 'Include elegant team profiles with professional headshots, credentials, and specialties'
+            : 'No team profiles needed'
+        }
+        - Case studies: ${
+          answers[3] === 'yes'
+            ? 'Include detailed case studies with problem-solution-result structure'
+            : 'No case studies section needed'
+        }
+        - Client portal: ${
+          answers[4] === 'yes'
+            ? 'Include a sophisticated client portal login section with secure access messaging'
+            : 'No client portal link needed'
+        }
+        - Consultation info: ${
+          answers[5] === 'yes'
+            ? 'Feature a prominent consultation booking system with availability calendar'
+            : 'Include standard contact information'
+        }
+        - Credentials/affiliations: ${
+          typeof answers[6] === 'string' ? answers[6] : 'Not specified'
+        }
+        - FAQ section: ${
+          answers[7] === 'yes'
+            ? 'Include an accordion-style FAQ section with comprehensive information'
+            : 'No FAQ section needed'
+        }
+        - Primary brand color: ${
+          typeof answers[8] === 'string' ? answers[8] : '#2E5984'
+        }
+        - Blog/resources: ${
+          answers[9] === 'yes'
+            ? 'Include a content-rich resources section with categorized articles'
+            : 'No blog/resources section needed'
+        }
         - Professional services: ${
           typeof answers[1] === 'string' ? answers[1] : 'Not specified'
         }
@@ -224,9 +363,13 @@ export async function generateCustomPage(formData: {
       ? `CRITICAL IMAGE INSTRUCTIONS: 
     I have pre-generated these exact image URLs that MUST be used in the website:
     ${imageUrls.map((url, i) => `${i + 1}. ${url}`).join('\n')}
+    ${imageUrls.map((url, i) => `${i + 1}. ${url}`).join('\n')}
     
     For each image URL above:
     - Copy and paste the EXACT URL into an <img> tag
+    - Example: <img src="${
+      imageUrls[0] || 'https://example.com/image.jpg'
+    }" alt="Description" class="img-fluid">
     - Example: <img src="${
       imageUrls[0] || 'https://example.com/image.jpg'
     }" alt="Description" class="img-fluid">
@@ -236,9 +379,12 @@ export async function generateCustomPage(formData: {
     `
       : 'No custom images provided.'
   const prompt = `
+      : 'No custom images provided.'
+  const prompt = `
     You are an expert frontend developer specializing in creating visually stunning, conversion-optimized websites. Create a production-ready HTML webpage using the Bootstrap 5 framework for a ${templateType} business.
 
     BUSINESS DETAILS:
+    - Name: ${typeof answers[0] === 'string' ? answers[0] : 'Company Name'}
     - Name: ${typeof answers[0] === 'string' ? answers[0] : 'Company Name'}
     - Address: ${address}
     - Phone: ${phone}
@@ -359,6 +505,7 @@ export async function POST(request: NextRequest) {
     const outputDir = path.join(process.cwd(), 'gen_comp');
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true })
+      fs.mkdirSync(outputDir, { recursive: true })
     }
 
     const filePath = path.join(outputDir, fileName);
@@ -371,9 +518,11 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error generating page:', error)
+    console.error('Error generating page:', error)
     return NextResponse.json(
       { error: 'Error generating page.' },
       { status: 500 }
+    )
     )
   }
 }

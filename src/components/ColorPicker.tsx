@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { Form, Row, Col, Button} from 'react-bootstrap';
-import { industryColorPalettes } from '@/app/buildpage/colorProcessor';
+import { industryColorPalettes } from '@/app/build/colorProcessor';
 import { FormData, ColorPickerProps, ColorPreset } from '@/types/formData';
 
 export const ColorPicker: React.FC<ColorPickerProps> = ({ index, formData, setFormData }) => {

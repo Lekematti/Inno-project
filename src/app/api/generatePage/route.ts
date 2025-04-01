@@ -217,7 +217,8 @@ export async function generateCustomPage(formData: {
         `
   }
 
-  const currentYear = new Date().getFullYear()
+  //const currentYear = new Date().getFullYear()
+
   const imageInstructions =
     imageUrls.length > 0
       ? `CRITICAL IMAGE INSTRUCTIONS: 

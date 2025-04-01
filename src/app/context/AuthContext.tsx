@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setAuthState({ user: null, isLoading: false, error: null })
         }
-      } catch (error) {
+      } catch {
         setAuthState({
           user: null,
           isLoading: false,
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           error: 'Invalid credentials',
         })
       }
-    } catch (error) {
+    } catch {
       setAuthState({ ...authState, isLoading: false, error: 'Login failed' })
     }
   }
@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           error: 'Invalid registration data',
         })
       }
-    } catch (error) {
+    } catch {
       setAuthState({
         ...authState,
         isLoading: false,
@@ -126,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setAuthState({ user: null, isLoading: false, error: null })
       router.push('/login')
-    } catch (error) {
+    } catch {
       setAuthState({ ...authState, isLoading: false, error: 'Logout failed' })
     }
   }

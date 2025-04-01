@@ -1,7 +1,7 @@
 'use client';
 import { AiGenComponent } from './AiGenComponent';
 import { Spinner, Alert } from 'react-bootstrap';
-import { DownloadSection } from '@/app/buildpage/components/UIHelpers';
+import { DownloadSection } from '@/app/build/components/UIHelpers';
 import { WebsitePreviewProps } from '@/types/formData';
 
 export const WebsitePreview: React.FC<WebsitePreviewProps> = ({

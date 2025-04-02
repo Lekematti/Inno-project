@@ -113,9 +113,6 @@ export async function generateCustomPage(formData: {
         `
   } else if (templateType === 'logistics') {
     specificPrompt = `
-        `
-  } else if (templateType === 'logistics') {
-    specificPrompt = `
         - Company name: ${typeof answers[0] === 'string' ? answers[0] : address}
         - Logistics services: ${
           typeof answers[1] === 'string' ? answers[1] : 'Not specified'
@@ -201,9 +198,6 @@ export async function generateCustomPage(formData: {
         6. Create a sticky header with main navigation and contact information
         7. Implement schema.org structured data for local business and services
         8. Add a timeline or process visualization for how shipments are handled
-        `
-  } else if (templateType === 'professional') {
-    specificPrompt = `
         `
   } else if (templateType === 'professional') {
     specificPrompt = `

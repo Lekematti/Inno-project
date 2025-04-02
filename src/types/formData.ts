@@ -74,8 +74,7 @@ export interface ColorPalette {
 
 export interface ColorPreset {
   name: string;
-  primary: string;
-  description: string;
+  colors: string[];
 }
 
 export interface ColorPickerProps {

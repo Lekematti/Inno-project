@@ -1,16 +1,15 @@
-import { 
-  BusinessType, 
-  ImageRequest, 
-  OptimizedImagePrompt,
-  TemplateImageRequirements 
+import {
+  ImageRequest,
+  OptimizedImagePrompt
 } from '@/types/formData';
+import { BusinessType } from '@/types/business/types';
 
 /**
  * Advanced image processing for website generation
  */
 
 // Update the templateImageRequirements type
-const templateImageRequirements: TemplateImageRequirements = {
+const templateImageRequirements: Record<BusinessType, ImageRequest[]> = {
   restaurant: [
     { description: "restaurant interior", subject: "interior", style: "real", width: 1200, height: 600 },
     { description: "signature dish", subject: "food", style: "artistic", width: 800, height: 600 },
@@ -112,7 +111,9 @@ function extractImageRequests(userInput: string): ImageRequest[] {
       requests.push({
         description,
         subject,
-        style
+        style,
+        width: 800,
+        height: 600
       });
     }
   }
@@ -183,7 +184,7 @@ function createOptimizedPrompts(
           defaultReq.style, 
           businessType
         ),
-        style: defaultReq.style,
+        style: defaultReq.style as 'real' | 'artistic',
         width: defaultReq.width,
         height: defaultReq.height
       });

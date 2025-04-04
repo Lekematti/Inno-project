@@ -415,7 +415,10 @@ export function generateCssVariables(palette: ColorPalette) {
   // Validate contrast and adjust text color if needed
   const textBackgroundContrast = calculateContrastRatio(palette.text, palette.background);
   const adjustedTextColor = textBackgroundContrast < 4.5 
-    ? calculateRelativeLuminance(palette.background) > 0.5 ? '#000000' : '#ffffff'
+    ? (() => {
+        const luminance = calculateRelativeLuminance(palette.background);
+        return luminance > 0.5 ? '#000000' : '#ffffff';
+      })()
     : palette.text;
 
   return `

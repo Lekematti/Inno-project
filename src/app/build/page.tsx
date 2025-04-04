@@ -77,7 +77,7 @@ export default function BuildPage() {
       const fieldName = `question${i + 1}` as keyof FormData
       if (
         i < questions.length &&
-        (!formData[fieldName] || formData[fieldName].trim() === '')
+        (!formData[fieldName] || String(formData[fieldName]).trim() === '')
       ) {
         setError('Please answer all questions before proceeding')
         return
@@ -93,7 +93,7 @@ export default function BuildPage() {
       const fieldName = `question${i + 1}` as keyof FormData
       if (
         i < questions.length &&
-        (!formData[fieldName] || formData[fieldName].trim() === '')
+        (!formData[fieldName] || String(formData[fieldName]).trim() === '')
       ) {
         setError('Please answer all questions before proceeding')
         return
@@ -104,7 +104,7 @@ export default function BuildPage() {
   }
 
   const handleSubmitStep4 = () => {
-    if (!formData.imageInstructions || formData.imageInstructions.trim() === '') {
+    if (!formData.imageInstructions || String(formData.imageInstructions).trim() === '') {
       setError('Please describe your image requirements or enter "none" if you don\'t need images')
       return
     }
@@ -124,7 +124,7 @@ export default function BuildPage() {
   const answeredQuestions = Object.keys(formData).filter(
     (key) =>
       key.startsWith('question') &&
-      (formData[key as keyof FormData] ?? '').trim() !== ''
+      String(formData[key as keyof FormData] ?? '').trim() !== ''
   ).length
   const progress = totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0
 

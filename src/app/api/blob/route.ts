@@ -56,7 +56,6 @@ export async function GET() {
     const exists = await blobClient.exists()
     if (!exists) {
       return NextResponse.json({ error: 'Blob not found' }, { status: 404 })
-      return NextResponse.json({ error: 'Blob not found' }, { status: 404 })
     }
 
     // Download the blob content

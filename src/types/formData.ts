@@ -1,7 +1,5 @@
 import { Dispatch, SetStateAction, ChangeEvent } from 'react';
-
-// Core types
-export type BusinessType = 'restaurant' | 'logistics' | 'professional';
+import { BusinessType, TemplateStyle } from './business/types';
 
 // Form data structure
 export interface FormData {
@@ -14,7 +12,17 @@ export interface FormData {
   filePath?: string;
   colorScheme?: string;
   [key: `question${number}`]: string;
+  templateStyle?: TemplateStyle;
+  templateVariant?: string;
 }
+
+// Use the imported TemplateStyle for DefaultTemplateStyle
+export const DefaultTemplateStyle: TemplateStyle = {
+  layout: 'standard',
+  components: ['header', 'content', 'footer'],
+  animations: ['fade'],
+  navigation: 'simple-top'
+};
 
 // Question and template types
 export type QuestionType = 'text' | 'boolean' | 'color';
@@ -24,12 +32,12 @@ export interface Question {
   text: string;
   type: QuestionType;
   placeholder?: string;
-}
+};
 
 export interface Template {
   name: string;
   questions: Question[];
-}
+};
 
 // Component props interfaces
 export interface BaseStepProps {
@@ -37,12 +45,12 @@ export interface BaseStepProps {
   handleChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   handleSubmit: () => void;
   error: string;
-}
+};
 
 export interface StepWithBackProps extends BaseStepProps {
   handleBack: () => void;
   setFormData: (data: Partial<FormData>) => void;
-}
+};
 
 // Preview related types
 export interface WebsitePreviewProps {
@@ -51,14 +59,14 @@ export interface WebsitePreviewProps {
   generatedHtml: string;
   error: string;
   formData: FormData;
-}
+};
 
 export interface PreviewProps {
   htmlContent: string;
   width?: string | number;
   height?: string | number;
   sandboxOptions?: string;
-}
+};
 
 // Color related types
 export interface ColorPalette {
@@ -88,12 +96,6 @@ export interface ImageRequest {
   description: string;
   subject: string;
   style: string;
-}
-
-export interface ImageRequirement {
-  description: string;
-  subject: 'food' | 'interior' | 'exterior' | 'people' | 'product' | 'logo' | 'general';
-  style: 'real' | 'artistic';
   width: number;
   height: number;
 }
@@ -104,10 +106,6 @@ export interface OptimizedImagePrompt {
   width: number;
   height: number;
 }
-
-export type TemplateImageRequirements = {
-  [K in BusinessType]: ImageRequirement[];
-};
 
 // Form handling types
 export interface ValidationResult {
@@ -150,10 +148,4 @@ export const defaultFormData: FormData = {
   address: '',
   phone: '',
   email: ''
-};
-
-export const defaultColors: Record<BusinessType, string> = {
-  restaurant: '#8D5524',
-  logistics: '#1C3D5A',
-  professional: '#2E5984'
 };

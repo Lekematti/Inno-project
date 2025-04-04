@@ -1,6 +1,7 @@
 'use client';
 import { Form, Button, Alert } from 'react-bootstrap';
-import { BaseStepProps, BusinessType } from '@/types/formData';
+import { BaseStepProps} from '@/types/formData';
+import { BusinessType } from '@/types/business/types';
 
 export const Step1BasicInfo: React.FC<BaseStepProps> = ({ 
   formData, 

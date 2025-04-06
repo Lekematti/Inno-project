@@ -1,160 +1,144 @@
-import React, {
+'use client'
+
+import {
   createContext,
   useContext,
+  ReactNode,
   useState,
   useEffect,
-  ReactNode,
 } from 'react'
+import { useSession, signOut as nextAuthSignOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import {
-  User,
-  LoginCredentials,
-  RegisterCredentials,
-  AuthState,
-} from '../../functions/auth'
 
-interface AuthContextType extends AuthState {
-  login: (credentials: LoginCredentials) => Promise<void>
-  register: (credentials: RegisterCredentials) => Promise<void>
+type User = {
+  id?: string
+  name?: string | null
+  email?: string | null
+  image?: string | null
+}
+
+type AuthContextType = {
+  user: User | null
+  loading: boolean
+  login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  register: (name: string, email: string, password: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    isLoading: true,
-    error: null,
-  })
+  const { data: session, status } = useSession()
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState<boolean>(true)
   const router = useRouter()
 
+  // Update user state when session changes
   useEffect(() => {
-    // Check if user is logged in on initial load
-    const checkAuth = async () => {
-      try {
-        // In a real app, you'd verify token with your backend
-        const userJson = localStorage.getItem('user')
-        if (userJson) {
-          const user = JSON.parse(userJson)
-          setAuthState({ user, isLoading: false, error: null })
-        } else {
-          setAuthState({ user: null, isLoading: false, error: null })
-        }
-      } catch (error) {
-        setAuthState({
-          user: null,
-          isLoading: false,
-          error: 'Failed to authenticate',
-        })
-      }
+    if (status === 'loading') {
+      setLoading(true)
+      return
     }
 
-    checkAuth()
-  }, [])
-
-  const login = async (credentials: LoginCredentials) => {
-    setAuthState({ ...authState, isLoading: true, error: null })
-    try {
-      // In a real app, you'd make an API call to your backend
-      // This is a mock implementation
-      if (
-        credentials.email === 'test@example.com' &&
-        credentials.password === 'password'
-      ) {
-        const user: User = {
-          id: '1',
-          email: credentials.email,
-          name: 'Test User',
-        }
-
-        // Store user in localStorage (use a more secure method in production)
-        localStorage.setItem('user', JSON.stringify(user))
-        // WIP testing fix for login cookies
-        document.cookie = 'authenticated=true; path=/'
-
-        setAuthState({ user, isLoading: false, error: null })
-        router.push('/profile')
-      } else {
-        setAuthState({
-          ...authState,
-          isLoading: false,
-          error: 'Invalid credentials',
-        })
-      }
-    } catch (error) {
-      setAuthState({ ...authState, isLoading: false, error: 'Login failed' })
+    if (session?.user) {
+      setUser(session.user as User)
+    } else {
+      setUser(null)
     }
-  }
 
-  const register = async (credentials: RegisterCredentials) => {
-    setAuthState({ ...authState, isLoading: true, error: null })
+    setLoading(false)
+  }, [session, status])
+
+  // Login function
+  const login = async (email: string, password: string) => {
+    setLoading(true)
     try {
-      // In a real app, you'd make an API call to your backend
-      // This is a mock implementation
-      if (credentials.email && credentials.password && credentials.name) {
-        const user: User = {
-          id: '1',
-          email: credentials.email,
-          name: credentials.name,
-        }
-
-        // Store user in localStorage (use a more secure method in production)
-        localStorage.setItem('user', JSON.stringify(user))
-        // WIP testing fix for login cookies
-        document.cookie = 'authenticated=true; path=/'
-
-        setAuthState({ user, isLoading: false, error: null })
-        router.push('/profile')
-      } else {
-        setAuthState({
-          ...authState,
-          isLoading: false,
-          error: 'Invalid registration data',
-        })
-      }
-    } catch (error) {
-      setAuthState({
-        ...authState,
-        isLoading: false,
-        error: 'Registration failed',
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
       })
+
+      if (result?.error) {
+        throw new Error(result.error)
+      }
+
+      // Force refresh to update session
+      router.refresh()
+    } catch (error) {
+      console.error('Login error:', error)
+      throw error
+    } finally {
+      setLoading(false)
     }
   }
 
+  // Logout function
   const logout = async () => {
-    setAuthState({ ...authState, isLoading: true })
+    setLoading(true)
     try {
-      // Clear user from localStorage
-      localStorage.removeItem('user')
-      // WIP testing fix for login cookies
-      document.cookie = 'authenticated=false; path=/'
-
-      setAuthState({ user: null, isLoading: false, error: null })
+      await nextAuthSignOut({ redirect: false })
+      setUser(null)
       router.push('/profile')
     } catch (error) {
-      setAuthState({ ...authState, isLoading: false, error: 'Logout failed' })
+      console.error('Logout error:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  return (
-    <AuthContext.Provider
-      value={{
-        ...authState,
-        login,
-        register,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  )
+  // Register function
+  const register = async (name: string, email: string, password: string) => {
+    setLoading(true)
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Registration failed')
+      }
+    } catch (error) {
+      console.error('Registration error:', error)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const value = {
+    user,
+    loading,
+    login,
+    logout,
+    register,
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-export function useAuth() {
+// Custom hook to use auth context
+export const useAuth = () => {
   const context = useContext(AuthContext)
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider')
   }
   return context
+}
+
+// Function to import and use in client components
+export function signIn(provider: string, options: any) {
+  return import('next-auth/react').then(({ signIn }) =>
+    signIn(provider, options)
+  )
 }

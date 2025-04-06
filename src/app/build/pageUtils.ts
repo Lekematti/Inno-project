@@ -71,7 +71,7 @@ export const validateQuestions = (
     const fieldName = `question${i + 1}` as keyof FormData;
     const answer = formData[fieldName];
     
-    if (i < questions.length && (!answer || answer.trim() === '')) {
+    if (i < questions.length && (!answer || (typeof answer === 'string' && answer.trim() === ''))) {
       return {
         isValid: false,
         error: 'Please answer all questions before proceeding'

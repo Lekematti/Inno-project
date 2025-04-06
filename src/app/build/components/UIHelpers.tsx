@@ -58,7 +58,7 @@ export const DownloadSection = ({ generatedHtml, formData }: {
   return (
     <div className="mt-4 mb-5 text-center">
       <h3>Your website is ready!</h3>
-      <p className="text-muted">You can now download or open your website in a new tab.</p>
+      <p className="text-muted">You can now download or open your website in a new tab and see the functionality of it.</p>
       <div className="d-flex justify-content-center gap-3 flex-wrap">
         <Button 
           variant="primary"

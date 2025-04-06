@@ -13,6 +13,9 @@ gen_comp/
 !.yarn/releases
 !.yarn/versions
 
+# Ignore uploaded files
+public/uploads/
+
 # testing
 /coverage
 dog_page.html

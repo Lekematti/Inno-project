@@ -7,6 +7,7 @@ import { generateLayoutVariations } from '@/app/api/generatePage/utils/layout-ge
 import { getBusinessPrompt } from '@/app/templates/business-prompts'
 import { buildPrompt } from '@/app/templates/prompt-builder'
 import { CacheEntry, FormData } from '@/app/api/generatePage/types/website-generator'
+import { ImageSourceType } from '@/types/formData'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY as string });
 
@@ -17,7 +18,7 @@ const generationCache: CacheEntry = {
   timestamp: 0,
 };
 
-export async function generateCustomPage(formData: FormData): Promise<string> {
+export async function generateCustomPage(formData: FormData, imageSource: ImageSourceType): Promise<string> {
   const { businessType, address, phone, email, imageUrls = [] } = formData;
   const templateType = businessType.toLowerCase();
   const answers = [];
@@ -57,7 +58,8 @@ export async function generateCustomPage(formData: FormData): Promise<string> {
     { name: typeof answers[0] === 'string' ? answers[0] : undefined, address, phone, email },
     specificPrompt,
     imageUrls,
-    layoutVariations
+    layoutVariations,
+    imageSource,
   );
 
   try {
@@ -95,17 +97,62 @@ export async function generateCustomPage(formData: FormData): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    const requestData = await request.json();
-    const { imageInstructions, ...formData } = requestData;
+    const formData = await request.formData();
+    const requestData = Object.fromEntries(formData.entries());
+    
+    // Extract image information
+    const imageSource = requestData.imageSource as ImageSourceType;
+    const imageInstructions = requestData.imageInstructions as string;
+    let imageUrls: string[] = [];
+    
+    // Process images based on the source
+    if (imageSource === 'ai') {
+      // Use the existing AI image generation path
+      imageUrls = await fetchImages(imageInstructions || '', requestData.businessType as string);
+    } else if (imageSource === 'manual') {
+      // Process uploaded images
+      const files = formData.getAll('uploadedImages') as File[];
+      
+      // Create the uploads directory if it doesn't exist
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      
+      // Save each file and collect their URLs
+      for (const file of files) {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const filename = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+        const filePath = path.join(uploadsDir, filename);
+        
+        fs.writeFileSync(filePath, buffer);
+        // Use an absolute URL path that includes the domain
+        imageUrls.push(`/uploads/${filename}`);
+      }
+      
+      console.log('Manual images saved:', imageUrls);
+    }
+    
+    // Format the form data for processing
+    const processedFormData: Record<string, string | string[]> = {
+      businessType: requestData.businessType as string,
+      address: requestData.address as string,
+      phone: requestData.phone as string,
+      email: requestData.email as string,
+      imageUrls,
+      imageSource,
+    };
 
-    // Process image instructions
-    const imageUrls = await fetchImages(imageInstructions || '');
+    // For questions 1-10, add them to the processed form data
+    for (let i = 1; i <= 10; i++) {
+      const key = `question${i}`;
+      if (requestData[key]) {
+        processedFormData[key] = requestData[key] as string;
+      }
+    }
 
     // Generate HTML with images
-    const htmlContent = await generateCustomPage({
-      ...formData,
-      imageUrls,
-    });
+    const htmlContent = await generateCustomPage(processedFormData as FormData, imageSource);
 
     // Save the generated HTML
     const now = new Date();
@@ -113,26 +160,36 @@ export async function POST(request: NextRequest) {
       now.getMonth() + 1
     ).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const suffix = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`;
-    const fileName = `${formData.businessType.toLowerCase()}-${timestamp}-${suffix}.html`;
+    const businessType = Array.isArray(processedFormData.businessType) ? processedFormData.businessType[0] : processedFormData.businessType;
+    const fileName = `${businessType.toLowerCase()}-${timestamp}-${suffix}.html`;
     const outputDir = path.join(process.cwd(), 'gen_comp');
 
     if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true })
+      fs.mkdirSync(outputDir, { recursive: true });
     }
 
     const filePath = path.join(outputDir, fileName);
-    fs.writeFileSync(filePath, htmlContent);
+    
+    // Modify the HTML content to ensure images have correct paths
+    // This ensures images work both in preview and when saved as a file
+    const modifiedHtml = htmlContent.replace(
+      /src="\/uploads\//g,
+      `src="${process.env.NEXT_PUBLIC_BASE_URL || ''}/uploads/`
+    );
+    
+    fs.writeFileSync(filePath, modifiedHtml);
 
     return NextResponse.json({
-      htmlContent,
+      htmlContent: modifiedHtml,
       filePath: `/gen_comp/${fileName}`,
       imageUrls,
+      imageSource,
     });
   } catch (error) {
-    console.error('Error generating page:', error)
+    console.error('Error generating page:', error);
     return NextResponse.json(
       { error: 'Error generating page.' },
       { status: 500 }
-    )
+    );
   }
 }

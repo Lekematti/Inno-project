@@ -72,7 +72,7 @@ export const QuestionField: React.FC<QuestionFieldProps> = ({
             <Form.Control
               type="text"
               name={fieldName}
-              value={formData[fieldName] ?? ''}
+              value={typeof formData[fieldName] === 'string' ? formData[fieldName] : ''}
               onChange={handleChange}
               placeholder={question.placeholder}
               required

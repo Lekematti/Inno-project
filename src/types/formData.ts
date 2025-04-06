@@ -1,5 +1,8 @@
 import { Dispatch, SetStateAction, ChangeEvent } from 'react';
 import { BusinessType, TemplateStyle } from './business/types';
+export type { BusinessType };
+
+export type ImageSourceType = 'ai' | 'manual' | 'none';
 
 // Form data structure
 export interface FormData {
@@ -9,6 +12,10 @@ export interface FormData {
   email: string;
   businessName?: string;
   imageInstructions?: string;
+  uploadedImages?: File[];
+  userImageUrls?: string[];
+  generatedImageUrls?: string[];
+  imageSource?: ImageSourceType;
   filePath?: string;
   colorScheme?: string;
   [key: `question${number}`]: string;
@@ -43,7 +50,7 @@ export interface Template {
 export interface BaseStepProps {
   formData: FormData;
   handleChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
-  handleSubmit: () => void;
+  handleSubmit: (data?: Partial<FormData>) => void;
   error: string;
 };
 
@@ -66,6 +73,7 @@ export interface PreviewProps {
   width?: string | number;
   height?: string | number;
   sandboxOptions?: string;
+  onError?: (error: string) => void;
 };
 
 // Color related types
@@ -140,6 +148,20 @@ export interface GeneratePageResponse {
   htmlContent: string;
   filePath: string;
   imageUrls: string[];
+  isFallback?: boolean;
+  status?: 'success' | 'limited' | 'error';
+}
+
+// API request types
+export interface GeneratePageRequest {
+  businessType: string;
+  address: string;
+  phone: string;
+  email: string;
+  imageSource: ImageSourceType;
+  imageInstructions?: string;
+  userUploads?: File[] | { url: string; name: string }[]; 
+  [key: string]: unknown; 
 }
 
 // Constants
@@ -147,5 +169,6 @@ export const defaultFormData: FormData = {
   businessType: '',
   address: '',
   phone: '',
-  email: ''
+  email: '',
+  imageSource: 'none'
 };

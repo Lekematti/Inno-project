@@ -389,13 +389,26 @@ export function isDescriptionTooComplex(description: string): boolean {
 /**
  * Generates image URLs based on user instructions and business type
  */
-export async function fetchImages(imageInstructions: string, businessType: string = 'restaurant'): Promise<string[]> {
-  if (!imageInstructions || imageInstructions.trim().toLowerCase() === 'none') {
+export async function fetchImages(
+  imageInstructions: string, 
+  businessType: string = 'restaurant',
+  imageSource: 'ai' | 'manual' | 'none' = 'ai'
+): Promise<string[]> {
+  // If image source is 'none' or no instructions for AI, return empty array
+  if (
+    imageSource === 'none' || 
+    (imageSource === 'ai' && (!imageInstructions || imageInstructions.trim().toLowerCase() === 'none'))
+  ) {
+    return [];
+  }
+  
+  // If manual images, the URLs will be handled by the POST route
+  if (imageSource === 'manual') {
     return [];
   }
   
   const imageUrls: string[] = [];
-  console.log(`🖼️ Processing image instructions for ${businessType}...`);
+  console.log(`🖼️ Processing AI image instructions for ${businessType}...`);
   
   try {
     // Process the requirements based on user input and business type

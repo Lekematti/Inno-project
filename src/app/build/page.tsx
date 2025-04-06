@@ -26,10 +26,10 @@ export default function BuildPage() {
     checkAllQuestionsAnswered,
     generateWebsite,
     setError,
-  } = useFormHandlers();
+  } = useFormHandlers()
 
-  console.log('Form Data Submitted:', formData);
-  
+  //console.log('Form Data Submitted:', formData);
+
   useEffect(() => {
     if (step === 5 && formData.businessType) {
       const hasAllAnswers = checkAllQuestionsAnswered()
@@ -40,7 +40,7 @@ export default function BuildPage() {
     }
   }, [
     step,
-    formData,
+    formData.businessType,
     checkAllQuestionsAnswered,
     generateWebsite,
     isLoading,
@@ -54,7 +54,7 @@ export default function BuildPage() {
     >
   ) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleSubmitStep1 = () => {
@@ -103,11 +103,45 @@ export default function BuildPage() {
     setStep(4)
   }
 
-  const handleSubmitStep4 = () => {
-    if (!formData.imageInstructions || String(formData.imageInstructions).trim() === '') {
-      setError('Please describe your image requirements or enter "none" if you don\'t need images')
-      return
+  const handleSubmitStep4 = (updatedFormData?: Partial<FormData>) => {
+    // Check image source and validate accordingly
+    const imageSource =
+      updatedFormData?.imageSource || formData.imageSource || 'ai'
+
+    if (imageSource === 'ai') {
+      // For AI-generated images
+      if (
+        !formData.imageInstructions ||
+        String(formData.imageInstructions).trim() === ''
+      ) {
+        setError(
+          'Please describe your image requirements or enter "none" if you don\'t need images'
+        )
+        return
+      }
+    } else if (imageSource === 'manual') {
+      // For manually uploaded images
+      const uploadedImages =
+        updatedFormData?.uploadedImages || formData.uploadedImages || []
+      if (!uploadedImages.length) {
+        setError(
+          'Please upload at least one image or switch to AI-generated images'
+        )
+        return
+      }
     }
+
+    // If updatedFormData is provided, merge it with the current formData
+    if (updatedFormData) {
+      setFormData((prev) => ({
+        ...prev,
+        ...updatedFormData,
+        imageInstructions:
+          updatedFormData?.imageInstructions ?? prev.imageInstructions,
+        uploadedImages: updatedFormData?.uploadedImages ?? prev.uploadedImages,
+      }))
+    }
+
     setError('')
     setStep(5)
   }
@@ -119,33 +153,57 @@ export default function BuildPage() {
   }
 
   // Progress calculation
-  const questions = getQuestions(formData.businessType)
-  const totalQuestions = questions.length
-  const answeredQuestions = Object.keys(formData).filter(
-    (key) =>
-      key.startsWith('question') &&
-      String(formData[key as keyof FormData] ?? '').trim() !== ''
-  ).length
-  const progress = totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0
+  const questions = getQuestions(formData.businessType || '')
 
-  // Render the appropriate step component based on current step
+  // Get total number of questions across all steps (excluding the current step if it's the image step)
+  const totalQuestions = questions.length
+
+  // Count how many questions have been answered so far
+  const answeredQuestions =
+    totalQuestions > 0
+      ? Object.keys(formData)
+          .filter((key) => key.startsWith('question'))
+          .filter((key) => {
+            const questionNum = parseInt(key.replace('question', ''))
+            return (
+              questionNum <= totalQuestions &&
+              formData[key as keyof FormData] !== undefined &&
+              String(formData[key as keyof FormData] || '').trim() !== ''
+            )
+          }).length
+      : 0
+
+  // Calculate progress - ensure we don't divide by zero and don't exceed 100%
+  const progress =
+    totalQuestions > 0
+      ? Math.min(100, Math.round((answeredQuestions / totalQuestions) * 100))
+      : 0
+
+  // Calculate step-based progress - each step contributes to overall completion
+  const stepProgress = Math.min(100, Math.round(((step - 1) / 4) * 100))
+
+  // Use the larger of question-based or step-based progress
+  const displayProgress = Math.max(progress, stepProgress)
+
   return (
     <div className="min-vh-100 d-flex flex-column">
       <Header />
       <Container className="flex-grow-1 py-4">
         {step < 5 && (
           <div className="mb-4">
-            <ProgressBar now={progress} label={`${progress}%`} />
-            <p className="text-center mt-2">
-              {answeredQuestions}/{totalQuestions} questions answered
-            </p>
+            <ProgressBar
+              now={step === 4 ? 75 : displayProgress}
+              label={`${step === 4 ? 75 : displayProgress}%`}
+            />
           </div>
         )}
 
+        {/* Rest of your component remains unchanged */}
+
         {step === 1 && (
-          <Step1BasicInfo 
-            formData={formData} 
-            handleChange={handleChange} 
+          <Step1BasicInfo
+            formData={formData}
+            handleChange={handleChange}
             handleSubmit={handleSubmitStep1}
             error={error}
           />
@@ -158,7 +216,11 @@ export default function BuildPage() {
             handleSubmit={handleSubmitStep2}
             handleBack={handleBack}
             error={error}
-            setFormData={(data: Partial<FormData>) => setFormData((prev: FormData) => ({ ...prev, ...data } as FormData))}
+            setFormData={(data: Partial<FormData>) =>
+              setFormData(
+                (prev: FormData) => ({ ...prev, ...data } as FormData)
+              )
+            }
           />
         )}
 
@@ -169,7 +231,11 @@ export default function BuildPage() {
             handleSubmit={handleSubmitStep3}
             handleBack={handleBack}
             error={error}
-            setFormData={(data: Partial<FormData>) => setFormData((prev: FormData) => ({ ...prev, ...data } as FormData))}
+            setFormData={(data: Partial<FormData>) =>
+              setFormData(
+                (prev: FormData) => ({ ...prev, ...data } as FormData)
+              )
+            }
           />
         )}
 
@@ -180,7 +246,11 @@ export default function BuildPage() {
             handleSubmit={handleSubmitStep4}
             handleBack={handleBack}
             error={error}
-            setFormData={(data: Partial<FormData>) => setFormData((prev: FormData) => ({ ...prev, ...data } as FormData))}
+            setFormData={(data: Partial<FormData>) =>
+              setFormData(
+                (prev: FormData) => ({ ...prev, ...data } as FormData)
+              )
+            }
           />
         )}
 
@@ -190,7 +260,7 @@ export default function BuildPage() {
             isReady={isReady}
             generatedHtml={generatedHtml}
             error={error}
-            formData={formData}  // Add this line to pass formData
+            formData={formData}
           />
         )}
       </Container>

@@ -1,6 +1,6 @@
 // This file contains the types for business-related data structures.
 // It includes types for business templates, template styles, and form data structures.
-export type BusinessType = 'restaurant' | 'logistics' | 'professional';
+export type BusinessType = 'restaurant' | 'logistics' | 'professional' | string;
 
 // Define TemplateStyle here to avoid circular imports
 export interface TemplateStyle {

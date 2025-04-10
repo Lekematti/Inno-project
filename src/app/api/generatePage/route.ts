@@ -141,6 +141,7 @@ export async function POST(request: NextRequest) {
       email: requestData.email as string,
       imageUrls,
       imageSource,
+      colorScheme: requestData.colorScheme as string,
     };
 
     // For questions 1-10, add them to the processed form data

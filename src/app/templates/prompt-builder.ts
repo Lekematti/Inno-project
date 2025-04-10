@@ -1,6 +1,7 @@
 // Updated buildPrompt.ts
 import { getIconLibraryInstructions } from '../api/generatePage/utils/icon-library';
 import { LayoutVariation } from '../api/generatePage/types/website-generator';
+import { generateColorPalette, generateCssVariables } from '../build/colorProcessor';
 
 export function buildPrompt(
   templateType: string,
@@ -16,6 +17,11 @@ export function buildPrompt(
   imageSource?: string
 ): string {
   const imageInstructions = getImageInstructions(imageUrls, imageSource);
+  
+  // Generate color scheme guidance from the layout variations
+  const colorGuidance = layoutVariations.colorScheme ? 
+    processColorScheme(layoutVariations.colorScheme, templateType) : 
+    "Use a professional, business-appropriate color scheme with good contrast and readability";
  
   return `
     You are an expert frontend developer specializing in creating visually stunning, conversion-optimized websites. Create a production-ready HTML webpage using the Bootstrap 5 framework for a ${templateType} business.
@@ -33,7 +39,7 @@ export function buildPrompt(
     ${imageInstructions}
     
     DESIGN SPECIFICATIONS:
-    - Color Scheme: ${layoutVariations.colorScheme}
+    - Color Scheme: ${colorGuidance}
     - Layout Structure: ${layoutVariations.layoutStructure}
     - Structural Organization: ${layoutVariations.structuralElement}
     - Visual Style: ${layoutVariations.visualStyle}
@@ -75,6 +81,49 @@ export function buildPrompt(
     ONLY return the complete HTML file with no markdown, explanations, or additional text.
     The code must be production-ready with no placeholders or TODO comments.
   `;
+}
+
+/**
+ * Processes color scheme information for the AI generator
+ * @param colorScheme - Raw color scheme from form data
+ * @param templateType - Business template type
+ * @returns Formatted color guidance for the AI
+ */
+function processColorScheme(colorScheme: string, templateType: string): string {
+  // If we have a list of user-provided colors
+  if (colorScheme && colorScheme.includes(",")) {
+    const colors = colorScheme.split(",").filter(Boolean);
+    
+    // If we have valid colors, generate specific CSS variable guidance
+    if (colors.length > 0) {
+      // Use the first color as primary
+      const palette = generateColorPalette(colors[0], templateType);
+      const cssVariables = generateCssVariables(palette);
+      
+      return `
+        Use this specific CSS variables setup in your design:
+        \`\`\`css
+        ${cssVariables}
+        \`\`\`
+        
+        These variables are professionally designed to ensure proper contrast and color harmony.
+        
+        Base the site's color scheme around these primary colors: ${colors.join(", ")}
+      `;
+    }
+  }
+  
+  // Default color guidance based on business type
+  switch(templateType.toLowerCase()) {
+    case 'restaurant':
+      return "Use warm, appetizing colors that evoke the dining experience while maintaining readability. Consider rich reds, warm earthy tones, or colors that complement food photography.";
+    case 'logistics':
+      return "Use a professional, trustworthy color scheme with blues, grays, and subtle accent colors that convey reliability and efficiency. Maintain high contrast for readability.";
+    case 'professional':
+      return "Use a sophisticated, executive color palette with deep blues, charcoal grays, and understated accent colors that convey expertise and professionalism.";
+    default:
+      return "Use a balanced color scheme with good contrast, professional appearance, and industry-appropriate colors.";
+  }
 }
 
 function getImageInstructions(imageUrls: string[], imageSource?: string): string {

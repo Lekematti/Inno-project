@@ -3,6 +3,7 @@
  */
 import { useState, useCallback, useRef } from 'react';
 import { templates } from '@/functions/inputGenerate';
+import { processUserColors } from '@/app/build/colorProcessor';
 import {
   type FormData,
   FormHandlerHook,
@@ -51,6 +52,44 @@ export const useFormHandlers = (): FormHandlerHook => {
     });
   }, [formData]);
 
+    /**
+   * Processes all colors in form data to ensure they're web-appropriate
+   */
+    const processFormColors = useCallback((data: FormData): FormData => {
+      const businessType = data.businessType?.toLowerCase() as BusinessType;
+      
+      // Look for colors in any question field and in the colorScheme field
+      let colorString = data.colorScheme as string;
+      
+      // If no colorScheme, try to find colors in question fields
+      if (!colorString) {
+        for (let i = 1; i <= 10; i++) {
+          const fieldName = `question${i}` as keyof FormData;
+          const value = data[fieldName];
+          if (value && typeof value === 'string' && value.includes('#')) {
+            colorString = value;
+            break;
+          }
+        }
+      }
+      
+      if (colorString && colorString.trim() !== '') {
+        const colors = colorString.split(',').filter(Boolean);
+        if (colors.length > 0) {
+          // Process and validate the colors
+          const processedColors = processUserColors(colors, businessType);
+          
+          // Return updated form data with processed colors
+          return {
+            ...data,
+            colorScheme: processedColors.join(',')
+          };
+        }
+      }
+      
+      return data;
+    }, []);
+
   /**
    * Sends form data to the API endpoint to generate website
    */
@@ -62,6 +101,9 @@ export const useFormHandlers = (): FormHandlerHook => {
     setError('');
    
     try {
+
+      // Process colors before submission
+      const processedFormData = processFormColors(formData);
       // Create FormData object for file uploads
       const submitData = new FormData();
       
@@ -99,8 +141,8 @@ export const useFormHandlers = (): FormHandlerHook => {
         submitData.append('businessName', formData.businessName);
       }
       
-      if (formData.colorScheme) {
-        submitData.append('colorScheme', formData.colorScheme);
+      if (processedFormData.colorScheme) {
+        submitData.append('colorScheme', processedFormData.colorScheme);
       }
       
       if (formData.templateVariant) {
@@ -145,7 +187,7 @@ export const useFormHandlers = (): FormHandlerHook => {
       setIsLoading(false);
       isSubmittingRef.current = false;
     }
-  }, [formData, isLoading]);
+  }, [formData, isLoading, processFormColors]);
 
   return {
     formData,

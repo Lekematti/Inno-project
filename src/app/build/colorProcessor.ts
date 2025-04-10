@@ -1,5 +1,6 @@
 /**
  * Color processing utilities for generating harmonious color palettes
+ * with added validation for user-provided colors
  */
 
 import { ColorPalette, ColorPreset } from '@/types/formData';
@@ -35,17 +36,10 @@ export function rgbToHex(r: number, g: number, b: number): string {
   return "#" + ((1 << 24) + (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(b)).toString(16).slice(1);
 }
 
-// Removed unused function 'rgbToHsl' to resolve the compile error
-
-/**
- * Converts HSL values to RGB components
- */
-// Removed unused function 'hslToRgb' to resolve the compile error
-
 /**
  * Converts hex color to HSL values
  */
-function hexToHSL(hex: string): {h: number, s: number, l: number} {
+export function hexToHSL(hex: string): {h: number, s: number, l: number} {
   const { r, g, b } = hexToRgb(hex);
   
   const rNorm = r / 255;
@@ -76,7 +70,7 @@ function hexToHSL(hex: string): {h: number, s: number, l: number} {
 /**
  * Converts HSL values to hex color
  */
-function hslToHex(hsl: {h: number, s: number, l: number}): string {
+export function hslToHex(hsl: {h: number, s: number, l: number}): string {
   const { h, s, l } = hsl;
   
   const hue2rgb = (p: number, q: number, t: number) => {
@@ -101,6 +95,220 @@ function hslToHex(hsl: {h: number, s: number, l: number}): string {
   }
   
   return rgbToHex(r * 255, g * 255, b * 255);
+}
+
+// =============================================================================
+// NEW: Color Validation and Adjustment Functions
+// =============================================================================
+
+/**
+ * Checks if a color is too vibrant or inappropriate for professional use
+ * @param color - Hex color to check
+ * @param businessType - Type of business for context-appropriate validation
+ * @returns Object with isValid flag and adjustedColor if needed
+ */
+export function validateColor(color: string, businessType: string = 'professional'): { 
+  isValid: boolean; 
+  adjustedColor: string;
+  reason?: string;
+} {
+  const hsl = hexToHSL(color);
+  let isValid = true;
+  let reason = '';
+  
+  // Check for extremely high saturation (neon colors)
+  if (hsl.s > 0.85) {
+    isValid = false;
+    reason = 'Color is too saturated (neon-like)';
+  }
+  
+  // Check for colors that are too light or too dark
+  if (hsl.l < 0.15) {
+    isValid = false;
+    reason = 'Color is too dark for good visibility';
+  } else if (hsl.l > 0.92) {
+    isValid = false;
+    reason = 'Color is too light for good visibility';
+  }
+  
+  // Business-specific validations
+  if (businessType === 'professional') {
+    // For professional services, colors should be more conservative
+    if (hsl.s > 0.7) {
+      isValid = false;
+      reason = 'Color is too vibrant for professional services';
+    }
+  } else if (businessType === 'logistics') {
+    // For logistics, avoid colors that give warning/danger impressions unless they're brand colors
+    if ((hsl.h >= 0 && hsl.h <= 30) || (hsl.h >= 330 && hsl.h <= 360)) {
+      if (hsl.s > 0.7 && hsl.l > 0.5) {
+        isValid = false;
+        reason = 'Bright red/orange may give warning impression for logistics';
+      }
+    }
+  }
+  
+  // If color is invalid, adjust it to make it more appropriate
+  const adjustedColor = isValid ? color : adjustColorForProfessionalUse(color, businessType);
+  
+  return { isValid, adjustedColor, reason };
+}
+
+/**
+ * Adjusts a color to make it more appropriate for professional use
+ * @param color - The original hex color
+ * @param businessType - Type of business for context-appropriate adjustment
+ * @returns Adjusted hex color
+ */
+function adjustColorForProfessionalUse(color: string, businessType: string): string {
+  const hsl = hexToHSL(color);
+  
+  // General adjustments
+  const adjustedHSL = { ...hsl };
+  
+  // Reduce saturation for very vibrant colors
+  if (hsl.s > 0.7) {
+    adjustedHSL.s = businessType === 'professional' ? 0.55 : 0.7;
+  }
+  
+  // Adjust lightness for too dark or too light colors
+  if (hsl.l < 0.15) {
+    adjustedHSL.l = 0.25;
+  } else if (hsl.l > 0.92) {
+    adjustedHSL.l = 0.85;
+  }
+  
+  // Business-specific adjustments
+  if (businessType === 'professional') {
+    // Adjust hue if it's a particularly unprofessional color
+    // Move fluorescent colors toward more conservative hues
+    if ((hsl.h >= 50 && hsl.h <= 70) && hsl.s > 0.7) { // Neon yellow/green
+      adjustedHSL.h = 215; // More blue/corporate
+      adjustedHSL.s = 0.5;
+    }
+  }
+  
+  return hslToHex(adjustedHSL);
+}
+
+/**
+ * Batch validates and adjusts multiple colors
+ * @param colors - Array of hex colors to check
+ * @param businessType - Type of business for context-appropriate validation
+ * @returns Validated and adjusted colors
+ */
+export function validateColorScheme(colors: string[], businessType: string = 'professional'): {
+  isValid: boolean;
+  adjustedColors: string[];
+  issues: string[];
+} {
+  const issues: string[] = [];
+  const adjustedColors: string[] = [];
+  let isValid = true;
+  
+  colors.forEach((color) => {
+    const validation = validateColor(color, businessType);
+    
+    if (!validation.isValid) {
+      isValid = false;
+      issues.push(`${color}: ${validation.reason}`);
+    }
+    
+    adjustedColors.push(validation.adjustedColor);
+  });
+  
+  // Additional check for color harmony
+  const harmonyResult = checkColorHarmony(adjustedColors);
+  if (!harmonyResult.isHarmonious) {
+    isValid = false;
+    issues.push(...harmonyResult.issues);
+    return {
+      isValid,
+      adjustedColors: harmonizeColors(adjustedColors, businessType),
+      issues
+    };
+  }
+  
+  return {
+    isValid,
+    adjustedColors,
+    issues
+  };
+}
+
+/**
+ * Checks if a color combination is harmonious
+ */
+function checkColorHarmony(colors: string[]): {
+  isHarmonious: boolean;
+  issues: string[];
+} {
+  const issues: string[] = [];
+  
+  // Check harmony between all color pairs
+  for (let i = 0; i < colors.length; i++) {
+    for (let j = i + 1; j < colors.length; j++) {
+      if (!areColorsHarmonious(colors[i], colors[j])) {
+        issues.push(`Colors ${colors[i]} and ${colors[j]} are not harmonious together`);
+      }
+    }
+  }
+  
+  return {
+    isHarmonious: issues.length === 0,
+    issues
+  };
+}
+
+/**
+ * Harmonizes a set of colors to work better together
+ */
+function harmonizeColors(colors: string[], businessType: string): string[] {
+  if (colors.length <= 1) return colors;
+  
+  // Use the first color as the base and adjust others to harmonize with it
+  const baseColor = colors[0];
+  const baseHSL = hexToHSL(baseColor);
+  
+  return colors.map((color, index) => {
+    if (index === 0) return color; // Keep the first color unchanged
+    
+    const colorHSL = hexToHSL(color);
+    
+    // Calculate hue difference
+    const hueDiff = Math.abs(baseHSL.h - colorHSL.h);
+    
+    if (!areColorsHarmonious(baseColor, color)) {
+      // Adjust to nearest harmonic relationship
+      let newHue = baseHSL.h;
+      
+      if (hueDiff < 30) {
+        // Make more analogous with 30° separation
+        newHue = (baseHSL.h + 30) % 360;
+      } else if (hueDiff < 90) {
+        // Make 90° complement
+        newHue = (baseHSL.h + 90) % 360;
+      } else if (hueDiff < 180) {
+        // Make complementary with 180° separation
+        newHue = (baseHSL.h + 180) % 360;
+      } else {
+        // Make triadic with 120° separation
+        newHue = (baseHSL.h + 120) % 360;
+      }
+      
+      // For professional business type, reduce saturation slightly for harmonized colors
+      const newSaturation = businessType === 'professional' ? 
+        Math.min(colorHSL.s, 0.6) : colorHSL.s;
+      
+      return hslToHex({
+        h: newHue,
+        s: newSaturation,
+        l: colorHSL.l
+      });
+    }
+    
+    return color;
+  });
 }
 
 // =============================================================================
@@ -198,56 +406,6 @@ export function suggestHarmoniousAdjustment(baseColor: string, colorToAdjust: st
   });
 }
 
-/**
- * Validates a complete color scheme for harmony and accessibility
- */
-export function validateColorScheme(colors: string[]): {
-  isValid: boolean;
-  issues: string[];
-  suggestions: { color: string; suggestion: string }[];
-} {
-  const issues: string[] = [];
-  const suggestions: { color: string; suggestion: string }[] = [];
-  
-  // Check harmony between all color pairs
-  for (let i = 0; i < colors.length; i++) {
-    for (let j = i + 1; j < colors.length; j++) {
-      if (!areColorsHarmonious(colors[i], colors[j])) {
-        issues.push(`Colors ${colors[i]} and ${colors[j]} are not harmonious`);
-        suggestions.push({
-          color: colors[j],
-          suggestion: suggestHarmoniousAdjustment(colors[i], colors[j])
-        });
-      }
-    }
-  }
-  
-  // Check accessibility for text/background combinations
-  const backgroundColors = colors.filter(color => {
-    const hsl = hexToHSL(color);
-    return hsl.l > 50; // Assume lighter colors are backgrounds
-  });
-  
-  const textColors = colors.filter(color => {
-    const hsl = hexToHSL(color);
-    return hsl.l <= 50; // Assume darker colors are text
-  });
-  
-  backgroundColors.forEach(bg => {
-    textColors.forEach(text => {
-      if (!isAccessibleCombination(bg, text)) {
-        issues.push(`Insufficient contrast between ${bg} (background) and ${text} (text)`);
-      }
-    });
-  });
-  
-  return {
-    isValid: issues.length === 0,
-    issues,
-    suggestions
-  };
-}
-
 // =============================================================================
 // Color Palette Definitions
 // =============================================================================
@@ -298,6 +456,52 @@ export const industryColorPalettes: Record<string, ColorPreset[]> = {
       name: "Peaceful",
       colors: ['#264653', '#2A9D8F', '#E9C46A', '#F4A261']
     }
+  ],
+  restaurant: [
+    {
+      name: "Appetizing Red",
+      colors: ['#8D1C1C', '#B53737', '#D95454', '#F5CACA']
+    },
+    {
+      name: "Rustic Natural",
+      colors: ['#5D4037', '#8D6E63', '#BCAAA4', '#EFEBE9']
+    },
+    {
+      name: "Fresh Green",
+      colors: ['#33691E', '#558B2F', '#7CB342', '#AED581']
+    }
+  ],
+  logistics: [
+    {
+      name: "Industrial",
+      colors: ['#1A237E', '#303F9F', '#3F51B5', '#C5CAE9']
+    },
+    {
+      name: "Dependable",
+      colors: ['#004D40', '#00695C', '#00897B', '#B2DFDB']
+    },
+    {
+      name: "Precision",
+      colors: ['#263238', '#455A64', '#607D8B', '#CFD8DC']
+    }
+  ],
+  modern: [
+    {
+      name: "Oceanic",
+      colors: ['#0077B6', '#00B4D8', '#90E0EF', '#CAF0F8']
+    },
+    {
+      name: "Forest",
+      colors: ['#344E41', '#588157', '#A3B18A', '#DAD7CD']
+    },
+    {
+      name: "Sunset",
+      colors: ['#FF6B6B', '#FF9E6B', '#FFD166', '#FFEFA1']
+    },
+    {
+      name: "Monochrome",
+      colors: ['#2B2D42', '#565973', '#8D99AE', '#EDF2F4']
+    }
   ]
 };
 
@@ -306,11 +510,122 @@ export const industryColorPalettes: Record<string, ColorPreset[]> = {
 // =============================================================================
 
 /**
+ * Generates random hex color in a specified range of HSL values
+ * @param hueRange Range for hue [min, max]
+ * @param satRange Range for saturation [min, max] as percentages
+ * @param lightRange Range for lightness [min, max] as percentages
+ * @returns Hex color string
+ */
+export function generateRandomColor(
+  hueRange: [number, number] = [0, 360],
+  satRange: [number, number] = [30, 70],
+  lightRange: [number, number] = [30, 70]
+): string {
+  // Generate random HSL values within the specified ranges
+  const h = Math.floor(Math.random() * (hueRange[1] - hueRange[0])) + hueRange[0];
+  const s = (Math.floor(Math.random() * (satRange[1] - satRange[0])) + satRange[0]) / 100;
+  const l = (Math.floor(Math.random() * (lightRange[1] - lightRange[0])) + lightRange[0]) / 100;
+  
+  // Convert HSL to hex
+  return hslToHex({ h, s, l });
+}
+
+/**
+ * Generates a set of harmonious random colors that meet WCAG standards
+ * @param count Number of colors to generate (default 4)
+ * @param businessType Business type for validation context
+ * @returns Array of hex color strings
+ */
+export function generateRandomColorSet(count: number = 4, businessType: string = 'professional'): string[] {
+  const colors: string[] = [];
+  
+  // Generate base color first with moderate saturation and lightness
+  // for good readability and harmonious variations
+  const baseColor = generateRandomColor(
+    [0, 360],
+    businessType === 'professional' ? [30, 50] : [40, 60],
+    [35, 55]
+  );
+  
+  const baseHSL = hexToHSL(baseColor);
+  colors.push(baseColor);
+  
+  // Generate the rest based on color theory
+  for (let i = 1; i < count; i++) {
+    let newColor: string;
+    
+    // Apply color theory to create harmonious colors
+    switch (i) {
+      case 1: // Analogous color
+        newColor = hslToHex({
+          h: (baseHSL.h + 30) % 360,
+          s: Math.min(baseHSL.s, 0.7),
+          l: Math.min(Math.max(baseHSL.l + 0.1, 0.3), 0.7)
+        });
+        break;
+      case 2: // Complementary variant
+        newColor = hslToHex({
+          h: (baseHSL.h + 180) % 360,
+          s: Math.min(baseHSL.s * 0.9, 0.6),
+          l: Math.min(Math.max(baseHSL.l, 0.3), 0.7)
+        });
+        break;
+      case 3: // Triadic variant
+        newColor = hslToHex({
+          h: (baseHSL.h + 120) % 360,
+          s: Math.min(baseHSL.s * 0.8, 0.5),
+          l: Math.min(Math.max(baseHSL.l - 0.1, 0.3), 0.7)
+        });
+        break;
+      default: // Randomized with constraints
+        newColor = generateRandomColor(
+          [(baseHSL.h + 60 * i) % 360, (baseHSL.h + 60 * i + 30) % 360],
+          [Math.max(baseHSL.s * 100 - 10, 30), Math.min(baseHSL.s * 100 + 10, 70)],
+          [Math.max(baseHSL.l * 100 - 15, 30), Math.min(baseHSL.l * 100 + 15, 70)]
+        );
+    }
+    
+    colors.push(newColor);
+  }
+  
+  // Process the colors to ensure they meet standards
+  return processUserColors(colors, businessType);
+}
+
+/**
+ * Check if a set of colors passes WCAG AA contrast with standard text
+ * @param colors Array of hex color strings to check
+ * @returns boolean indicating if all colors pass
+ */
+export function checkWCAGCompliance(colors: string[]): boolean {
+  // Check contrast of all colors against white and black
+  // as those are common text colors
+  const whiteText = '#FFFFFF';
+  const blackText = '#000000';
+  
+  for (const color of colors) {
+    const whiteContrast = calculateContrastRatio(color, whiteText);
+    const blackContrast = calculateContrastRatio(color, blackText);
+    
+    // WCAG AA requires 4.5:1 for normal text
+    if (whiteContrast < 4.5 && blackContrast < 4.5) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+/**
  * Generates a complete color palette based on a base color and template type
  */
 export function generateColorPalette(baseColor: string, templateType: string): ColorPalette {
+  // First validate the base color
+  const validatedBase = validateColor(baseColor, templateType);
+  const adjustedBaseColor = validatedBase.adjustedColor;
+  
   // Convert the base color to HSL for easier manipulation
-  const baseColorHSL = hexToHSL(baseColor);
+  const baseColorHSL = hexToHSL(adjustedBaseColor);
   
   // Make sure the base color isn't too bright or neon
   const adjustedHSL = { 
@@ -339,7 +654,7 @@ export function generateColorPalette(baseColor: string, templateType: string): C
   }
   
   // Apply the adjusted HSL values to base color
-  const adjustedBaseColor = hslToHex(adjustedHSL);
+  const adjustedBaseColorFinal = hslToHex(adjustedHSL);
   
   // Create background and text colors with appropriate contrast
   const backgroundColor = hslToHex({
@@ -377,7 +692,7 @@ export function generateColorPalette(baseColor: string, templateType: string): C
   });
 
   const palette = {
-    primary: adjustedBaseColor,
+    primary: adjustedBaseColorFinal,
     secondary,
     accent,
     text: textColor,
@@ -387,25 +702,30 @@ export function generateColorPalette(baseColor: string, templateType: string): C
     analogous: [analogous1, analogous2] as [string, string]
   };
   
-  // Validate the generated palette
-  const validation = validateColorScheme([
-    palette.primary,
-    palette.secondary,
-    palette.accent,
-    palette.text,
-    palette.background
-  ]);
-  
-  if (!validation.isValid) {
-    console.warn('Color palette has potential issues:', validation.issues);
-    // Apply suggestions if needed
-    validation.suggestions.forEach(({ color, suggestion }) => {
-      if (palette.secondary === color) palette.secondary = suggestion;
-      if (palette.accent === color) palette.accent = suggestion;
-    });
+  return palette;
+}
+
+/**
+ * Processes user-provided colors for use in the website
+ * @param colors - Array of hex colors provided by user
+ * @param businessType - Type of business for context-appropriate validation
+ * @returns Validated and adjusted colors ready for use
+ */
+export function processUserColors(colors: string[], businessType: string): string[] {
+  // Skip processing if no colors
+  if (!colors || colors.length === 0) {
+    return [];
   }
   
-  return palette;
+  // Validate and adjust the colors
+  const validation = validateColorScheme(colors, businessType);
+  
+  // Log any issues for debugging
+  if (validation.issues.length > 0) {
+    console.log('⚠️ Color adjustment needed:', validation.issues);
+  }
+  
+  return validation.adjustedColors;
 }
 
 /**

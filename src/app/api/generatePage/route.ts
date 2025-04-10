@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
       }
     } else if (imageSource === 'ai') {
       // Use the existing AI image generation path
-      const aiImageUrls = await fetchImages(imageInstructions || '', requestData.businessType as string);
+      const aiImageUrls = await fetchImages(imageInstructions ?? '', requestData.businessType as string);
       
       for (let i = 0; i < aiImageUrls.length; i++) {
         imageUrls.push(`./images/image-${i + 1}.png`);

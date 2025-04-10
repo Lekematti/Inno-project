@@ -40,7 +40,7 @@ export function processImagePaths(
     console.log(`Found ${files.length} images in ${imagesDir}`);
     
     for (const file of files) {
-      if (file.match(/^image-\d+\.(png|jpg|jpeg|gif|svg)$/i)) {
+      if (/^image-\d+\.(png|jpg|jpeg|gif|svg)$/i.exec(file)) {
         const imagePath = path.join(imagesDir, file);
         try {
           const imageBuffer = fs.readFileSync(imagePath);

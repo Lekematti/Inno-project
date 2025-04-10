@@ -1,5 +1,5 @@
 import { Button } from 'react-bootstrap';
-import { FormData as GlobalFormData } from '@/types/formData';
+import { FormData} from '@/types/formData';
 
 export const ColorTips = () => (
   <div className="color-info alert alert-info mt-2 mb-3 p-2" style={{ fontSize: '0.85rem' }}>
@@ -32,13 +32,45 @@ export const LoadingIndicator = () => (
   </div>
 );
 
-export const DownloadSection = ({ generatedHtml, formData }: { 
-  generatedHtml: string, 
-  formData: GlobalFormData 
+// Updated DownloadSection component
+export const DownloadSection = ({ generatedHtml, standaloneHtml, formData }: { 
+  generatedHtml: string,
+  standaloneHtml?: string,
+  formData: FormData
 }) => {
+  // Use standaloneHtml for opening in a new tab
+  const handleOpenInNewTab = () => {
+    const htmlToOpen = standaloneHtml ?? generatedHtml;
+    
+    // Check if HTML content exists
+    if (!htmlToOpen || htmlToOpen.trim() === '') {
+      console.error("No HTML content available");
+      alert("No HTML content available to display");
+      return;
+    }
+    
+    // Create a blob with the HTML
+    const blob = new Blob([htmlToOpen], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    
+    // Open in a new tab and clean up the URL when done
+    const newWindow = window.open(url, '_blank');
+    
+    // Clean up the URL after the window has loaded
+    if (newWindow) {
+      newWindow.addEventListener('load', () => {
+        // Small delay to ensure the content is properly loaded
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      });
+    }
+  };
+  
   const handleShare = async () => {
+    // Use standaloneHtml if available, fallback to generatedHtml
+    const htmlToShare = standaloneHtml ?? generatedHtml;
+    
     try {
-      const blob = new Blob([generatedHtml], { type: 'text/html' });
+      const blob = new Blob([htmlToShare], { type: 'text/html' });
       const file = new File([blob], `${formData.businessType || 'website'}-site.html`, { type: 'text/html' });
 
       if (navigator.share && navigator.canShare({ files: [file] })) {
@@ -62,18 +94,16 @@ export const DownloadSection = ({ generatedHtml, formData }: {
       <div className="d-flex justify-content-center gap-3 flex-wrap">
         <Button 
           variant="primary"
-          onClick={() => {
-            const blob = new Blob([generatedHtml], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            window.open(url, '_blank');
-          }}
+          onClick={handleOpenInNewTab}
         >
           Open in New Tab
         </Button>
         <Button 
           variant="outline-secondary"
           onClick={() => {
-            const blob = new Blob([generatedHtml], { type: 'text/html' });
+            // Use standaloneHtml if available, fallback to generatedHtml
+            const htmlToDownload = standaloneHtml ?? generatedHtml;
+            const blob = new Blob([htmlToDownload], { type: 'text/html' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;

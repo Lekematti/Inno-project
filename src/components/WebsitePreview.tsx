@@ -58,7 +58,7 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
         <p>{previewError}</p>
         <div className="mt-3">
           <small>
-            You can still download the HTML even though it can't be previewed.
+            You can still download the HTML even though it can&apos;t be previewed.
           </small>
           {generatedHtml && (
             <div className="mt-2">
@@ -71,6 +71,9 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   }
 
   if (isReady && generatedHtml) {
+    // Extract standaloneHtml if available in formData
+    const standaloneHtml = formData.standaloneHtml as string;
+    
     return (
       <>
         {isRendering ? (
@@ -88,7 +91,11 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
         </div>
         
         <div className="mt-4">
-          <DownloadSection generatedHtml={generatedHtml} formData={formData} />
+          <DownloadSection 
+            generatedHtml={generatedHtml}
+            standaloneHtml={standaloneHtml} 
+            formData={formData} 
+          />
         </div>
       </>
     );

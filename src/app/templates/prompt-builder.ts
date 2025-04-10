@@ -27,7 +27,7 @@ export function buildPrompt(
     You are an expert frontend developer specializing in creating visually stunning, conversion-optimized websites. Create a production-ready HTML webpage using the Bootstrap 5 framework for a ${templateType} business.
     
     BUSINESS DETAILS:
-    - Name: ${businessDetails.name || 'Company Name'}
+    - Name: ${businessDetails.name ?? 'Company Name'}
     - Address: ${businessDetails.address}
     - Phone: ${businessDetails.phone}
     - Email: ${businessDetails.email}

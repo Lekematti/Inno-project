@@ -8,6 +8,7 @@ import { getBusinessPrompt } from '@/app/templates/business-prompts'
 import { buildPrompt } from '@/app/templates/prompt-builder'
 import { CacheEntry, FormData } from '@/app/api/generatePage/types/website-generator'
 import { ImageSourceType } from '@/types/formData'
+import { processImagePaths, mapImageUrls } from '@/app/api/generatePage/utils/image-path-processor';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY as string });
 
@@ -103,34 +104,53 @@ export async function POST(request: NextRequest) {
     // Extract image information
     const imageSource = requestData.imageSource as ImageSourceType;
     const imageInstructions = requestData.imageInstructions as string;
-    let imageUrls: string[] = [];
+    const imageUrls: string[] = [];
+    
+    // Create timestamp for the folder name
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const suffix = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`;
+    const businessType = typeof requestData.businessType === 'string' ? 
+      requestData.businessType.toLowerCase() : 'website';
+    
+    // Create folder structure for the generated content
+    const folderName = `${businessType}-${timestamp}-${suffix}`;
+    const outputDir = path.join(process.cwd(), 'gen_comp', folderName);
+    const imagesDir = path.join(outputDir, 'images');
+    
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+    if (!fs.existsSync(imagesDir)) {
+      fs.mkdirSync(imagesDir, { recursive: true });
+    }
     
     // Process images based on the source
-    if (imageSource === 'ai') {
-      // Use the existing AI image generation path
-      imageUrls = await fetchImages(imageInstructions || '', requestData.businessType as string);
-    } else if (imageSource === 'manual') {
+    if (imageSource === 'manual') {
       // Process uploaded images
       const files = formData.getAll('uploadedImages') as File[];
       
-      // Create the uploads directory if it doesn't exist
-      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-      
-      // Save each file and collect their URLs
-      for (const file of files) {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         const buffer = Buffer.from(await file.arrayBuffer());
-        const filename = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
-        const filePath = path.join(uploadsDir, filename);
+        const safeFilename = `image-${i + 1}${path.extname(file.name)}`.replace(/\s+/g, '-');
         
-        fs.writeFileSync(filePath, buffer);
-        // Use an absolute URL path that includes the domain
-        imageUrls.push(`/uploads/${filename}`);
+        // Save directly to the website's images folder
+        const imagePath = path.join(imagesDir, safeFilename);
+        fs.writeFileSync(imagePath, buffer);
+        
+        // Use relative path for the HTML
+        imageUrls.push(`./images/${safeFilename}`);
       }
+    } else if (imageSource === 'ai') {
+      // Use the existing AI image generation path
+      const aiImageUrls = await fetchImages(imageInstructions || '', requestData.businessType as string);
       
-      console.log('Manual images saved:', imageUrls);
+      for (let i = 0; i < aiImageUrls.length; i++) {
+        imageUrls.push(`./images/image-${i + 1}.png`);
+      }
     }
     
     // Format the form data for processing
@@ -144,7 +164,7 @@ export async function POST(request: NextRequest) {
       colorScheme: requestData.colorScheme as string,
     };
 
-    // For questions 1-10, add them to the processed form data
+    // Add questions to the form data
     for (let i = 1; i <= 10; i++) {
       const key = `question${i}`;
       if (requestData[key]) {
@@ -155,42 +175,26 @@ export async function POST(request: NextRequest) {
     // Generate HTML with images
     const htmlContent = await generateCustomPage(processedFormData as FormData, imageSource);
 
-    // Save the generated HTML
-    const now = new Date();
-    const timestamp = `${now.getFullYear()}-${String(
-      now.getMonth() + 1
-    ).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const suffix = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`;
-    const businessType = Array.isArray(processedFormData.businessType) ? processedFormData.businessType[0] : processedFormData.businessType;
-    const fileName = `${businessType.toLowerCase()}-${timestamp}-${suffix}.html`;
-    const outputDir = path.join(process.cwd(), 'gen_comp');
+    // Process image paths with the output directory
+    const { processedHTML, previewHTML, standaloneHTML } = processImagePaths(htmlContent, folderName, outputDir);
 
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
+    // Define the file path for the HTML file
+    const filePath = path.join(outputDir, 'index.html');
 
-    const filePath = path.join(outputDir, fileName);
-    
-    // Modify the HTML content to ensure images have correct paths
-    // This ensures images work both in preview and when saved as a file
-    const modifiedHtml = htmlContent.replace(
-      /src="\/uploads\//g,
-      `src="${process.env.NEXT_PUBLIC_BASE_URL || ''}/uploads/`
-    );
-    
-    fs.writeFileSync(filePath, modifiedHtml);
+    // Write the processed HTML file with relative paths (for file system)
+    fs.writeFileSync(filePath, processedHTML);
 
+    // Return the preview HTML with absolute paths (for browser preview)
     return NextResponse.json({
-      htmlContent: modifiedHtml,
-      filePath: `/gen_comp/${fileName}`,
-      imageUrls,
+      htmlContent: previewHTML,
+      standaloneHTML, // Add this for opening in new tabs
+      filePath: `/gen_comp/${folderName}/index.html`,
+      imageUrls: mapImageUrls(imageUrls, folderName),
       imageSource,
+      outputDir,
     });
   } catch (error) {
     console.error('Error generating page:', error);
-    return NextResponse.json(
-      { error: 'Error generating page.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Error generating page.' }, { status: 500 });
   }
 }

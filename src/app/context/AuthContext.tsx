@@ -7,7 +7,11 @@ import {
   useState,
   useEffect,
 } from 'react'
-import { useSession, signOut as nextAuthSignOut } from 'next-auth/react'
+import {
+  useSession,
+  signOut as nextAuthSignOut,
+  signIn as nextAuthSignIn,
+} from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
 type User = {
@@ -53,7 +57,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     setLoading(true)
     try {
-      const result = await signIn('credentials', {
+      // First authenticate with our API
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed')
+      }
+
+      // Then use NextAuth to establish a session
+      const result = await nextAuthSignIn('credentials', {
         email,
         password,
         redirect: false,
@@ -108,6 +131,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!response.ok) {
         throw new Error(data.error || 'Registration failed')
       }
+
+      // Auto-login after successful registration
+      return login(email, password)
     } catch (error) {
       console.error('Registration error:', error)
       throw error

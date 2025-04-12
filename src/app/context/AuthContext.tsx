@@ -39,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Update user state when session changes
   useEffect(() => {
+
     if (status === 'loading') {
       setLoading(true)
       return
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session.user as User)
     } else {
       setUser(null)
+
     }
 
     setLoading(false)
@@ -93,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error
     } finally {
       setLoading(false)
+
     }
   }
 
@@ -107,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Logout error:', error)
     } finally {
       setLoading(false)
+
     }
   }
 
@@ -139,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error
     } finally {
       setLoading(false)
+
     }
   }
 

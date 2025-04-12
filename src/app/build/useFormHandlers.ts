@@ -1,99 +1,207 @@
-//This file contains a custom React hook that manages the state and logic for the website generation form. 
-import { useState, useCallback } from 'react';
+/**
+ * Custom React hook that manages form state and logic for website generation
+ */
+import { useState, useCallback, useRef } from 'react';
 import { templates } from '@/functions/inputGenerate';
+import { processUserColors } from '@/app/build/colorProcessor';
+import {
+  type FormData,
+  FormHandlerHook,
+  BusinessType,
+  ImageSourceType,
+  defaultFormData
+} from '@/types/formData';
 
-type TemplateType = 'restaurant' | 'logistics' | 'professional';
+/**
+ * Hook for managing website generation form state and operations
+ */
+export const useFormHandlers = (): FormHandlerHook => {
+  // State management
+  const [formData, setFormData] = useState<FormData>(defaultFormData);
+ 
+  // UI state
+  const [isLoading, setIsLoading] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [generatedHtml, setGeneratedHtml] = useState('');
+  const [error, setError] = useState('');
+  const [step, setStep] = useState(1);
+  const [allQuestionsAnswered, setAllQuestionsAnswered] = useState(false);
 
-export function useFormHandlers() {
-    const [formData, setFormData] = useState({
-        businessType: '',
-        address: '',
-        phone: '',
-        email: '',
-        question1: '',
-        question2: '',
-        question3: '',
-        question4: '',
-        question5: '',
-        question6: '',
-        question7: '',
-        question8: '',
-        question9: '',
-        question10: '',
-        imageInstructions: '', // Single field for all image instructions
+  const isSubmittingRef = useRef(false);
+
+  /**
+   * Validates that all required form fields are completed
+   */
+  const checkAllQuestionsAnswered = useCallback((): boolean => {
+    if (!formData.businessType || !formData.address || !formData.phone || !formData.email) {
+      return false;
+    }
+   
+    const businessType = formData.businessType.toLowerCase() as BusinessType;
+    if (!['restaurant', 'logistics', 'professional'].includes(businessType)) {
+      return false;
+    }
+   
+    const template = templates[businessType];
+    const questions = template?.questions || [];
+   
+    return questions.every((_, i) => {
+      const fieldName = `question${i + 1}` as keyof FormData;
+      const value = formData[fieldName];
+      return typeof value === 'string' && value.trim() !== '';
     });
-    const [isLoading, setIsLoading] = useState(false);
-    const [isReady, setIsReady] = useState(false);
-    const [generatedHtml, setGeneratedHtml] = useState('');
-    const [error, setError] = useState('');
-    const [step, setStep] = useState(1);
-    const [allQuestionsAnswered, setAllQuestionsAnswered] = useState(false);
+  }, [formData]);
 
-    // Check if all required questions are answered
-    const checkAllQuestionsAnswered = useCallback(() => {
-        if (!formData.businessType || !formData.address || !formData.phone || !formData.email) {
-            return false;
-        }
-        
-        const businessType = formData.businessType.toLowerCase();
-        if (businessType !== 'restaurant' && businessType !== 'logistics' && businessType !== 'professional') {
-            return false;
-        }
-        
-        const template = templates[businessType as TemplateType];
-        const questions = template ? template.questions : [];
-        
-        for (let i = 0; i < questions.length; i++) {
-            const fieldName = `question${i + 1}` as keyof typeof formData;
-            if (!formData[fieldName] || formData[fieldName].trim() === '') {
-                return false;
-            }
-        }
-        return true;
-    }, [formData]);
-
-    // Generate website with image instructions
-    const generateWebsite = useCallback(async () => {
-        if (isLoading) return;
-        
-        setIsLoading(true);
-        setError('');
-        
-        try {
-          const response = await fetch('/api/generatePage', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData),
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
+    /**
+   * Processes all colors in form data to ensure they're web-appropriate
+   */
+    const processFormColors = useCallback((data: FormData): FormData => {
+      const businessType = data.businessType?.toLowerCase() as BusinessType;
+      
+      // Look for colors in any question field and in the colorScheme field
+      let colorString = data.colorScheme as string;
+      
+      // If no colorScheme, try to find colors in question fields
+      if (!colorString) {
+        for (let i = 1; i <= 10; i++) {
+          const fieldName = `question${i}` as keyof FormData;
+          const value = data[fieldName];
+          if (value && typeof value === 'string' && value.includes('#')) {
+            colorString = value;
+            break;
           }
-          
-          const data = await response.json();
-          setGeneratedHtml(data.htmlContent);
-          setIsReady(true);
-        } catch (err) {
-          console.error('Error:', err instanceof Error ? err.message : String(err));
-          setError('Failed to generate website. Please try again.');
-        } finally {
-          setIsLoading(false);
         }
-    }, [formData, isLoading]);
+      }
+      
+      if (colorString && colorString.trim() !== '') {
+        const colors = colorString.split(',').filter(Boolean);
+        if (colors.length > 0) {
+          // Process and validate the colors
+          const processedColors = processUserColors(colors, businessType);
+          
+          // Return updated form data with processed colors
+          return {
+            ...data,
+            colorScheme: processedColors.join(',')
+          };
+        }
+      }
+      
+      return data;
+    }, []);
 
-    return {
-        formData,
-        setFormData,
-        isLoading,
-        isReady,
-        generatedHtml,
-        error,
-        step,
-        setStep,
-        allQuestionsAnswered,
-        setAllQuestionsAnswered,
-        checkAllQuestionsAnswered,
-        generateWebsite,
-        setError,
-    };
-}
+  /**
+   * Sends form data to the API endpoint to generate website
+   */
+  const generateWebsite = useCallback(async (): Promise<void> => {
+    if (isLoading || isSubmittingRef.current) return;
+   
+    isSubmittingRef.current = true;
+    setIsLoading(true);
+    setError('');
+   
+    try {
+
+      // Process colors before submission
+      const processedFormData = processFormColors(formData);
+      // Create FormData object for file uploads
+      const submitData = new FormData();
+      
+      // Add basic fields
+      submitData.append('businessType', formData.businessType);
+      submitData.append('address', formData.address);
+      submitData.append('phone', formData.phone);
+      submitData.append('email', formData.email);
+      
+      // Add image source
+      const imageSource = (formData.imageSource as ImageSourceType) || 'none';
+      submitData.append('imageSource', imageSource);
+      
+      // Process images based on source type
+      if (imageSource === 'ai' && formData.imageInstructions) {
+        submitData.append('imageInstructions', formData.imageInstructions);
+      } else if (imageSource === 'manual' && formData.uploadedImages && formData.uploadedImages.length > 0) {
+        // Add all uploaded files individually with the same field name
+        for (let i = 0; i < formData.uploadedImages.length; i++) {
+          submitData.append('uploadedImages', formData.uploadedImages[i]);
+        }
+        
+        console.log(`Uploading ${formData.uploadedImages.length} images`);
+      }
+      
+      // Add all question answers
+      Object.entries(formData).forEach(([key, value]) => {
+        if (key.startsWith('question') && value) {
+          submitData.append(key, value as string);
+        }
+      });
+      
+      // Add any optional fields that might be needed
+      if (formData.businessName) {
+        submitData.append('businessName', formData.businessName);
+      }
+      
+      if (processedFormData.colorScheme) {
+        submitData.append('colorScheme', processedFormData.colorScheme);
+      }
+      
+      if (formData.templateVariant) {
+        submitData.append('templateVariant', formData.templateVariant);
+      }
+      
+      console.log('Submitting form data with image source:', imageSource);
+      
+      // Note: Don't set Content-Type header when using FormData
+      // The browser will automatically set it with the correct boundary
+      const response = await fetch('/api/generatePage', {
+        method: 'POST',
+        body: submitData
+      });
+     
+      if (!response.ok) {
+        throw new Error(`Server responded with status: ${response.status}`);
+      }
+     
+      const data = await response.json();
+     
+      if (data.error) {
+        throw new Error(data.error);
+      }
+     
+      if (data.htmlContent) {
+        setGeneratedHtml(data.htmlContent);
+        // Update form data with response data
+        setFormData(prev => ({
+          ...prev,
+          filePath: data.filePath,
+          generatedImageUrls: data.imageUrls || []
+        }));
+        setIsReady(true);
+      } else {
+        throw new Error('No HTML content received');
+      }
+    } catch (err) {
+      console.error('Error generating website:', err instanceof Error ? err.message : String(err));
+      setError('Failed to generate website. Please try again.');
+    } finally {
+      setIsLoading(false);
+      isSubmittingRef.current = false;
+    }
+  }, [formData, isLoading, processFormColors]);
+
+  return {
+    formData,
+    setFormData,
+    isLoading,
+    isReady,
+    generatedHtml,
+    error,
+    step,
+    setStep,
+    allQuestionsAnswered,
+    setAllQuestionsAnswered,
+    checkAllQuestionsAnswered,
+    generateWebsite,
+    setError,
+  };
+};

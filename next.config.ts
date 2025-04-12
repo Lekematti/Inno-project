@@ -1,6 +1,7 @@
-import type { NextConfig } from 'next'
+import type { NextConfig } from 'next';
 
-module.exports = {
+const nextConfig: NextConfig = {
+  output: 'standalone',
   env: {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     AZURE_STORAGE_ACCOUNT_NAME: process.env.AZURE_STORAGE_ACCOUNT_NAME,
@@ -11,9 +12,20 @@ module.exports = {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
   },
-}
-const nextConfig: NextConfig = {
-  /* config options here */
-}
+  // Enable serving static files from the gen_comp folder
+  async rewrites() {
+    return [
+      {
+        source: '/gen_comp/:path*',
+        destination: '/api/static/:path*',
+      },
+      // Add this fallback rule for direct /images/ requests
+      {
+        source: '/images/:filename',
+        destination: '/api/images/:filename',
+      },
+    ];
+  },
+};
 
-export default nextConfig
+export default nextConfig;

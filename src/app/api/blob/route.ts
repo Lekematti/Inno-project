@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server'
-import {
-  BlobServiceClient,
-  StorageSharedKeyCredential,
-} from '@azure/storage-blob'
+import {BlobServiceClient, StorageSharedKeyCredential} from '@azure/storage-blob'
 
 const azureAccountName = process.env.AZURE_STORAGE_ACCOUNT_NAME
 const azureAccountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY
 const azureContainerName = process.env.AZURE_STORAGE_CONTAINER_NAME
 
 function getCredentials(
-  azureAccountKey: any,
-  azureAccountName: any,
-  azureContainerName: any,
-  blobName?: any
+  azureAccountKey: string,
+  azureAccountName: string,
+  azureContainerName: string,
+  blobName?: string
 ) {
   let error
   if (!azureAccountName || !azureAccountKey || !azureContainerName) {
@@ -41,6 +38,12 @@ function getCredentials(
 export async function GET() {
   try {
     const blobName = 'test.txt'
+    if (!azureAccountKey || !azureAccountName || !azureContainerName) {
+      return NextResponse.json(
+        { error: 'Missing Azure Storage environment variables' },
+        { status: 500 }
+      )
+    }
     const { containerClient, error } = getCredentials(
       azureAccountKey,
       azureAccountName,
@@ -71,6 +74,12 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    if (!azureAccountKey || !azureAccountName || !azureContainerName) {
+      return NextResponse.json(
+        { error: 'Missing Azure Storage environment variables' },
+        { status: 500 }
+      )
+    }
     const { containerClient, error } = getCredentials(
       azureAccountKey,
       azureAccountName,

@@ -1,109 +1,179 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { AiGenComponent } from './AiGenComponent';
-import { Spinner, Alert } from 'react-bootstrap';
-import { DownloadSection } from '@/app/build/components/UIHelpers';
-import { WebsitePreviewProps } from '@/types/formData';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { Button, Tabs, Tab, Spinner, Alert } from 'react-bootstrap';
+import { WebsiteEditor } from './WebsiteEditor';
+
+interface WebsitePreviewProps {
+  htmlContent: string;
+  filePath: string;
+  standaloneHTML: string;
+}
 
 export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
-  isLoading,
-  isReady,
-  generatedHtml,
-  error,
-  formData
+  htmlContent,
+  filePath,
+  standaloneHTML
 }) => {
-  const [previewError, setPreviewError] = useState<string | null>(null);
-  const [isRendering, setIsRendering] = useState<boolean>(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [activeTab, setActiveTab] = useState<string>('preview');
+  const [updatedHtml, setUpdatedHtml] = useState<string>(htmlContent);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  // Initialize the preview content when component mounts or when the content changes
   useEffect(() => {
-    // Reset error state when new content arrives
-    if (generatedHtml) {
-      setPreviewError(null);
-      // Set a rendering state to help with potential timing issues
-      setIsRendering(true);
-      const timer = setTimeout(() => setIsRendering(false), 500);
-      return () => clearTimeout(timer);
+    if (!updatedHtml && htmlContent) {
+      setUpdatedHtml(htmlContent);
     }
-  }, [generatedHtml]);
+  }, [htmlContent, updatedHtml]);
 
-  // Handle edge case where htmlContent exists but has issues
-  const handleRenderingError = (err: string) => {
-    console.error('Rendering error:', err);
-    setPreviewError(err);
-  };
+  // Update iframe content when dependencies change
+  useEffect(() => {
+    if (iframeRef.current) {
+      const iframe = iframeRef.current;
+      const iframeDocument = iframe.contentDocument;
+      if (iframeDocument) {
+        iframeDocument.open();
+        iframeDocument.write(activeTab === 'editor' ? updatedHtml : htmlContent);
+        iframeDocument.close();
+      }
+    }
+  }, [htmlContent, updatedHtml, activeTab]);
+  
+  // Create and cleanup blob URL for preview in new tab
+  useEffect(() => {
+    if (standaloneHTML) {
+      const blob = new Blob([standaloneHTML], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
+      
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    }
+  }, [standaloneHTML]);
 
-  if (isLoading) {
-    return (
-      <div className="d-flex flex-column align-items-center justify-content-center p-5">
-        <output>
-          <Spinner animation="border" variant="primary" />
-        </output>
-        <p className="mt-3">Generating your custom website...</p>
-      </div>
-    );
-  }
+  const handleSave = useCallback(async (newHtmlContent: string) => {
+    try {
+      setSaveStatus('saving');
+      const response = await fetch('/api/generatePage', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          htmlContent: newHtmlContent,
+          filePath,
+        }),
+      });
 
-  if (error) {
-    return (
-      <Alert variant="danger">
-        {error}
-      </Alert>
-    );
-  }
+      if (!response.ok) {
+        throw new Error(`Failed to save: ${response.statusText}`);
+      }
 
-  if (previewError) {
-    return (
-      <Alert variant="warning">
-        <h5>Preview Error</h5>
-        <p>{previewError}</p>
-        <div className="mt-3">
-          <small>
-            You can still download the HTML even though it can&apos;t be previewed.
-          </small>
-          {generatedHtml && (
-            <div className="mt-2">
-              <DownloadSection generatedHtml={generatedHtml} formData={formData} />
-            </div>
-          )}
-        </div>
-      </Alert>
-    );
-  }
+      // Update the HTML content after saving
+      setUpdatedHtml(newHtmlContent);
+      setSaveStatus('success');
+      
+      // Reset status after a delay
+      setTimeout(() => {
+        setSaveStatus('idle');
+      }, 3000);
+    } catch (error) {
+      console.error('Error saving website:', error);
+      setSaveStatus('error');
+      
+      // Reset error status after a delay
+      setTimeout(() => {
+        setSaveStatus('idle');
+      }, 3000);
+    }
+  }, [filePath]);
 
-  if (isReady && generatedHtml) {
-    // Extract standaloneHtml if available in formData
-    const standaloneHtml = formData.standaloneHtml as string;
-    
-    return (
-      <>
-        {isRendering ? (
-          <div className="text-center p-3">
-            <Spinner animation="border" size="sm" /> 
-            <span className="ms-2">Rendering preview...</span>
-          </div>
-        ) : null}
-        
-        <div className="preview-container" style={{ height: '70vh', width: '100%', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
-          <AiGenComponent 
-            htmlContent={generatedHtml} 
-            onError={handleRenderingError}
-          />
-        </div>
-        
-        <div className="mt-4">
-          <DownloadSection 
-            generatedHtml={generatedHtml}
-            standaloneHtml={standaloneHtml} 
-            formData={formData} 
-          />
-        </div>
-      </>
-    );
-  }
+  const handleTabChange = useCallback((key: string | null) => {
+    setActiveTab(key ?? 'preview');
+  }, []);
+
+  const handleDownload = useCallback(() => {
+    const blob = new Blob([standaloneHTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'website.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [standaloneHTML]);
 
   return (
-    <div className="text-center p-5">
-      <p>Waiting to generate your website...</p>
+    <div className="website-preview-container">
+      <Tabs
+        activeKey={activeTab}
+        onSelect={handleTabChange}
+        className="mb-3"
+      >
+        <Tab eventKey="preview" title="Preview">
+          <div style={{ height: '600px', border: '1px solid #dee2e6' }}>
+            <iframe
+              ref={iframeRef}
+              style={{ width: '100%', height: '100%', border: 'none' }}
+              title="Website Preview"
+            />
+          </div>
+          <div className="d-flex justify-content-between mt-3">
+            <div>
+              <Button
+                variant="primary"
+                onClick={() => setActiveTab('editor')}
+                className="me-2"
+              >
+                Edit Website
+              </Button>
+              <Button
+                variant="outline-primary"
+                onClick={() => previewUrl && window.open(previewUrl, '_blank')}
+                className="me-2"
+                disabled={!previewUrl}
+              >
+                Open in New Tab
+              </Button>
+            </div>
+            {saveStatus === 'saving' ? (
+              <Button variant="secondary" disabled>
+                <Spinner animation="border" size="sm" className="me-2" />
+                Saving...
+              </Button>
+            ) : (
+              <Button
+                variant="success"
+                onClick={handleDownload}
+              >
+                Download HTML
+              </Button>
+            )}
+          </div>
+          
+          {saveStatus === 'success' && (
+            <Alert variant="success" className="mt-3">
+              Website saved successfully!
+            </Alert>
+          )}
+          
+          {saveStatus === 'error' && (
+            <Alert variant="danger" className="mt-3">
+              Error saving website. Please try again.
+            </Alert>
+          )}
+        </Tab>
+        <Tab eventKey="editor" title="Editor">
+          <WebsiteEditor 
+            htmlContent={updatedHtml} 
+            onSave={handleSave} 
+            standaloneHTML={standaloneHTML}
+          />
+        </Tab>
+      </Tabs>
     </div>
   );
 };

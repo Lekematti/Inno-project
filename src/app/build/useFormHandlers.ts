@@ -7,7 +7,6 @@ import { processUserColors } from '@/app/build/colorProcessor';
 import {
   type FormData,
   FormHandlerHook,
-  BusinessType,
   ImageSourceType,
   defaultFormData
 } from '@/types/formData';
@@ -37,7 +36,7 @@ export const useFormHandlers = (): FormHandlerHook => {
       return false;
     }
    
-    const businessType = formData.businessType.toLowerCase() as BusinessType;
+    const businessType = formData.businessType.toLowerCase();
     if (!['restaurant', 'logistics', 'professional'].includes(businessType)) {
       return false;
     }
@@ -56,7 +55,7 @@ export const useFormHandlers = (): FormHandlerHook => {
    * Processes all colors in form data to ensure they're web-appropriate
    */
     const processFormColors = useCallback((data: FormData): FormData => {
-      const businessType = data.businessType?.toLowerCase() as BusinessType;
+      const businessType = data.businessType?.toLowerCase();
       
       // Look for colors in any question field and in the colorScheme field
       let colorString = data.colorScheme as string;
@@ -101,7 +100,6 @@ export const useFormHandlers = (): FormHandlerHook => {
     setError('');
    
     try {
-
       // Process colors before submission
       const processedFormData = processFormColors(formData);
       // Create FormData object for file uploads
@@ -122,10 +120,9 @@ export const useFormHandlers = (): FormHandlerHook => {
         submitData.append('imageInstructions', formData.imageInstructions);
       } else if (imageSource === 'manual' && formData.uploadedImages && formData.uploadedImages.length > 0) {
         // Add all uploaded files individually with the same field name
-        for (let i = 0; i < formData.uploadedImages.length; i++) {
-          submitData.append('uploadedImages', formData.uploadedImages[i]);
+        for (const image of formData.uploadedImages) {
+          submitData.append('uploadedImages', image);
         }
-        
         console.log(`Uploading ${formData.uploadedImages.length} images`);
       }
       
@@ -150,7 +147,6 @@ export const useFormHandlers = (): FormHandlerHook => {
       }
       
       console.log('Submitting form data with image source:', imageSource);
-      
       // Note: Don't set Content-Type header when using FormData
       // The browser will automatically set it with the correct boundary
       const response = await fetch('/api/generatePage', {
@@ -174,7 +170,8 @@ export const useFormHandlers = (): FormHandlerHook => {
         setFormData(prev => ({
           ...prev,
           filePath: data.filePath,
-          generatedImageUrls: data.imageUrls || []
+          generatedImageUrls: data.imageUrls || [],
+          standaloneHTML: data.standaloneHTML || '' // Store the standalone HTML
         }));
         setIsReady(true);
       } else {

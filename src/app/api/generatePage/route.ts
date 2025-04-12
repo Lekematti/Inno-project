@@ -9,6 +9,7 @@ import { buildPrompt } from '@/app/templates/prompt-builder'
 import { CacheEntry, FormData } from '@/app/api/generatePage/types/website-generator'
 import { ImageSourceType } from '@/types/formData'
 import { processImagePaths, mapImageUrls } from '@/app/api/generatePage/utils/image-path-processor';
+import { writeFileSync} from 'fs';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY as string });
 
@@ -73,6 +74,8 @@ export async function generateCustomPage(formData: FormData, imageSource: ImageS
       max_tokens: 4000,
     });
 
+    console.log('OpenAI response:', completion.choices[0]?.message);
+
     let htmlContent: string | null | undefined =
       completion.choices[0]?.message?.content;
 
@@ -95,6 +98,48 @@ export async function generateCustomPage(formData: FormData, imageSource: ImageS
     return 'Error generating page. Please check your inputs and try again.';
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    const { htmlContent, filePath } = await request.json();
+    
+    if (!htmlContent || !filePath) {
+      return NextResponse.json(
+        { error: 'Missing required parameters' },
+        { status: 400 }
+      );
+    }
+    
+    // Validate the file path to ensure it's within the gen_comp directory
+    const normalizedPath = path.normalize(filePath);
+    const absolutePath = path.join(process.cwd(), normalizedPath);
+    
+    // Security check to ensure we're only modifying files within gen_comp directory
+    if (!absolutePath.startsWith(path.join(process.cwd(), 'gen_comp'))) {
+      return NextResponse.json(
+        { error: 'Invalid file path' },
+        { status: 403 }
+      );
+    }
+    
+    // Write updated content to the file
+    writeFileSync(absolutePath, htmlContent);
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Website content updated successfully',
+    });
+    
+  } catch (error) {
+    console.error('Error updating website content:', error);
+    return NextResponse.json(
+      { error: 'Failed to update website content' },
+      { status: 500 }
+    );
+  }
+}
+
+// Add error handling and validation to the POST handler
 
 export async function POST(request: NextRequest) {
   try {
@@ -149,7 +194,24 @@ export async function POST(request: NextRequest) {
       const aiImageUrls = await fetchImages(imageInstructions ?? '', requestData.businessType as string);
       
       for (let i = 0; i < aiImageUrls.length; i++) {
-        imageUrls.push(`./images/image-${i + 1}.png`);
+        const remoteUrl = aiImageUrls[i];
+        
+        // Download and save AI-generated images
+        try {
+          const response = await fetch(remoteUrl);
+          if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`);
+          
+          const imageBuffer = Buffer.from(await response.arrayBuffer());
+          const imagePath = path.join(imagesDir, `image-${i + 1}.png`);
+          fs.writeFileSync(imagePath, imageBuffer);
+          
+          // Use relative path for the HTML
+          imageUrls.push(`./images/image-${i + 1}.png`);
+        } catch (imgError) {
+          console.error(`Error downloading AI image ${i+1}:`, imgError);
+          // Use remote URL as fallback
+          imageUrls.push(remoteUrl);
+        }
       }
     }
     
@@ -174,20 +236,34 @@ export async function POST(request: NextRequest) {
 
     // Generate HTML with images
     const htmlContent = await generateCustomPage(processedFormData as FormData, imageSource);
+    
+    // Validate that we actually got HTML content
+    if (!htmlContent || htmlContent === 'Error generating page. Please check your inputs and try again.') {
+      throw new Error('Failed to generate HTML content');
+    }
 
     // Process image paths with the output directory
     const { processedHTML, previewHTML, standaloneHTML } = processImagePaths(htmlContent, folderName, outputDir);
+
+    console.log('Generated HTML content:', htmlContent?.substring(0, 100) + '...');
+    console.log('Processed HTML content:', processedHTML?.substring(0, 100) + '...');
+    console.log('Preview HTML content:', previewHTML?.substring(0, 100) + '...');
 
     // Define the file path for the HTML file
     const filePath = path.join(outputDir, 'index.html');
 
     // Write the processed HTML file with relative paths (for file system)
     fs.writeFileSync(filePath, processedHTML);
+    
+    // Verify that processed content exists
+    if (!previewHTML || !standaloneHTML) {
+      throw new Error('Failed to process HTML content');
+    }
 
     // Return the preview HTML with absolute paths (for browser preview)
     return NextResponse.json({
       htmlContent: previewHTML,
-      standaloneHTML, // Add this for opening in new tabs
+      standaloneHTML: standaloneHTML, 
       filePath: `/gen_comp/${folderName}/index.html`,
       imageUrls: mapImageUrls(imageUrls, folderName),
       imageSource,
@@ -195,6 +271,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error generating page:', error);
-    return NextResponse.json({ error: 'Error generating page.' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Error generating page.', 
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }

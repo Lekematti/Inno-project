@@ -13,7 +13,7 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
   setFormData
 }) => {
   // Use TypeScript's type safety with ImageSourceType
-  const [imageSource, setImageSource] = useState<ImageSourceType>('ai');
+  const [imageSource, setImageSource] = useState<ImageSourceType>(formData.imageSource || 'ai');
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [localError, setLocalError] = useState<string>('');
@@ -52,6 +52,7 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
     
     // Create updated form data to pass to parent
     const updatedFormData = {
+      ...formData,
       imageSource,
       imageInstructions: imageSource === 'ai' ? formData.imageInstructions : '',
       uploadedImages: imageSource === 'manual' ? uploadedImages : [],
@@ -70,6 +71,7 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
     
     // Update form data when image source changes
     setFormData({
+      ...formData,
       imageSource: newSource
     });
   };
@@ -87,6 +89,7 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
       
       // Update the form data
       setFormData({
+        ...formData,
         uploadedImages: newUploadedImages,
         userImageUrls: allPreviewUrls
       });
@@ -112,6 +115,7 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
     
     // Update the form data
     setFormData({
+      ...formData,
       uploadedImages: newImages,
       userImageUrls: newPreviewUrls
     });
@@ -121,6 +125,7 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
       setLocalError('Please upload at least one image or select a different option');
     }
   };
+
 
   return (
     <div className="step-container">

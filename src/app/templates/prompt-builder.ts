@@ -24,7 +24,7 @@ export function buildPrompt(
     "Use a professional, business-appropriate color scheme with good contrast and readability";
  
   return `
-    You are an expert frontend developer specializing in creating visually stunning, conversion-optimized websites. Create a production-ready HTML webpage using the Bootstrap 5 framework for a ${templateType} business.
+    You are an expert frontend developer specializing in creating modern, visually stunning, conversion-optimized websites. Create a production-ready HTML webpage using the Bootstrap 5.3.2 framework for a ${templateType} business.
     
     BUSINESS DETAILS:
     - Name: ${businessDetails.name || 'Company Name'}
@@ -46,37 +46,62 @@ export function buildPrompt(
     - Interactive Elements: ${layoutVariations.interactiveElements}
     - Specialty Section: ${layoutVariations.specialtySection}
     
+    BOOTSTRAP INTEGRATION:
+    1. Use the following exact CDN links in the <head> section:
+       <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+       <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
+    2. For additional interactivity, include:
+       <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js" defer></script>
+    3. Ensure Bootstrap classes are applied consistently throughout the document
+    4. Leverage Bootstrap's utility classes (flex, spacing, etc.) for modern layouts
+    5. Use Bootstrap components like cards, modals, and accordions where appropriate
+    
+    MODERN DESIGN REQUIREMENTS:
+    1. Create a hero section with compelling headline and clear value proposition
+    2. Use clean, minimalist design with strategic use of whitespace
+    3. Implement a consistent vertical rhythm with proper spacing between sections
+    4. Use card-based layouts for content grouping where appropriate
+    5. Create balanced, asymmetrical layouts for visual interest
+    6. Implement subtle parallax or scroll effects for key sections
+    7. Use gradient overlays for image-based sections to ensure text readability
+    
     FOOTER REQUIREMENT:
     Include a professionally designed footer with multiple columns:
     - Contact information (address, phone, email) with appropriate icons
     - Quick links to sections appropriate to the business type
     - Social media links with appropriate icons from the selected icon library
-    - Copyright information with current year
+    - Copyright information with current year (2025)
+    - Newsletter subscription field with proper validation
     
     TECHNICAL REQUIREMENTS:
-    1. Use Bootstrap 5 CSS framework via CDN (latest stable version) for styling WITHOUT integrity attributes
+    1. Implement a fully semantic HTML5 structure (header, nav, main, section, article, aside, footer)
     2. Embed all custom CSS directly into a <style> tag within the <head> of the HTML file
-    3. Implement a fully semantic HTML5 structure with proper hierarchy (header, nav, main, section, article, aside, footer)
-    4. Include comprehensive meta tags for SEO optimization including Open Graph and Twitter Card tags
-    5. Create a fully responsive design with optimized breakpoints for all devices (mobile-first approach)
-    6. Implement ARIA attributes and semantic elements for full accessibility (WCAG 2.1 AA compliance)
-    7. For icons, use ${getIconLibraryInstructions(layoutVariations.iconSet)}
-    8. Create elegant hover animations and transitions using CSS (subtle, professional, not flashy)
-    9. Add schema.org JSON-LD structured data appropriate for the business type
-    10. Implement form validation with user-friendly error handling and focus states
-    11. Ensure cross-browser compatibility and optimize for page speed (minimize nested elements, avoid excessive DOM depth)
-    12. IMPORTANT: Remove all integrity attributes from CDN links to prevent loading issues
-    13. IMPORTANT: Use defer attribute for non-critical scripts to improve page load performance
-    14. IMPORTANT: Ensure all scripts and resources are properly loaded and initialized
-    15. IMPORTANT: Use relative font sizes (rem/em) for better accessibility and responsiveness
+    3. Include comprehensive meta tags for SEO optimization including Open Graph and Twitter Card tags
+    4. Create a fully responsive design with optimized breakpoints for all devices (mobile-first approach)
+    5. Implement ARIA attributes and semantic elements for full accessibility (WCAG 2.1 AA compliance)
+    6. For icons, use ${getIconLibraryInstructions(layoutVariations.iconSet)}
+    7. Create elegant hover animations and transitions using CSS (subtle, professional, not flashy)
+    8. Add schema.org JSON-LD structured data appropriate for the business type
+    9. Implement form validation with user-friendly error handling and focus states
+    10. Use defer attribute for non-critical scripts to improve page load performance
+    11. Use relative font sizes (rem/em) for better accessibility and responsiveness
+    12. Implement CSS custom properties for color themes and consistent styling
     
-    ADVANCED REQUIREMENTS:
-    1. Implement subtle scroll animations for key content sections using pure CSS
-    2. Create a persistent, mobile-friendly navigation with smooth collapse/expand
-    3. Ensure high contrast ratios between text and backgrounds (at least 4.5:1 for normal text)
-    4. Include properly optimized heading hierarchy (H1-H6) for improved SEO and accessibility
-    5. Add appropriate microinteractions (hover states, focus indicators, etc.) for interactive elements
-    6. Build with performance in mind (avoid large DOM trees, optimize CSS selectors)
+    ADVANCED FEATURES:
+    1. Create a sticky header that minimizes on scroll
+    2. Implement lazy loading for images with the loading="lazy" attribute
+    3. Add subtle scroll animations for key content elements using Intersection Observer API
+    4. Implement a mobile-friendly hamburger menu with smooth transitions
+    5. Create microinteractions for buttons and interactive elements
+    6. Use CSS Grid for complex layout sections alongside Bootstrap's grid system
+    7. Implement color mode toggle (light/dark) using CSS variables if appropriate for the business
+    
+    CUTTING-EDGE ELEMENTS:
+    1. Use CSS clip-path for creating unique section dividers and shapes
+    2. Implement subtle background animations using CSS
+    3. Use modern CSS techniques like backdrop-filter for frosted glass effects
+    4. Create depth with subtle shadows and layering techniques
+    5. Implement CSS scroll-snap for certain scrollable sections if appropriate
     
     ONLY return the complete HTML file with no markdown, explanations, or additional text.
     The code must be production-ready with no placeholders or TODO comments.

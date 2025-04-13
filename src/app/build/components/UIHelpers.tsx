@@ -1,9 +1,14 @@
-import { Button } from 'react-bootstrap';
-import { FormData as GlobalFormData } from '@/types/formData';
+import { Button } from 'react-bootstrap'
+import { FormData as GlobalFormData } from '@/types/formData'
 
 export const ColorTips = () => (
-  <div className="color-info alert alert-info mt-2 mb-3 p-2" style={{ fontSize: '0.85rem' }}>
-    <p className="mb-1"><strong>🎨 Color Tips:</strong></p>
+  <div
+    className="color-info alert alert-info mt-2 mb-3 p-2"
+    style={{ fontSize: '0.85rem' }}
+  >
+    <p className="mb-1">
+      <strong>🎨 Color Tips:</strong>
+    </p>
     <ul className="mb-0 ps-3">
       <li>Choose colors that reflect your brand personality</li>
       <li>Industry-specific suggestions are provided as buttons</li>
@@ -11,7 +16,7 @@ export const ColorTips = () => (
       <li>Good color choice improves user experience and conversions</li>
     </ul>
   </div>
-);
+)
 
 export const LoadingIndicator = () => (
   <div
@@ -30,74 +35,125 @@ export const LoadingIndicator = () => (
       </output>
     </div>
   </div>
-);
+)
 
-export const DownloadSection = ({ generatedHtml, formData }: { 
-  generatedHtml: string, 
-  formData: GlobalFormData 
+export const DownloadSection = ({
+  generatedHtml,
+  formData,
+}: {
+  generatedHtml: string
+  formData: GlobalFormData
 }) => {
   const handleShare = async () => {
     try {
-      const blob = new Blob([generatedHtml], { type: 'text/html' });
-      const file = new File([blob], `${formData.businessType || 'website'}-site.html`, { type: 'text/html' });
+      const blob = new Blob([generatedHtml], { type: 'text/html' })
+      const file = new File(
+        [blob],
+        `${formData.businessType || 'website'}-site.html`,
+        { type: 'text/html' }
+      )
 
       if (navigator.share && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: `${formData.businessType || 'Website'} - Generated Site`,
-          text: 'Check out my new website created with WebWeave!'
-        });
+          text: 'Check out my new website created with WebWeave!',
+        })
       } else {
-        alert('Web Share API is not supported in your browser.');
+        alert('Web Share API is not supported in your browser.')
       }
     } catch (error) {
-      console.error('Error sharing:', error);
+      console.error('Error sharing:', error)
     }
-  };
+  }
 
   return (
     <div className="mt-4 mb-5 text-center">
       <h3>Your website is ready!</h3>
-      <p className="text-muted">You can now download or open your website in a new tab and see the functionality of it.</p>
+      <p className="text-muted">
+        You can now download or open your website in a new tab and see the
+        functionality of it.
+      </p>
       <div className="d-flex justify-content-center gap-3 flex-wrap">
-        <Button 
+        <Button
           variant="primary"
           onClick={() => {
-            const blob = new Blob([generatedHtml], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            window.open(url, '_blank');
+            let htmlWithAbsolutePaths = generatedHtml
+
+            htmlWithAbsolutePaths = htmlWithAbsolutePaths.replace(
+              /src="\/uploads\//g,
+              `src="${window.location.origin}/uploads/`
+            )
+
+            htmlWithAbsolutePaths = htmlWithAbsolutePaths.replace(
+              /background-image:\s*url\(['"]?\/uploads\//g,
+              `background-image: url('${window.location.origin}/uploads/`
+            )
+
+            htmlWithAbsolutePaths = htmlWithAbsolutePaths.replace(
+              /content="\/uploads\//g,
+              `content="${window.location.origin}/uploads/`
+            )
+
+            const blob = new Blob([htmlWithAbsolutePaths], {
+              type: 'text/html',
+            })
+            const url = URL.createObjectURL(blob)
+            window.open(url, '_blank')
           }}
         >
           Open in New Tab
         </Button>
-        <Button 
+        <Button
           variant="outline-secondary"
           onClick={() => {
-            const blob = new Blob([generatedHtml], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${formData.businessType || 'website'}-site.html`;
-            document.body.appendChild(a);
-            a.click();
-            URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            let htmlWithAbsolutePaths = generatedHtml
+
+            htmlWithAbsolutePaths = htmlWithAbsolutePaths.replace(
+              /src="\/uploads\//g,
+              `src="${window.location.origin}/uploads/`
+            )
+
+            htmlWithAbsolutePaths = htmlWithAbsolutePaths.replace(
+              /background-image:\s*url\(['"]?\/uploads\//g,
+              `background-image: url('${window.location.origin}/uploads/`
+            )
+
+            htmlWithAbsolutePaths = htmlWithAbsolutePaths.replace(
+              /content="\/uploads\//g,
+              `content="${window.location.origin}/uploads/`
+            )
+
+            const blob = new Blob([htmlWithAbsolutePaths], {
+              type: 'text/html',
+            })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `${formData.businessType || 'website'}-site.html`
+            document.body.appendChild(a)
+            a.click()
+            URL.revokeObjectURL(url)
+            document.body.removeChild(a)
           }}
         >
           Download HTML
         </Button>
-        <Button
-          variant="outline-primary"
-          onClick={handleShare}
-        >
+        <Button variant="outline-primary" onClick={handleShare}>
           Share Website
         </Button>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export const NoPage = ({ isLoading, error }: { isLoading: boolean, error: string }) => (
+export const NoPage = ({
+  isLoading,
+  error,
+}: {
+  isLoading: boolean
+  error: string
+}) => (
   <div
     style={{
       display: 'flex',
@@ -120,4 +176,4 @@ export const NoPage = ({ isLoading, error }: { isLoading: boolean, error: string
     )}
     {error && <p className="text-danger mt-2">{error}</p>}
   </div>
-);
+)

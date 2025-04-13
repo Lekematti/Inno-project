@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Button, Form, Card, Alert, Row, Col } from 'react-bootstrap'
+import { Button, Form, Card, Alert, Row, Col, Modal } from 'react-bootstrap'
 import Image from 'next/image'
 
 interface WebsiteEditorProps {
@@ -30,10 +30,12 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
   interface EditableElement {
     id: string
     content: string
-    type: 'text' | 'image'
+    type: 'text' | 'image' | 'backgroundImage'
     element?: string // For text elements
     alt?: string // For image elements
     displayName: string
+    selector?: string // For background image elements
+    path?: string // Path to the element in the DOM
   }
 
   const [editableElements, setEditableElements] = useState<EditableElement[]>(
@@ -46,38 +48,141 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
   const [showTips, setShowTips] = useState<boolean>(true)
   const [showEditPanel, setShowEditPanel] = useState<boolean>(false)
 
-  // Extract editable elements
+  // Add this to the component state
+  const [showAddImageModal, setShowAddImageModal] = useState(false)
+  const [imageInsertLocation, setImageInsertLocation] = useState('')
+  const [newImageSrc, setNewImageSrc] = useState('')
+
+  // Extract editable elements with better identification
   useEffect(() => {
     if (htmlContent) {
       setEditableHtml(htmlContent)
       const parser = new DOMParser()
       const doc = parser.parseFromString(htmlContent, 'text/html')
 
+      // Find all text elements with meaningful content
       const textElements = Array.from(
-        doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, span.editable')
-      ).map<EditableElement>((el, index) => ({
-        id: `text-${index}`,
-        content: el.textContent ?? '',
-        type: 'text',
-        element: el.tagName.toLowerCase(),
-        displayName: `${el.tagName.toLowerCase()}: ${(
-          el.textContent ?? ''
-        ).substring(0, 20)}...`,
-      }))
-
-      const imgElements = Array.from(doc.querySelectorAll('img')).map(
-        (el, index): EditableElement => ({
-          id: `img-${index}`,
-          content: el.getAttribute('src') ?? '',
-          type: 'image',
-          alt: el.getAttribute('alt') ?? '',
-          displayName: el.getAttribute('alt') ?? `Image ${index + 1}`,
+        doc.querySelectorAll(
+          'p, h1, h2, h3, h4, h5, h6, li, span, div, a, button, label'
+        )
+      )
+        .filter((el) => el.textContent && el.textContent.trim().length > 0)
+        .map((el): EditableElement => {
+          // Generate a unique ID for each element based on content and position
+          const path = generateElementPath(el)
+          return {
+            id: `text-${path}`,
+            content: el.textContent ?? '',
+            type: 'text',
+            element: el.tagName.toLowerCase(),
+            path: path,
+            displayName: `${el.tagName.toLowerCase()}: ${(
+              el.textContent ?? ''
+            ).substring(0, 20)}${
+              (el.textContent?.length ?? 0) > 20 ? '...' : ''
+            }`,
+          }
         })
+
+      // Find all image elements
+      const imgElements = Array.from(doc.querySelectorAll('img')).map(
+        (el): EditableElement => {
+          const path = generateElementPath(el)
+          return {
+            id: `img-${path}`,
+            content: el.getAttribute('src') ?? '',
+            type: 'image',
+            path: path,
+            alt: el.getAttribute('alt') ?? '',
+            displayName: el.getAttribute('alt') ?? `Image at ${path}`,
+          }
+        }
       )
 
-      setEditableElements([...textElements, ...imgElements])
+      // Find elements with background images in inline styles
+      const bgImageElements = Array.from(doc.querySelectorAll('*'))
+        .filter((el) => {
+          const style = el.getAttribute('style')
+          return (
+            style &&
+            style.includes('background-image') &&
+            style.includes('url(')
+          )
+        })
+        .map((el): EditableElement => {
+          const path = generateElementPath(el)
+          const style = el.getAttribute('style') ?? ''
+          const regex = /background-image:\s*url\(['"]?([^'"]+)['"]?\)/
+          const urlMatch = regex.exec(style)
+          const imageUrl = urlMatch ? urlMatch[1] : ''
+          return {
+            id: `bg-${path}`,
+            content: imageUrl,
+            type: 'backgroundImage',
+            element: el.tagName.toLowerCase(),
+            path: path,
+            selector: generateUniqueSelector(el as HTMLElement),
+            displayName: `Background: ${el.tagName.toLowerCase()}${
+              el.className ? '.' + el.className.replace(/\s+/g, '.') : ''
+            }`,
+          }
+        })
+
+      setEditableElements([...textElements, ...imgElements, ...bgImageElements])
     }
   }, [htmlContent])
+
+  // Function to generate a unique CSS selector for an element
+  const generateUniqueSelector = (element: HTMLElement): string => {
+    if (element.id) {
+      return `#${element.id}`
+    }
+
+    if (element.className) {
+      const classes = element.className.trim().split(/\s+/)
+      if (classes.length > 0) {
+        // Process the first class if needed
+      }
+    }
+
+    // Add a data attribute to make it uniquely identifiable
+    const uniqueId = `editable-${Math.random().toString(36).substring(2, 9)}`
+    element.setAttribute('data-edit-id', uniqueId)
+
+    return `[data-edit-id="${uniqueId}"]`
+  }
+
+  // Function to generate a unique path for an element
+  const generateElementPath = (element: Element): string => {
+    const path: string[] = []
+    let current = element
+
+    while (current && current.nodeType === Node.ELEMENT_NODE) {
+      let selector = current.nodeName.toLowerCase()
+
+      // Add ID if available
+      if (current.id) {
+        selector += '#' + current.id
+      }
+      // Otherwise add position among siblings
+      else {
+        let sibling = current.previousElementSibling
+        let index = 0
+        while (sibling) {
+          if (sibling.nodeName === current.nodeName) {
+            index++
+          }
+          sibling = sibling.previousElementSibling
+        }
+        selector += `:nth-of-type(${index + 1})`
+      }
+      path.unshift(selector)
+      current = current.parentElement as Element
+    }
+
+    // Hash the path for shorter IDs
+    return btoa(path.join('>')).replace(/[+/=]/g, '').substring(0, 12)
+  }
 
   // Update iframe and add click handlers
   useEffect(() => {
@@ -96,11 +201,16 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
           .text-element:hover { outline:2px dashed #5c7cfa; background:rgba(92,124,250,0.1); }
           .image-element { outline:1px dashed rgba(92,124,250,0.5); }
           .image-element:hover { outline:2px dashed #5c7cfa; filter:brightness(1.05); }
+          .bg-image-element { outline:1px dashed rgba(250,92,92,0.5); }
+          .bg-image-element:hover { outline:2px dashed #fa5c5c; background:rgba(250,92,92,0.1); }
           .active-element { outline:2px solid #0d6efd !important; box-shadow:0 0 0 4px rgba(13,110,253,0.25); }
-          .editable-highlight:hover::before {
+          .editable-highlight::before {
             content:"Click to edit"; position:absolute; top:-30px; left:50%; transform:translateX(-50%);
             background:#0d6efd; color:white; padding:3px 8px; border-radius:4px; font-size:12px;
-            white-space:nowrap; z-index:1000; pointer-events:none; opacity:0.9;
+            white-space:nowrap; z-index:1000; pointer-events:none; opacity:0; transition: opacity 0.2s;
+          }
+          .editable-highlight:hover::before {
+            opacity:0.9;
           }
         `
         doc.head.appendChild(style)
@@ -108,43 +218,128 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
         // Add handlers to text elements
         editableElements
           .filter((el) => el.type === 'text')
-          .forEach((element, index) => {
-            const elements = Array.from(
-              doc.querySelectorAll(element.element ?? 'p')
-            )
-            if (elements[index]) {
-              const el = elements[index]
-              el.classList.add('editable-highlight', 'text-element')
-              if (selectedElement === element.id)
-                el.classList.add('active-element')
-              el.addEventListener('click', (e) => {
-                e.preventDefault()
-                setSelectedElement(element.id)
-                setShowEditPanel(true)
-              })
+          .forEach((element) => {
+            try {
+              // Find element by path instead of index
+              const path = element.path
+              if (!path) return
+
+              const el = findElementByPath(doc, element)
+
+              if (el) {
+                el.classList.add('editable-highlight', 'text-element')
+                if (selectedElement === element.id)
+                  el.classList.add('active-element')
+                el.addEventListener('click', (e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setSelectedElement(element.id)
+                  setShowEditPanel(true)
+                })
+              }
+            } catch (err) {
+              console.error('Error adding handler to text element:', err)
             }
           })
 
         // Add handlers to image elements
         editableElements
           .filter((el) => el.type === 'image')
-          .forEach((element, index) => {
-            const images = Array.from(doc.querySelectorAll('img'))
-            if (images[index]) {
-              const img = images[index]
-              img.classList.add('editable-highlight', 'image-element')
-              if (selectedElement === element.id)
-                img.classList.add('active-element')
-              img.addEventListener('click', (e) => {
-                e.preventDefault()
-                setSelectedElement(element.id)
-                setShowEditPanel(true)
-              })
+          .forEach((element) => {
+            try {
+              const el = findElementByPath(doc, element)
+              if (el) {
+                el.classList.add('editable-highlight', 'image-element')
+                if (selectedElement === element.id)
+                  el.classList.add('active-element')
+                el.addEventListener('click', (e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setSelectedElement(element.id)
+                  setShowEditPanel(true)
+                })
+              }
+            } catch (err) {
+              console.error('Error adding handler to image element:', err)
+            }
+          })
+
+        // Add handlers to background image elements
+        editableElements
+          .filter((el) => el.type === 'backgroundImage')
+          .forEach((element) => {
+            try {
+              if (element.selector) {
+                const el = doc.querySelector(element.selector)
+                if (el) {
+                  el.classList.add('editable-highlight', 'bg-image-element')
+                  if (selectedElement === element.id)
+                    el.classList.add('active-element')
+                  el.addEventListener('click', (e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setSelectedElement(element.id)
+                    setShowEditPanel(true)
+                  })
+                }
+              }
+            } catch (err) {
+              console.error(
+                'Error adding handler to background image element:',
+                err
+              )
             }
           })
       }
     }
   }, [editableHtml, iframeRef, editableElements, selectedElement])
+
+  // Helper function to find an element by its path
+  const findElementByPath = (
+    doc: Document,
+    element: EditableElement
+  ): HTMLElement | null => {
+    if (!element.path) return null
+
+    // Try first with the selector if we have one
+    if (element.selector) {
+      try {
+        const el = doc.querySelector(element.selector)
+        if (el) return el as HTMLElement
+      } catch (e) {
+        console.error('Error with selector lookup:', e)
+      }
+    }
+
+    // Otherwise use the ID to look up the element in our array
+    const elementData = editableElements.find((el) => el.id === element.id)
+    if (!elementData) return null
+
+    // For text elements, we'll look up by content and tag
+    if (element.type === 'text' && element.element) {
+      const candidates = Array.from(
+        doc.querySelectorAll(element.element)
+      ).filter((el) => el.textContent?.trim() === elementData.content.trim())
+
+      if (candidates.length === 1) {
+        return candidates[0] as HTMLElement
+      }
+    }
+
+    // For images, try src attribute
+    if (element.type === 'image') {
+      const imgUrl = elementData.content
+      const candidates = Array.from(doc.querySelectorAll('img')).filter(
+        (img) => img.getAttribute('src') === imgUrl
+      )
+
+      if (candidates.length === 1) {
+        return candidates[0] as HTMLElement
+      }
+    }
+
+    return null
+  }
 
   // Update content functions
   const updateContent = (
@@ -159,53 +354,84 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
       )
     )
 
+    // Get the element data
+    const elementData = editableElements.find((el) => el.id === elementId)
+    if (!elementData) return
+
     // Update HTML
     const parser = new DOMParser()
     const doc = parser.parseFromString(editableHtml, 'text/html')
-    const elementIndex = parseInt(elementId.split('-')[1], 10)
 
     if (type === 'text') {
-      const elements = Array.from(
-        doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, span.editable')
-      )
-      if (elements[elementIndex])
-        elements[elementIndex].textContent = newContent
+      // Find the element by its path/ID instead of index
+      const element = findElementByPath(doc, elementData)
+      if (element) {
+        element.textContent = newContent
+      }
     } else if (type === 'image') {
-      const images = Array.from(doc.querySelectorAll('img'))
-      if (images[elementIndex]) {
-        // Log before update
-        console.log(
-          `Updating image ${elementIndex} from:`,
-          images[elementIndex].getAttribute('src'),
-          'to:',
-          newContent
+      // Find the element by its path/ID instead of index
+      const element = findElementByPath(doc, elementData)
+      if (element && element.tagName.toLowerCase() === 'img') {
+        element.setAttribute('src', newContent)
+      }
+    } else if (type === 'backgroundImage') {
+      // Find the element using the stored selector
+      const element = doc.querySelector(elementData.selector || '')
+      if (element) {
+        const style = element.getAttribute('style') ?? ''
+
+        // Update the background-image URL
+        const newStyle = style.replace(
+          /background-image:\s*url\(['"]?[^'"]+['"]?\)/,
+          `background-image: url('${newContent}')`
         )
 
-        // Set the new source
-        images[elementIndex].setAttribute('src', newContent)
-
-        // For displaying images in the editor iframe, update paths for different image types
-        if (newContent.startsWith('data:image')) {
-          // Base64 images can be used directly
-        } else if (newContent.startsWith('/api/images/')) {
-          // Already using the API route
-        } else if (
-          !newContent.startsWith('http') &&
-          !newContent.startsWith('/')
-        ) {
-          // Convert relative paths to use API route
-          const imageFilename = newContent.split('/').pop()
-          if (imageFilename) {
-            images[elementIndex].setAttribute(
-              'src',
-              `/api/images/${imageFilename}`
-            )
-          }
-        }
+        element.setAttribute('style', newStyle)
       }
     }
 
     setEditableHtml(doc.documentElement.outerHTML)
+  }
+
+  // Function to add a new image
+  const addNewImage = () => {
+    if (!newImageSrc || !imageInsertLocation) return
+
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(editableHtml, 'text/html')
+
+    // Find the target element where we want to insert the image
+    const targetElement = doc.querySelector(imageInsertLocation)
+    if (!targetElement) return
+
+    // Create a new image element
+    const newImage = doc.createElement('img')
+    newImage.src = newImageSrc
+    newImage.alt = 'New image'
+    newImage.className = 'img-fluid'
+
+    // Insert the image
+    targetElement.appendChild(newImage)
+
+    // Update the HTML and refresh the editor
+    setEditableHtml(doc.documentElement.outerHTML)
+
+    // Update editable elements to include the new image
+    const imgIndex = editableElements.filter((el) => el.type === 'image').length
+    setEditableElements((prev) => [
+      ...prev,
+      {
+        id: `img-${imgIndex}`,
+        content: newImageSrc,
+        type: 'image',
+        alt: 'New image',
+        displayName: `Image ${imgIndex + 1} (new)`,
+      },
+    ])
+
+    // Reset form
+    setShowAddImageModal(false)
+    setNewImageSrc('')
   }
 
   // Handle save
@@ -303,6 +529,115 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
             </div>
           </div>
 
+          {/* Add new button for adding images */}
+          <div className="mt-3 d-flex justify-content-between">
+            <Button
+              variant="outline-success"
+              size="sm"
+              onClick={() => setShowAddImageModal(true)}
+            >
+              <i className="bi bi-plus-circle me-1"></i> Add New Image
+            </Button>
+
+            <Button variant="primary" onClick={handleSave}>
+              <i className="bi bi-save me-1"></i> Save Changes
+            </Button>
+          </div>
+
+          {/* Modal for adding new images */}
+          <Modal
+            show={showAddImageModal}
+            onHide={() => setShowAddImageModal(false)}
+          >
+            <Modal.Header closeButton>
+              <Modal.Title>Add New Image</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form.Group className="mb-3">
+                <Form.Label>Upload image</Form.Label>
+                <Form.Control
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const target = e.target as HTMLInputElement
+                    if (target.files?.[0]) {
+                      const reader = new FileReader()
+                      reader.onload = (event) => {
+                        if (event.target?.result) {
+                          setNewImageSrc(event.target.result as string)
+                        }
+                      }
+                      reader.readAsDataURL(target.files[0])
+                    }
+                  }}
+                />
+              </Form.Group>
+
+              <div className="text-center my-2">- or -</div>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Image URL</Form.Label>
+                <Form.Control
+                  type="text"
+                  placeholder="https://example.com/image.jpg"
+                  value={newImageSrc}
+                  onChange={(e) => setNewImageSrc(e.target.value)}
+                />
+              </Form.Group>
+
+              <Form.Group>
+                <Form.Label>Insert location</Form.Label>
+                <Form.Select
+                  value={imageInsertLocation}
+                  onChange={(e) => setImageInsertLocation(e.target.value)}
+                >
+                  <option value="">Select where to add the image</option>
+                  <option value="header">Header</option>
+                  <option value=".container">Main container</option>
+                  <option value="main">Main content</option>
+                  <option value="section:first-of-type">First section</option>
+                  <option value="section:last-of-type">Last section</option>
+                  <option value="footer">Footer</option>
+                </Form.Select>
+              </Form.Group>
+
+              {newImageSrc && (
+                <div className="mt-3 text-center">
+                  <p>
+                    <strong>Preview:</strong>
+                  </p>
+                  <Image
+                    src={newImageSrc || '/placeholder.png'}
+                    alt="Preview"
+                    width={200}
+                    height={200}
+                    style={{
+                      maxWidth: '100%',
+                      maxHeight: '200px',
+                      objectFit: 'contain',
+                    }}
+                    unoptimized
+                  />
+                </div>
+              )}
+            </Modal.Body>
+            <Modal.Footer>
+              <Button
+                variant="secondary"
+                onClick={() => setShowAddImageModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={addNewImage}
+                disabled={!newImageSrc || !imageInsertLocation}
+              >
+                Add Image
+              </Button>
+            </Modal.Footer>
+          </Modal>
+
           {/* Status messages */}
           {saveSuccess && (
             <Alert variant="success" className="mt-2 py-2">
@@ -322,11 +657,26 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
           {/* Edit panel */}
           {selectedElement && showEditPanel ? (
             <Card className="mb-3">
-              <Card.Header className="bg-primary text-white py-2">
-                <i className="bi bi-pencil me-2"></i>
-                {selectedElementData?.type === 'text'
-                  ? 'Edit Text'
-                  : 'Edit Image'}
+              <Card.Header className="bg-primary text-white py-2 d-flex justify-content-between align-items-center">
+                <div>
+                  <i
+                    className={`bi ${
+                      selectedElementData?.type === 'text'
+                        ? 'bi-pencil'
+                        : selectedElementData?.type === 'image'
+                        ? 'bi-image'
+                        : 'bi-brush'
+                    } me-2`}
+                  ></i>
+                  {selectedElementData?.type === 'text'
+                    ? 'Edit Text'
+                    : selectedElementData?.type === 'image'
+                    ? 'Edit Image'
+                    : 'Edit Background Image'}
+                </div>
+                <small className="text-white-50">
+                  {selectedElementData?.element || selectedElementData?.type}
+                </small>
               </Card.Header>
 
               <Card.Body className="p-3">
@@ -442,6 +792,84 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
                     </Button>
                   </>
                 )}
+
+                {selectedElementData?.type === 'backgroundImage' && (
+                  <>
+                    <div className="text-center mb-2 border rounded bg-light p-2">
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '100px',
+                          backgroundImage: `url(${
+                            selectedElementData.content || '/placeholder.png'
+                          })`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                        }}
+                      />
+                    </div>
+
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small fw-bold mb-1">
+                        Upload background image:
+                      </Form.Label>
+                      <Form.Control
+                        type="file"
+                        accept="image/*"
+                        size="sm"
+                        onChange={(e) => {
+                          const target = e.target as HTMLInputElement
+                          if (target.files?.[0]) {
+                            const reader = new FileReader()
+                            reader.onload = (event) => {
+                              if (event.target?.result && selectedElement) {
+                                updateContent(
+                                  selectedElement,
+                                  event.target.result as string,
+                                  'backgroundImage'
+                                )
+                              }
+                            }
+                            reader.readAsDataURL(target.files[0])
+                          }
+                        }}
+                      />
+                    </Form.Group>
+
+                    <div className="text-center small my-2">- or -</div>
+
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small fw-bold mb-1">
+                        Background image URL:
+                      </Form.Label>
+                      <Form.Control
+                        type="text"
+                        placeholder="https://example.com/image.jpg"
+                        size="sm"
+                        value={selectedElementData.content}
+                        onChange={(e) =>
+                          updateContent(
+                            selectedElement,
+                            e.target.value,
+                            'backgroundImage'
+                          )
+                        }
+                      />
+                    </Form.Group>
+
+                    <Button
+                      size="sm"
+                      variant="outline-primary"
+                      className="mt-1"
+                      onClick={() => {
+                        setSelectedElement(null)
+                        setShowEditPanel(false)
+                      }}
+                    >
+                      Done
+                    </Button>
+                  </>
+                )}
               </Card.Body>
             </Card>
           ) : (
@@ -473,7 +901,7 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
           <Card>
             <Card.Header className="bg-light py-2 d-flex justify-content-between align-items-center">
               <span>
-                <i className="bi bi-question-circle me-2"></i>Help
+                <i className="bi bi-question-circle me-2"></i>Editing Help
               </span>
               {!showTips && (
                 <Button
@@ -494,6 +922,14 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
                 </p>
                 <p className="mb-1">
                   <strong>Change images:</strong> Click any image to replace it
+                </p>
+                <p className="mb-1">
+                  <strong>Edit backgrounds:</strong> Elements with background
+                  images have red outlines on hover
+                </p>
+                <p className="mb-1">
+                  <strong>Add new images:</strong> Use the &quot;Add New
+                  Image&quot; button below the preview
                 </p>
                 <p className="mb-0">
                   <strong>Save changes:</strong> Click &quot;Save Changes&quot;

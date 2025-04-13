@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import fs from 'fs'
 import path from 'path'
-import { fetchImages } from '@/app/build/imageProcessor'
+import { fetchImages, ensureImageUrlsHaveParams } from '@/app/build/imageProcessor'
 import { generateLayoutVariations } from '@/app/api/generatePage/utils/layout-generator'
 import { getBusinessPrompt } from '@/app/templates/business-prompts'
 import { buildPrompt } from '@/app/templates/prompt-builder'
@@ -182,7 +182,12 @@ export async function POST(request: NextRequest) {
       // Save each file and collect their URLs
       for (const file of files) {
         const buffer = Buffer.from(await file.arrayBuffer());
-        const filename = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+        // Sanitize the filename to avoid problems
+        const sanitizedFilename = file.name
+          .replace(/['"]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/[^a-zA-Z0-9-_.]/g, '');
+        const filename = `${Date.now()}-${sanitizedFilename}`;
         const filePath = path.join(uploadsDir, filename);
 
         fs.writeFileSync(filePath, buffer);
@@ -218,6 +223,8 @@ export async function POST(request: NextRequest) {
       imageSource
     );
 
+    const fixedHtmlContent = ensureImageUrlsHaveParams(htmlContent, imageUrls);
+
     // Save the generated HTML
     const now = new Date();
     const timestamp = `${now.getFullYear()}-${String(
@@ -238,7 +245,7 @@ export async function POST(request: NextRequest) {
 
     // Modify the HTML content to ensure images have correct paths
     const modifiedHtml = (() => {
-      let html = htmlContent;
+      let html = fixedHtmlContent; // Using the fixed HTML content
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
       
       html = html.replace(

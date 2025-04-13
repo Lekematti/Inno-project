@@ -6,7 +6,7 @@ export type ImageSourceType = 'ai' | 'manual' | 'none';
 
 // Form data structure
 export interface FormData {
-  businessType: BusinessType | '';
+  businessType: BusinessType;
   address: string;
   phone: string;
   email: string;
@@ -21,6 +21,7 @@ export interface FormData {
   [key: `question${number}`]: string;
   templateStyle?: TemplateStyle;
   templateVariant?: string;
+  standaloneHtml?: string;
 }
 
 // Use the imported TemplateStyle for DefaultTemplateStyle

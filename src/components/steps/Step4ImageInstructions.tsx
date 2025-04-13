@@ -21,7 +21,7 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
   // Initialize from existing form data if available
   useEffect(() => {
     if (formData.imageSource) {
-      setImageSource(formData.imageSource as ImageSourceType);
+      setImageSource(formData.imageSource);
     }
     
     // If we have userImageUrls in the form data, reconstruct the preview URLs
@@ -65,7 +65,7 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
   };
 
   const handleSourceChange = (key: string | null) => {
-    const newSource = (key || 'ai') as ImageSourceType;
+    const newSource = (key ?? 'ai') as ImageSourceType;
     setImageSource(newSource);
     setLocalError('');
     
@@ -185,26 +185,29 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
                 <div className="mt-3">
                   <h5>Uploaded Images ({previewUrls.length})</h5>
                   <div className="d-flex flex-wrap gap-3 mt-2">
-                    {previewUrls.map((url, index) => (
-                      <div key={index} className="position-relative" style={{ width: '150px' }}>       
-                        <Image 
-                          src={url} 
-                          alt={`Uploaded image ${index + 1}`} 
-                          className="img-thumbnail" 
-                          width={150} 
-                          height={120} 
-                          style={{ objectFit: 'cover' }}
-                        />
-                        <Button 
-                          variant="danger" 
-                          size="sm" 
-                          className="position-absolute top-0 end-0"
-                          onClick={() => removeImage(index)}
-                        >
-                          ✕
-                        </Button>
-                      </div>
-                    ))}
+                    {previewUrls.map((url, index) => {
+                      const uniqueKey = `${url}-${index}`;
+                      return (
+                        <div key={uniqueKey} className="position-relative" style={{ width: '150px' }}>       
+                          <Image 
+                            src={url} 
+                            alt={`Uploaded image ${index + 1}`} 
+                            className="img-thumbnail" 
+                            width={150} 
+                            height={120} 
+                            style={{ objectFit: 'cover' }}
+                          />
+                          <Button 
+                            variant="danger" 
+                            size="sm" 
+                            className="position-absolute top-0 end-0"
+                            onClick={() => removeImage(index)}
+                          >
+                            ✕
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

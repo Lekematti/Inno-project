@@ -1,3 +1,4 @@
+'use client'
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
@@ -13,7 +14,7 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 })
 
-export const metadata: Metadata = {
+const metadata: Metadata = {
   title: 'AiWebsiteBuildr',
   description: 'Create your new website',
 }
@@ -24,10 +25,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        {children}
-      </body>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className="bg-gray-50 min-h-screen">{children}</body>
     </html>
   )
 }

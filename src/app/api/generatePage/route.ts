@@ -11,6 +11,7 @@ import {
   FormData,
 } from '@/app/api/generatePage/types/website-generator'
 import { ImageSourceType } from '@/types/formData'
+import { processImagePaths, mapImageUrls } from '@/app/api/generatePage/utils/image-path-processor';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY as string })
 
@@ -204,7 +205,7 @@ export async function POST(request: NextRequest) {
       colorScheme: requestData.colorScheme as string,
     };
 
-    // For questions 1-10, add them to the processed form data
+    // Add questions to the form data
     for (let i = 1; i <= 10; i++) {
       const key = `question${i}`;
       if (requestData[key]) {
@@ -217,7 +218,7 @@ export async function POST(request: NextRequest) {
       processedFormData as FormData,
       imageSource
     );
-
+      
     // Save the generated HTML
     const now = new Date();
     const timestamp = `${now.getFullYear()}-${String(
@@ -229,10 +230,6 @@ export async function POST(request: NextRequest) {
       : processedFormData.businessType;
     const fileName = `${businessType.toLowerCase()}-${timestamp}-${suffix}.html`;
     const outputDir = path.join(process.cwd(), 'gen_comp');
-
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
 
     const filePath = path.join(outputDir, fileName);
 
@@ -261,17 +258,17 @@ export async function POST(request: NextRequest) {
 
     fs.writeFileSync(filePath, modifiedHtml);
 
+    // Return the preview HTML with absolute paths (for browser preview)
     return NextResponse.json({
-      htmlContent: modifiedHtml,
-      filePath: `/gen_comp/${fileName}`,
-      imageUrls,
+      htmlContent: previewHTML,
+      standaloneHTML, // Add this for opening in new tabs
+      filePath: `/gen_comp/${folderName}/index.html`,
+      imageUrls: mapImageUrls(imageUrls, folderName),
       imageSource,
+      outputDir,
     });
   } catch (error) {
     console.error('Error generating page:', error);
-    return NextResponse.json(
-      { error: 'Error generating page.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Error generating page.' }, { status: 500 });
   }
 }

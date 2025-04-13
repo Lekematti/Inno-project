@@ -49,6 +49,16 @@ export function processImageRequirements(
   
   // If no valid business type or no user requests, return empty array
   if (!isValidType || userRequests.length === 0) {
+    // Fallback to default template if we have no user requests but a valid business type
+    if (isValidType) {
+      console.log('No valid user requests detected, using default template');
+      return templateImageRequirements[normalizedType].map(req => ({
+        description: createEnhancedPrompt(req.description, req.subject, req.style, normalizedType),
+        style: req.style as 'real' | 'artistic',
+        width: req.width,
+        height: req.height
+      }));
+    }
     return [];
   }
   
@@ -116,6 +126,20 @@ function extractImageRequests(userInput: string): ImageRequest[] {
         height: 600
       });
     }
+  }
+  
+  // If no image requests were detected but the user input isn't empty,
+  // try to create a generic request from the entire input
+  if (requests.length === 0 && userInput.trim().length > 10) {
+    // Just use the first 100 characters as a generic description
+    const genericDescription = userInput.trim().substring(0, 100);
+    requests.push({
+      description: genericDescription,
+      subject: 'general',
+      style: 'artistic',
+      width: 800,
+      height: 600
+    });
   }
   
   return requests;
@@ -302,70 +326,6 @@ function createEnhancedPrompt(
 }
 
 /**
- * Handles image processing for website generation
- */
-
-/**
- * Parses user instructions into structured image requests
- */
-export function parseImageInstructions(instructions: string): Array<{
-  description: string;
-  style: string;
-  width: number;
-  height: number;
-}> {
-  if (!instructions || instructions.trim().toLowerCase() === 'none') {
-    return [];
-  }
-  const results = [];
-  const segments = instructions
-    .split(/[.;,\n]+/)
-    .map(s => s.trim())
-    .filter(s => s.length > 10);
-  for (const segment of segments) {
-    // Skip segments that don't seem to describe images
-    if (!/image|photo|picture|logo|banner|gallery|visual/i.test(segment)) {
-      continue;
-    }
-
-    // Determine style based on keywords
-    const style = /realistic|real|photo|photograph|actual/i.test(segment) ? 'real' : 'artistic';
-
-    // Clean up the description
-    const description = segment
-      .replace(/realistic|artistic|real|style/gi, '')
-      .replace(/i need|i want|please add|include|create|make|generate/gi, '')
-      .replace(/an image of|a photo of|a picture of/gi, '')
-      .trim();
-
-    if (description.length < 5) continue;
-
-    // Set dimensions based on content type
-    let width = 800, height = 600;
-
-    if (/banner|header|cover|hero/i.test(segment)) {
-      width = 1200; height = 400;
-    } else if (/portrait|person|staff|team|employee|chef/i.test(segment)) {
-      width = 600; height = 800;
-    } else if (/logo|icon|symbol/i.test(segment)) {
-      width = 400; height = 400;
-    }
-
-    results.push({ description, style, width, height });
-  }
-
-  // Fallback if no images were detected
-  if (results.length === 0 && instructions.length > 10) {
-    results.push({
-      description: instructions.substring(0, 100).trim(),
-      style: 'artistic',
-      width: 800, height: 600
-    });
-  }
-  return results;
-}
-
-/**
  * Checks if a description is too complex for real-style images
  */
 export function isDescriptionTooComplex(description: string): boolean {
@@ -413,6 +373,29 @@ export async function fetchImages(
   try {
     // Process the requirements based on user input and business type
     const imageRequests = processImageRequirements(imageInstructions, businessType);
+    
+    // Check if we got any requests
+    if (imageRequests.length === 0) {
+      console.log('No valid image requests processed. Using default template.');
+      // Get the default template for this business type
+      const normalizedType = businessType.toLowerCase() as BusinessType;
+      if (['restaurant', 'logistics', 'professional'].includes(normalizedType)) {
+        // Use default template images
+        const defaultRequests = templateImageRequirements[normalizedType].map(req => ({
+          description: createEnhancedPrompt(req.description, req.subject, req.style, normalizedType),
+          style: req.style as 'real' | 'artistic',
+          width: req.width,
+          height: req.height
+        }));
+        
+        // Use these default requests as our processed requests
+        for (const req of defaultRequests) {
+          imageRequests.push(req);
+        }
+      }
+    }
+    
+    // Generate unique identifiers for the image URLs
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 8);
     
@@ -433,10 +416,12 @@ export async function fetchImages(
       
       // Generate a unique filename using multiple uniqueness factors
       const uniqueId = `${timestamp}-${randomId}-${i+1}-${descHash}`;
+      
+      // Create sanitized description with proper URL encoding
       const encodedDescription = encodeURIComponent(description);
       
       // Create URL with unique filename but keep description in query params for generation
-      const url = `https://webweave-imagegen.onrender.com/jukka/images/${uniqueId}-${encodedDescription.substring(0, 30)}.jpg?description=${encodedDescription}&width=${width}&height=${height}&style=${finalStyle}`;
+      const url = `https://webweave-imagegen.onrender.com/jukka/images/${uniqueId}-${encodeURIComponent(description.substring(0, 30))}.jpg?description=${encodedDescription}&width=${width}&height=${height}&style=${finalStyle}`;
       
       console.log(`Generating ${finalStyle} image (${i+1}/${imageRequests.length}): "${description.substring(0, 60)}${description.length > 60 ? '...' : ''}"`);
       imageUrls.push(url);

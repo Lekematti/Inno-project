@@ -6,93 +6,143 @@ import { fetchImages } from '@/app/build/imageProcessor'
 import { generateLayoutVariations } from '@/app/api/generatePage/utils/layout-generator'
 import { getBusinessPrompt } from '@/app/templates/business-prompts'
 import { buildPrompt } from '@/app/templates/prompt-builder'
-import { CacheEntry, FormData } from '@/app/api/generatePage/types/website-generator'
+import {
+  CacheEntry,
+  FormData,
+} from '@/app/api/generatePage/types/website-generator'
 import { ImageSourceType } from '@/types/formData'
 import { processImagePaths, mapImageUrls } from '@/app/api/generatePage/utils/image-path-processor';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY as string });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY as string })
 
 // Simple cache to debounce repeated requests
 const generationCache: CacheEntry = {
   lastRequest: '',
   lastResult: '',
   timestamp: 0,
-};
+}
 
-export async function generateCustomPage(formData: FormData, imageSource: ImageSourceType): Promise<string> {
-  const { businessType, address, phone, email, imageUrls = [] } = formData;
-  const templateType = businessType.toLowerCase();
-  const answers = [];
+export async function generateCustomPage(
+  formData: FormData,
+  imageSource: ImageSourceType
+): Promise<string> {
+  const { businessType, address, phone, email, imageUrls = [] } = formData
+  const templateType = businessType.toLowerCase()
+  const answers = []
 
   // Create a cache key from the form data
-  const requestKey = JSON.stringify(formData);
+  const requestKey = JSON.stringify(formData)
 
   // Return cached result if it's recent (within 5 seconds)
-  const now = Date.now();
+  const now = Date.now()
   if (
     requestKey === generationCache.lastRequest &&
     now - generationCache.timestamp < 5000
   ) {
-    console.log('🔄 Using cached result...');
+    console.log('🔄 Using cached result...')
     return generationCache.lastResult
   }
 
   // Gather all the answers from the form data
   for (let i = 1; i <= 10; i++) {
-    const key = `question${i}`;
+    const key = `question${i}`
     if (formData[key]) {
-      answers.push(typeof formData[key] === 'string' ? formData[key] : undefined)
+      answers.push(
+        typeof formData[key] === 'string' ? formData[key] : undefined
+      )
     } else {
       answers.push('') // Push empty string if answer is not provided
     }
   }
 
   // Generate unique website structure based on business type
-  const layoutVariations = generateLayoutVariations(templateType, answers);
-  
+  const layoutVariations = generateLayoutVariations(templateType, answers)
+
   // Create template-specific prompt
-  const specificPrompt = getBusinessPrompt(templateType, answers, layoutVariations);
+  const specificPrompt = getBusinessPrompt(
+    templateType,
+    answers,
+    layoutVariations
+  )
 
   // Build the complete prompt
   const prompt = buildPrompt(
-    templateType, 
-    { name: typeof answers[0] === 'string' ? answers[0] : undefined, address, phone, email },
+    templateType,
+    {
+      name: typeof answers[0] === 'string' ? answers[0] : undefined,
+      address,
+      phone,
+      email,
+    },
     specificPrompt,
     imageUrls,
     layoutVariations,
-    imageSource,
-  );
+    imageSource
+  )
 
   try {
-    console.log('\n🔄 Generating your custom website...');
+    console.log('\n🔄 Generating your custom premium website...')
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7,
-      max_tokens: 4000,
-    });
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert frontend developer specializing in creating cutting-edge, visually stunning websites using Bootstrap 5.3.2. 
+          You excel at creating modern designs with:
+          - Clean, semantic HTML5 structure
+          - Proper Bootstrap grid system implementation
+          - Professional CSS styling with consistent variables
+          - Responsive design for all devices
+          - Elegant animations and microinteractions
+          - Glass morphism and modern UI techniques
+          - Accessibility and performance best practices
+          
+          Your code is production-ready and follows all current web standards.`,
+        },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.75,
+      max_tokens: 10000,
+    })
 
     let htmlContent: string | null | undefined =
-      completion.choices[0]?.message?.content;
+      completion.choices[0]?.message?.content
 
     if (htmlContent) {
       // Clean up any remaining markdown code blocks if present
-      htmlContent = htmlContent.replace(/```html|```/g, '').trim();
+      htmlContent = htmlContent.replace(/```html|```/g, '').trim()
+
+      // Ensure proper Bootstrap integration
+      if (!htmlContent.includes('bootstrap.min.css')) {
+        console.warn('⚠️ Warning: Bootstrap CSS link missing, adding it...')
+        htmlContent = htmlContent.replace(
+          '</head>',
+          '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"></head>'
+        )
+      }
+
+      if (!htmlContent.includes('bootstrap.bundle.min.js')) {
+        console.warn('⚠️ Warning: Bootstrap JS missing, adding it...')
+        htmlContent = htmlContent.replace(
+          '</body>',
+          '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script></body>'
+        )
+      }
 
       // Update cache
-      generationCache.lastRequest = requestKey;
-      generationCache.lastResult = htmlContent;
-      generationCache.timestamp = now;
+      generationCache.lastRequest = requestKey
+      generationCache.lastResult = htmlContent
+      generationCache.timestamp = now
 
-      return htmlContent;
+      return htmlContent
     } else {
-      console.error('❌ Error: Generated content is undefined.');
-      return 'Error generating content. Please try again.';
+      console.error('❌ Error: Generated content is undefined.')
+      return 'Error generating content. Please try again.'
     }
   } catch (error) {
-    console.error('❌ Error generating page:', error);
-    return 'Error generating page. Please check your inputs and try again.';
+    console.error('❌ Error generating page:', error)
+    return 'Error generating page. Please check your inputs and try again.'
   }
 }
 
@@ -100,59 +150,50 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const requestData = Object.fromEntries(formData.entries());
-    
+
     // Extract image information
     const imageSource = requestData.imageSource as ImageSourceType;
     const imageInstructions = requestData.imageInstructions as string;
-    const imageUrls: string[] = [];
-    
-    // Create timestamp for the folder name
-    const now = new Date();
-    const timestamp = `${now.getFullYear()}-${String(
-      now.getMonth() + 1
-    ).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const suffix = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`;
-    const businessType = typeof requestData.businessType === 'string' ? 
-      requestData.businessType.toLowerCase() : 'website';
-    
-    // Create folder structure for the generated content
-    const folderName = `${businessType}-${timestamp}-${suffix}`;
-    const outputDir = path.join(process.cwd(), 'gen_comp', folderName);
-    const imagesDir = path.join(outputDir, 'images');
-    
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-    if (!fs.existsSync(imagesDir)) {
-      fs.mkdirSync(imagesDir, { recursive: true });
-    }
-    
+    let imageUrls: string[] = [];
+
     // Process images based on the source
-    if (imageSource === 'manual') {
+    if (imageSource === 'ai') {
+      // Use the existing AI image generation path
+      imageUrls = await fetchImages(
+        imageInstructions || '',
+        requestData.businessType as string,
+        'ai'  // Explicitly pass 'ai' as imageSource
+      );
+      
+      // Log the results of image generation
+      console.log(`Generated ${imageUrls.length} AI images for ${requestData.businessType}`);
+      if (imageUrls.length === 0) {
+        console.warn('Warning: No AI images were generated. Check image generation service.');
+      }
+    } else if (imageSource === 'manual') {
       // Process uploaded images
       const files = formData.getAll('uploadedImages') as File[];
-      
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+
+      // Create the uploads directory if it doesn't exist
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+
+      // Save each file and collect their URLs
+      for (const file of files) {
         const buffer = Buffer.from(await file.arrayBuffer());
-        const safeFilename = `image-${i + 1}${path.extname(file.name)}`.replace(/\s+/g, '-');
-        
-        // Save directly to the website's images folder
-        const imagePath = path.join(imagesDir, safeFilename);
-        fs.writeFileSync(imagePath, buffer);
-        
-        // Use relative path for the HTML
-        imageUrls.push(`./images/${safeFilename}`);
+        const filename = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+        const filePath = path.join(uploadsDir, filename);
+
+        fs.writeFileSync(filePath, buffer);
+        // Use an absolute URL path that includes the domain
+        imageUrls.push(`/uploads/${filename}`);
       }
-    } else if (imageSource === 'ai') {
-      // Use the existing AI image generation path
-      const aiImageUrls = await fetchImages(imageInstructions ?? '', requestData.businessType as string);
-      
-      for (let i = 0; i < aiImageUrls.length; i++) {
-        imageUrls.push(`./images/image-${i + 1}.png`);
-      }
+
+      console.log('Manual images saved:', imageUrls);
     }
-    
+
     // Format the form data for processing
     const processedFormData: Record<string, string | string[]> = {
       businessType: requestData.businessType as string,
@@ -173,16 +214,49 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate HTML with images
-    const htmlContent = await generateCustomPage(processedFormData as FormData, imageSource);
+    const htmlContent = await generateCustomPage(
+      processedFormData as FormData,
+      imageSource
+    );
+      
+    // Save the generated HTML
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const suffix = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`;
+    const businessType = Array.isArray(processedFormData.businessType)
+      ? processedFormData.businessType[0]
+      : processedFormData.businessType;
+    const fileName = `${businessType.toLowerCase()}-${timestamp}-${suffix}.html`;
+    const outputDir = path.join(process.cwd(), 'gen_comp');
 
-    // Process image paths with the output directory
-    const { processedHTML, previewHTML, standaloneHTML } = processImagePaths(htmlContent, folderName, outputDir);
+    const filePath = path.join(outputDir, fileName);
 
-    // Define the file path for the HTML file
-    const filePath = path.join(outputDir, 'index.html');
+    // Modify the HTML content to ensure images have correct paths
+    const modifiedHtml = (() => {
+      let html = htmlContent;
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+      
+      html = html.replace(
+        /src="\/uploads\//g,
+        `src="${baseUrl}/uploads/`
+      );
+      
+      html = html.replace(
+        /background-image:\s*url\(['"]?\/uploads\//g,
+        `background-image: url('${baseUrl}/uploads/`
+      );
+      
+      html = html.replace(
+        /content="\/uploads\//g,
+        `content="${baseUrl}/uploads/`
+      );
+      
+      return html;
+    })();
 
-    // Write the processed HTML file with relative paths (for file system)
-    fs.writeFileSync(filePath, processedHTML);
+    fs.writeFileSync(filePath, modifiedHtml);
 
     // Return the preview HTML with absolute paths (for browser preview)
     return NextResponse.json({

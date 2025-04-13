@@ -8,7 +8,7 @@ import { getBusinessPrompt } from '@/app/templates/business-prompts'
 import { buildPrompt } from '@/app/templates/prompt-builder'
 import { CacheEntry, FormData } from '@/app/api/generatePage/types/website-generator'
 import { ImageSourceType } from '@/types/formData'
-import { processImagePaths, mapImageUrls } from '@/app/api/generatePage/utils/image-path-processor';
+import { processImagePaths, mapImageUrls } from './utils/image-path-processor';
 import { writeFileSync} from 'fs';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY as string });
@@ -74,7 +74,6 @@ export async function generateCustomPage(formData: FormData, imageSource: ImageS
       max_tokens: 4000,
     });
 
-    console.log('OpenAI response:', completion.choices[0]?.message);
 
     let htmlContent: string | null | undefined =
       completion.choices[0]?.message?.content;
@@ -245,10 +244,6 @@ export async function POST(request: NextRequest) {
     // Process image paths with the output directory
     const { processedHTML, previewHTML, standaloneHTML } = processImagePaths(htmlContent, folderName, outputDir);
 
-    console.log('Generated HTML content:', htmlContent?.substring(0, 100) + '...');
-    console.log('Processed HTML content:', processedHTML?.substring(0, 100) + '...');
-    console.log('Preview HTML content:', previewHTML?.substring(0, 100) + '...');
-
     // Define the file path for the HTML file
     const filePath = path.join(outputDir, 'index.html');
 
@@ -260,15 +255,22 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to process HTML content');
     }
 
-    // Return the preview HTML with absolute paths (for browser preview)
-    return NextResponse.json({
-      htmlContent: previewHTML,
-      standaloneHTML: standaloneHTML, 
+    // Add this line right before sending the response
+    console.log("Sample image URL transformation:", 
+      imageUrls[0], "→", mapImageUrls([imageUrls[0]], folderName)[0]);
+
+    // Update the response data structure to include the folder name in image URLs
+    const responseData = {
+      htmlContent: previewHTML || '<p>No content was generated</p>',
+      standaloneHtml: standaloneHTML || '<p>No content was generated</p>', 
       filePath: `/gen_comp/${folderName}/index.html`,
-      imageUrls: mapImageUrls(imageUrls, folderName),
+      imageUrls: mapImageUrls(imageUrls, folderName),  // Pass folderName here
       imageSource,
       outputDir,
-    });
+    };
+
+    console.log("Sending response with HTML content length:", responseData.htmlContent.length);
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('Error generating page:', error);
     return NextResponse.json({ 

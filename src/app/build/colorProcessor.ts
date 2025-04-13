@@ -63,7 +63,6 @@ export function hexToHSL(hex: string): {h: number, s: number, l: number} {
     }
     h *= 60;
   }
-  
   return { h, s, l };
 }
 
@@ -93,7 +92,6 @@ export function hslToHex(hsl: {h: number, s: number, l: number}): string {
     g = hue2rgb(p, q, (h / 360) % 1);
     b = hue2rgb(p, q, (h / 360 - 1/3 + 1) % 1);
   }
-  
   return rgbToHex(r * 255, g * 255, b * 255);
 }
 
@@ -187,7 +185,6 @@ function adjustColorForProfessionalUse(color: string, businessType: string): str
       adjustedHSL.s = 0.5;
     }
   }
-  
   return hslToHex(adjustedHSL);
 }
 

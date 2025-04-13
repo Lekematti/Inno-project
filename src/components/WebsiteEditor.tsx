@@ -1,409 +1,509 @@
-'use client';
-import { useState, useEffect } from 'react';
-import { Button, Form, Tabs, Tab, Card, Row, Col, Alert } from 'react-bootstrap';
-import Image from 'next/image';
-import { ColorPicker } from './ColorPicker';
+'use client'
+import { useState, useEffect } from 'react'
+import { Button, Form, Card, Alert, Row, Col } from 'react-bootstrap'
+import Image from 'next/image'
 
 interface WebsiteEditorProps {
-  htmlContent: string;
-  onSave: (updatedHtml: string) => void;
-  standaloneHTML: string;
+  htmlContent: string
+  onSave: (updatedHtml: string) => void
+  standaloneHtml: string
 }
 
 export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
   htmlContent,
   onSave,
-  standaloneHTML,
+  standaloneHtml,
 }) => {
-  const [editableHtml, setEditableHtml] = useState<string>(htmlContent);
-  const [activeTab, setActiveTab] = useState<string>('text');
-  const [editableElements, setEditableElements] = useState<{ id: string; content: string; type: string; element?: string; alt?: string }[]>([]);
-  const [selectedElement, setSelectedElement] = useState<string | null>(null);
-  const [iframeRef, setIframeRef] = useState<HTMLIFrameElement | null>(null);
-  const [colorScheme, setColorScheme] = useState<string>('');
-  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  // Initialize with either HTML content
+  const [editableHtml, setEditableHtml] = useState<string>(htmlContent)
 
-  // Extract editable elements from HTML on initial load
+  // Add a function to preview the standalone HTML
+  const previewFullWebsite = () => {
+    const blob = new Blob([standaloneHtml], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+    // Clean up the URL object when done
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  // Rest of your component remains the same
+  interface EditableElement {
+    id: string
+    content: string
+    type: 'text' | 'image'
+    element?: string // For text elements
+    alt?: string // For image elements
+    displayName: string
+  }
+
+  const [editableElements, setEditableElements] = useState<EditableElement[]>(
+    []
+  )
+  const [selectedElement, setSelectedElement] = useState<string | null>(null)
+  const [iframeRef, setIframeRef] = useState<HTMLIFrameElement | null>(null)
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false)
+  const [errorMessage, setErrorMessage] = useState<string>('')
+  const [showTips, setShowTips] = useState<boolean>(true)
+  const [showEditPanel, setShowEditPanel] = useState<boolean>(false)
+
+  // Extract editable elements
   useEffect(() => {
     if (htmlContent) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(htmlContent, 'text/html');
-      
-      // Extract text elements (paragraphs, headings, list items)
-      const textElements = Array.from(doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, span.editable'));
-      const editableTextElements = textElements.map((el, index) => ({
+      setEditableHtml(htmlContent)
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(htmlContent, 'text/html')
+
+      const textElements = Array.from(
+        doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, span.editable')
+      ).map<EditableElement>((el, index) => ({
         id: `text-${index}`,
         content: el.textContent ?? '',
         type: 'text',
         element: el.tagName.toLowerCase(),
-      }));
+        displayName: `${el.tagName.toLowerCase()}: ${(
+          el.textContent ?? ''
+        ).substring(0, 20)}...`,
+      }))
 
-      // Extract image elements
-      const imgElements = Array.from(doc.querySelectorAll('img'));
-      const editableImgElements = imgElements.map((el, index) => ({
-        id: `img-${index}`,
-        content: el.getAttribute('src') ?? '',
-        type: 'image',
-        alt: el.getAttribute('alt') ?? '',
-      }));
+      const imgElements = Array.from(doc.querySelectorAll('img')).map(
+        (el, index): EditableElement => ({
+          id: `img-${index}`,
+          content: el.getAttribute('src') ?? '',
+          type: 'image',
+          alt: el.getAttribute('alt') ?? '',
+          displayName: el.getAttribute('alt') ?? `Image ${index + 1}`,
+        })
+      )
 
-      setEditableElements([...editableTextElements, ...editableImgElements]);
+      setEditableElements([...textElements, ...imgElements])
     }
-  }, [htmlContent]);
+  }, [htmlContent])
 
-  // Update iframe content when editable HTML changes
+  // Update iframe and add click handlers
   useEffect(() => {
     if (iframeRef) {
-      const iframeDocument = iframeRef.contentDocument;
-      if (iframeDocument) {
-        iframeDocument.open();
-        iframeDocument.write(editableHtml);
-        iframeDocument.close();
-        
-        // Highlight editable elements
-        highlightEditableElements(iframeDocument);
+      const doc = iframeRef.contentDocument
+      if (doc) {
+        doc.open()
+        doc.write(editableHtml)
+        doc.close()
+
+        // Add styles
+        const style = doc.createElement('style')
+        style.textContent = `
+          .editable-highlight { cursor:pointer; position:relative; transition:all 0.2s; }
+          .text-element { outline:1px dashed rgba(92,124,250,0.5); }
+          .text-element:hover { outline:2px dashed #5c7cfa; background:rgba(92,124,250,0.1); }
+          .image-element { outline:1px dashed rgba(92,124,250,0.5); }
+          .image-element:hover { outline:2px dashed #5c7cfa; filter:brightness(1.05); }
+          .active-element { outline:2px solid #0d6efd !important; box-shadow:0 0 0 4px rgba(13,110,253,0.25); }
+          .editable-highlight:hover::before {
+            content:"Click to edit"; position:absolute; top:-30px; left:50%; transform:translateX(-50%);
+            background:#0d6efd; color:white; padding:3px 8px; border-radius:4px; font-size:12px;
+            white-space:nowrap; z-index:1000; pointer-events:none; opacity:0.9;
+          }
+        `
+        doc.head.appendChild(style)
+
+        // Add handlers to text elements
+        editableElements
+          .filter((el) => el.type === 'text')
+          .forEach((element, index) => {
+            const elements = Array.from(
+              doc.querySelectorAll(element.element ?? 'p')
+            )
+            if (elements[index]) {
+              const el = elements[index]
+              el.classList.add('editable-highlight', 'text-element')
+              if (selectedElement === element.id)
+                el.classList.add('active-element')
+              el.addEventListener('click', (e) => {
+                e.preventDefault()
+                setSelectedElement(element.id)
+                setShowEditPanel(true)
+              })
+            }
+          })
+
+        // Add handlers to image elements
+        editableElements
+          .filter((el) => el.type === 'image')
+          .forEach((element, index) => {
+            const images = Array.from(doc.querySelectorAll('img'))
+            if (images[index]) {
+              const img = images[index]
+              img.classList.add('editable-highlight', 'image-element')
+              if (selectedElement === element.id)
+                img.classList.add('active-element')
+              img.addEventListener('click', (e) => {
+                e.preventDefault()
+                setSelectedElement(element.id)
+                setShowEditPanel(true)
+              })
+            }
+          })
       }
     }
-  }, [editableHtml, iframeRef]);
+  }, [editableHtml, iframeRef, editableElements, selectedElement])
 
-  const highlightEditableElements = (doc: Document) => {
-    // Clear previous highlights
-    const previouslyHighlighted = doc.querySelectorAll('.editable-highlight');
-    previouslyHighlighted.forEach(el => {
-      el.classList.remove('editable-highlight');
-    });
+  // Update content functions
+  const updateContent = (
+    elementId: string,
+    newContent: string,
+    type = 'text'
+  ) => {
+    // Update state
+    setEditableElements((prev) =>
+      prev.map((el) =>
+        el.id === elementId ? { ...el, content: newContent } : el
+      )
+    )
 
-    // Remove previous event listeners by cloning and replacing elements
-    const elementsWithListeners = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, span.editable, img');
-    elementsWithListeners.forEach(el => {
-      const clone = el.cloneNode(true);
-      if (el.parentNode) {
-        el.parentNode.replaceChild(clone, el);
-      }
-    });
-
-    // Separate text and image elements for clearer indexing
-    const textElements = editableElements.filter(el => el.type === 'text');
-    const imageElements = editableElements.filter(el => el.type === 'image');
-
-    // Highlight text elements
-    textElements.forEach((element, index) => {
-      const selector = element.element ?? 'p';
-      const elements = Array.from(doc.querySelectorAll(selector));
-      
-      // Find the corresponding DOM element
-      if (elements[index]) {
-        const el = elements[index];
-        el.classList.add('editable-highlight');
-        el.addEventListener('click', () => {
-          setSelectedElement(element.id);
-          setActiveTab('text');
-        });
-      }
-    });
-
-    // Highlight image elements
-    imageElements.forEach((element, index) => {
-      const images = Array.from(doc.querySelectorAll('img'));
-      
-      if (images[index]) {
-        const img = images[index];
-        img.classList.add('editable-highlight');
-        img.addEventListener('click', () => {
-          setSelectedElement(element.id);
-          setActiveTab('images');
-        });
-      }
-    });
-
-    // Add highlight styles
-    let style = doc.querySelector('style#editor-highlight-styles');
-    if (!style) {
-      style = doc.createElement('style');
-      style.id = 'editor-highlight-styles';
-      doc.head.appendChild(style);
-    }
-    
-    style.textContent = `
-      .editable-highlight {
-        outline: 2px dashed #5c7cfa;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-      .editable-highlight:hover {
-        outline: 2px solid #4263eb;
-        box-shadow: 0 0 10px rgba(66, 99, 235, 0.3);
-      }
-    `;
-  };
-
-  const handleTextEdit = (elementId: string, newContent: string) => {
-    // Create a copy of editable elements and update the edited one
-    const updatedElements = editableElements.map(el => 
-      el.id === elementId ? { ...el, content: newContent } : el
-    );
-    setEditableElements(updatedElements);
-    
-    // Update the HTML with the new content
-    updateHtmlContent(elementId, newContent);
-  };
-
-  const handleImageEdit = (elementId: string, newImageUrl: string) => {
-    // Create a copy of editable elements and update the edited one
-    const updatedElements = editableElements.map(el => 
-      el.id === elementId ? { ...el, content: newImageUrl } : el
-    );
-    setEditableElements(updatedElements);
-    
-    // Update the HTML with the new image URL
-    updateHtmlContent(elementId, newImageUrl, 'image');
-  };
-
-  const updateHtmlContent = (elementId: string, newContent: string, type = 'text') => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(editableHtml, 'text/html');
-    
-    const elementIndex = parseInt(elementId.split('-')[1], 10);
+    // Update HTML
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(editableHtml, 'text/html')
+    const elementIndex = parseInt(elementId.split('-')[1], 10)
 
     if (type === 'text') {
-      const textElements = Array.from(doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, span.editable'));
-      if (textElements[elementIndex]) {
-        textElements[elementIndex].textContent = newContent;
-      }
+      const elements = Array.from(
+        doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, span.editable')
+      )
+      if (elements[elementIndex])
+        elements[elementIndex].textContent = newContent
     } else if (type === 'image') {
-      const imgElements = Array.from(doc.querySelectorAll('img'));
-      if (imgElements[elementIndex]) {
-        imgElements[elementIndex].setAttribute('src', newContent);
+      const images = Array.from(doc.querySelectorAll('img'))
+      if (images[elementIndex]) {
+        // Log before update
+        console.log(
+          `Updating image ${elementIndex} from:`,
+          images[elementIndex].getAttribute('src'),
+          'to:',
+          newContent
+        )
+
+        // Set the new source
+        images[elementIndex].setAttribute('src', newContent)
+
+        // For displaying images in the editor iframe, update paths for different image types
+        if (newContent.startsWith('data:image')) {
+          // Base64 images can be used directly
+        } else if (newContent.startsWith('/api/images/')) {
+          // Already using the API route
+        } else if (
+          !newContent.startsWith('http') &&
+          !newContent.startsWith('/')
+        ) {
+          // Convert relative paths to use API route
+          const imageFilename = newContent.split('/').pop()
+          if (imageFilename) {
+            images[elementIndex].setAttribute(
+              'src',
+              `/api/images/${imageFilename}`
+            )
+          }
+        }
       }
     }
 
-    setEditableHtml(doc.documentElement.outerHTML);
-  };
+    setEditableHtml(doc.documentElement.outerHTML)
+  }
 
-  const handleColorChange = (newColorScheme: string) => {
-    setColorScheme(newColorScheme);
-    
-    // Update CSS variables in the HTML
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(editableHtml, 'text/html');
-    
-    // Get the existing style element or create a new one
-    let styleEl = doc.querySelector('style#custom-colors');
-    if (!styleEl) {
-      styleEl = doc.createElement('style');
-      styleEl.id = 'custom-colors';
-      doc.head.appendChild(styleEl);
-    }
-    
-    // Create updated CSS variables
-    const colors = newColorScheme.split(',');
-    let cssVars = ':root {\n';
-    if (colors.length >= 1) cssVars += `  --primary-color: ${colors[0]};\n`;
-    if (colors.length >= 2) cssVars += `  --secondary-color: ${colors[1]};\n`;
-    if (colors.length >= 3) cssVars += `  --accent-color: ${colors[2]};\n`;
-    if (colors.length >= 4) cssVars += `  --background-color: ${colors[3]};\n`;
-    cssVars += '}';
-    
-    styleEl.textContent = cssVars;
-    setEditableHtml(doc.documentElement.outerHTML);
-  };
-
-  const handleSaveChanges = () => {
+  // Handle save
+  const handleSave = () => {
     try {
-      onSave(editableHtml);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      onSave(editableHtml)
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
     } catch {
-      setErrorMessage('Failed to save changes. Please try again.');
-      setTimeout(() => setErrorMessage(''), 3000);
+      setErrorMessage('Failed to save changes. Please try again.')
+      setTimeout(() => setErrorMessage(''), 3000)
     }
-  };
+  }
+
+  // Get selected element data
+  const selectedElementData = editableElements.find(
+    (el) => el.id === selectedElement
+  )
 
   return (
     <div className="website-editor">
-      <h3>Edit Your Website</h3>
-      
-      {saveSuccess && (
-        <Alert variant="success">Changes saved successfully!</Alert>
-      )}
-      
-      {errorMessage && (
-        <Alert variant="danger">{errorMessage}</Alert>
-      )}
-      
-      <Row className="mt-4">
-        <Col md={8}>
-          <div className="website-preview-container" style={{ height: '600px', border: '1px solid #dee2e6' }}>
-            <iframe 
-              ref={(ref) => setIframeRef(ref)}
-              style={{ width: '100%', height: '100%', border: 'none' }}
-              title="Website Preview"
-            ></iframe>
-          </div>
-          <div className="d-flex justify-content-end mt-3">
-            <Button 
-              variant="primary" 
-              onClick={handleSaveChanges}
-              className="me-2"
+      <Row className="g-3">
+        <Col lg={8}>
+          {/* Preview with editable content */}
+          <div className="position-relative mb-3">
+            {showTips && (
+              <div className="position-absolute top-0 start-0 end-0 p-2 bg-info bg-opacity-10 text-center rounded-top d-flex justify-content-between align-items-center">
+                <span>Click on any text or image to edit it</span>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="p-0"
+                  onClick={() => setShowTips(false)}
+                >
+                  <small>×</small>
+                </Button>
+              </div>
+            )}
+
+            <div
+              style={{
+                height: '550px',
+                border: '1px solid #dee2e6',
+                borderTopLeftRadius: showTips ? '0' : '0.25rem',
+                borderTopRightRadius: showTips ? '0' : '0.25rem',
+              }}
             >
-              Save Changes
-            </Button>
-            <Button 
-              variant="outline-secondary" 
-              onClick={() => window.open(URL.createObjectURL(new Blob([standaloneHTML], {type: 'text/html'})), '_blank')}
-            >
-              Preview in New Tab
-            </Button>
+              <iframe
+                ref={(ref) => setIframeRef(ref)}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                title="Website Preview"
+              />
+            </div>
           </div>
-        </Col>
-        
-        <Col md={4}>
-          <Card>
-            <Card.Header>
-              <Tabs
-                activeKey={activeTab}
-                onSelect={(k) => setActiveTab(k ?? 'text')}
-                className="mb-3"
+
+          {/* Status and save button */}
+          <div className="d-flex justify-content-between align-items-center">
+            <div>
+              {selectedElement ? (
+                <span className="bg-light px-3 py-1 rounded">
+                  <i className="bi bi-pencil-square me-1"></i>
+                  Editing: {selectedElementData?.displayName}
+                  <Button
+                    variant="link"
+                    className="p-0 ms-2"
+                    onClick={() => {
+                      setSelectedElement(null)
+                      setShowEditPanel(false)
+                    }}
+                  >
+                    <small>cancel</small>
+                  </Button>
+                </span>
+              ) : (
+                <small className="text-muted">
+                  <i className="bi bi-info-circle me-1"></i>Click elements to
+                  edit
+                </small>
+              )}
+            </div>
+
+            <div>
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                className="me-2"
+                onClick={previewFullWebsite}
               >
-                <Tab eventKey="text" title="Text">
-                  <div className="p-3">
-                    <Form.Group className="mb-3">
-                      <Form.Label>Select Text Element</Form.Label>
-                      <Form.Select 
-                        value={selectedElement ?? ''}
-                        onChange={(e) => setSelectedElement(e.target.value)}
-                      >
-                        <option value="">-- Select Element --</option>
-                        {editableElements
-                          .filter(el => el.type === 'text')
-                          .map(el => (
-                            <option key={el.id} value={el.id}>
-                              {el.element}: {el.content.substring(0, 30)}...
-                            </option>
-                          ))
-                        }
-                      </Form.Select>
-                    </Form.Group>
-                    
-                    {selectedElement && editableElements.find(el => el.id === selectedElement)?.type === 'text' && (
-                      <Form.Group className="mb-3">
-                        <Form.Label>Edit Content</Form.Label>
-                        <Form.Control
-                          as="textarea"
-                          rows={5}
-                          value={editableElements.find(el => el.id === selectedElement)?.content ?? ''}
-                          onChange={(e) => handleTextEdit(selectedElement, e.target.value)}
-                        />
-                      </Form.Group>
-                    )}
-                  </div>
-                </Tab>
-                
-                <Tab eventKey="images" title="Images">
-                  <div className="p-3">
-                    <Form.Group className="mb-3">
-                      <Form.Label>Select Image</Form.Label>
-                      <Form.Select
-                        value={selectedElement ?? ''}
-                        onChange={(e) => setSelectedElement(e.target.value)}
-                      >
-                        <option value="">-- Select Image --</option>
-                        {editableElements
-                          .filter(el => el.type === 'image')
-                          .map(el => (
-                            <option key={el.id} value={el.id}>
-                              Image: {el.alt ?? el.id}
-                            </option>
-                          ))
-                        }
-                      </Form.Select>
-                    </Form.Group>
-                    
-                    {selectedElement && editableElements.find(el => el.id === selectedElement)?.type === 'image' && (
-                      <>
-                        <Form.Group className="mb-3">
-                          <Form.Label>Current Image</Form.Label>
-                          <div className="text-center p-2 border rounded">
-                            <Image 
-                              src={editableElements.find(el => el.id === selectedElement)?.content ?? ''}
-                              alt="Current"
-                              width={150}
-                              height={150}
-                              style={{ maxWidth: '100%', maxHeight: '150px', objectFit: 'contain' }}
-                              unoptimized
-                            />
-                          </div>
-                        </Form.Group>
-                        
-                        <Form.Group className="mb-3">
-                          <Form.Label>Replace Image URL</Form.Label>
-                          <Form.Control
-                            type="text"
-                            value={editableElements.find(el => el.id === selectedElement)?.content ?? ''}
-                            onChange={(e) => handleImageEdit(selectedElement, e.target.value)}
-                            placeholder="Enter new image URL"
-                          />
-                        </Form.Group>
-                        
-                        <Form.Group className="mb-3">
-                          <Form.Label>Upload New Image</Form.Label>
-                          <Form.Control
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const input = e.target as HTMLInputElement;
-                              if (input.files?.[0]) {
-                                const reader = new FileReader();
-                                reader.onload = (event) => {
-                                  if (event.target?.result && selectedElement) {
-                                    handleImageEdit(selectedElement, event.target.result as string);
-                                  }
-                                };
-                                reader.readAsDataURL((e.target as HTMLInputElement).files![0]);
-                              }
-                            }}
-                          />
-                        </Form.Group>
-                      </>
-                    )}
-                  </div>
-                </Tab>
-                
-                <Tab eventKey="colors" title="Colors">
-                  <div className="p-3">
-                    <Form.Group className="mb-3">
-                      <Form.Label>Website Color Scheme</Form.Label>
-                      <ColorPicker
-                        index={0}
-                        formData={{
-                          colorScheme: colorScheme,
-                          businessType: '',
-                          address: '',
-                          phone: '',
-                          email: ''
+                <i className="bi bi-eye me-1"></i> Preview Full Site
+              </Button>
+
+              <Button variant="primary" onClick={handleSave}>
+                <i className="bi bi-save me-1"></i> Save Changes
+              </Button>
+            </div>
+          </div>
+
+          {/* Status messages */}
+          {saveSuccess && (
+            <Alert variant="success" className="mt-2 py-2">
+              <i className="bi bi-check-circle-fill me-2"></i>Changes saved!
+            </Alert>
+          )}
+
+          {errorMessage && (
+            <Alert variant="danger" className="mt-2 py-2">
+              <i className="bi bi-exclamation-triangle-fill me-2"></i>
+              {errorMessage}
+            </Alert>
+          )}
+        </Col>
+
+        <Col lg={4}>
+          {/* Edit panel */}
+          {selectedElement && showEditPanel ? (
+            <Card className="mb-3">
+              <Card.Header className="bg-primary text-white py-2">
+                <i className="bi bi-pencil me-2"></i>
+                {selectedElementData?.type === 'text'
+                  ? 'Edit Text'
+                  : 'Edit Image'}
+              </Card.Header>
+
+              <Card.Body className="p-3">
+                {selectedElementData?.type === 'text' && (
+                  <Form.Group>
+                    <Form.Control
+                      as="textarea"
+                      rows={Math.min(
+                        8,
+                        Math.max(3, selectedElementData.content.length / 80 + 2)
+                      )}
+                      value={selectedElementData?.content ?? ''}
+                      onChange={(e) =>
+                        updateContent(selectedElement, e.target.value)
+                      }
+                      className="mb-2"
+                    />
+                    <div className="d-flex justify-content-between align-items-center">
+                      <Button
+                        size="sm"
+                        variant="outline-primary"
+                        onClick={() => {
+                          setSelectedElement(null)
+                          setShowEditPanel(false)
                         }}
-                        setFormData={(updater) => {
-                          const updatedFormData = updater({
-                            colorScheme: colorScheme,
-                            businessType: '',
-                            address: '',
-                            phone: '',
-                            email: ''
-                          });
-                          if (updatedFormData.colorScheme) {
-                            handleColorChange(updatedFormData.colorScheme);
+                      >
+                        Done
+                      </Button>
+                      <small className="text-muted">
+                        Changes appear as you type
+                      </small>
+                    </div>
+                  </Form.Group>
+                )}
+
+                {selectedElementData?.type === 'image' && (
+                  <>
+                    <div className="text-center mb-2 border rounded bg-light p-2">
+                      <Image
+                        src={selectedElementData.content || '/placeholder.png'}
+                        alt={selectedElementData.alt ?? 'Preview'}
+                        width={150}
+                        height={100}
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: '150px',
+                          objectFit: 'contain',
+                        }}
+                        unoptimized
+                      />
+                    </div>
+
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small fw-bold mb-1">
+                        Upload image:
+                      </Form.Label>
+                      <Form.Control
+                        type="file"
+                        accept="image/*"
+                        size="sm"
+                        onChange={(e) => {
+                          const target = e.target as HTMLInputElement
+                          if (target.files?.[0]) {
+                            const reader = new FileReader()
+                            reader.onload = (event) => {
+                              if (event.target?.result && selectedElement) {
+                                updateContent(
+                                  selectedElement,
+                                  event.target.result as string,
+                                  'image'
+                                )
+                              }
+                            }
+                            reader.readAsDataURL(
+                              (e.target as HTMLInputElement).files![0]
+                            )
                           }
                         }}
                       />
                     </Form.Group>
-                  </div>
-                </Tab>
-              </Tabs>
+
+                    <div className="text-center small my-2">- or -</div>
+
+                    <Form.Group className="mb-2">
+                      <Form.Label className="small fw-bold mb-1">
+                        Image URL:
+                      </Form.Label>
+                      <Form.Control
+                        type="text"
+                        placeholder="https://example.com/image.jpg"
+                        size="sm"
+                        value={selectedElementData.content}
+                        onChange={(e) =>
+                          updateContent(
+                            selectedElement,
+                            e.target.value,
+                            'image'
+                          )
+                        }
+                      />
+                    </Form.Group>
+
+                    <Button
+                      size="sm"
+                      variant="outline-primary"
+                      className="mt-1"
+                      onClick={() => {
+                        setSelectedElement(null)
+                        setShowEditPanel(false)
+                      }}
+                    >
+                      Done
+                    </Button>
+                  </>
+                )}
+              </Card.Body>
+            </Card>
+          ) : (
+            <Card className="mb-3">
+              <Card.Header className="bg-light py-2">
+                <i className="bi bi-lightbulb me-2"></i>How to Edit
+              </Card.Header>
+              <Card.Body className="p-3">
+                <ol className="mb-2 ps-3 small">
+                  <li className="mb-1">
+                    <strong>Click</strong> on any text or image
+                  </li>
+                  <li className="mb-1">
+                    <strong>Edit</strong> in the panel that appears
+                  </li>
+                  <li>
+                    <strong>Save</strong> when you&apos;re finished
+                  </li>
+                </ol>
+                <div className="bg-light p-2 rounded small">
+                  <i className="bi bi-info-circle me-1"></i>Hover over elements
+                  to see what you can edit
+                </div>
+              </Card.Body>
+            </Card>
+          )}
+
+          {/* Quick help card */}
+          <Card>
+            <Card.Header className="bg-light py-2 d-flex justify-content-between align-items-center">
+              <span>
+                <i className="bi bi-question-circle me-2"></i>Help
+              </span>
+              {!showTips && (
+                <Button
+                  variant="link"
+                  className="p-0"
+                  onClick={() => setShowTips(true)}
+                >
+                  <small>
+                    <i className="bi bi-info-circle"></i> Show tips
+                  </small>
+                </Button>
+              )}
             </Card.Header>
+            <Card.Body className="p-3">
+              <div className="small">
+                <p className="mb-1">
+                  <strong>Edit text:</strong> Click any text in the preview
+                </p>
+                <p className="mb-1">
+                  <strong>Change images:</strong> Click any image to replace it
+                </p>
+                <p className="mb-0">
+                  <strong>Save changes:</strong> Click &quot;Save Changes&quot;
+                  when done
+                </p>
+              </div>
+            </Card.Body>
           </Card>
         </Col>
       </Row>
     </div>
-  );
-};
+  )
+}

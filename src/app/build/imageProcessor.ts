@@ -41,7 +41,7 @@ export function processImageRequirements(
   console.log(`🎨 Processing image requirements for ${businessType} template...`);
   
   // Normalize business type to match our template keys
-  const normalizedType = businessType.toLowerCase() as BusinessType;
+  const normalizedType = businessType.toLowerCase();
   const isValidType = ['restaurant', 'logistics', 'professional'].includes(normalizedType);
   
   // Extract user image requests

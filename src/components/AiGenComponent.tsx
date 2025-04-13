@@ -1,20 +1,19 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { PreviewProps } from '@/types/formData';
+import React, { useRef, useEffect, useState } from 'react'
+import { PreviewProps } from '@/types/formData'
 
 export const AiGenComponent: React.FC<PreviewProps> = ({
   htmlContent,
   width = '100%',
   height = '100%',
-  onError
+  onError,
 }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [error, setError] = useState<string>('');
-  const [iframeLoaded, setIframeLoaded] = useState<boolean>(false);
- 
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [error, setError] = useState<string>('')
+
   useEffect(() => {
     if (!htmlContent) {
-      setError('No content to display');
-      return;
+      setError('No content to display')
+      return
     }
 
     try {
@@ -22,17 +21,22 @@ export const AiGenComponent: React.FC<PreviewProps> = ({
       const processedHtml = htmlContent.replace(
         /src="\/uploads\//g,
         `src="${window.location.origin}/uploads/`
-      );
-      
-      const blob = new Blob([`
+      )
+
+      const blob = new Blob(
+        [
+          `
         <!DOCTYPE html>
         <html lang="en">
           <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Website Preview</title>
-            <base href="${window.location.origin}/">
+            <!-- Modified Bootstrap import to prevent map file requests -->
             <style>
+              /* Inline Bootstrap core styles to prevent map file requests */
+              @import url('https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css');
+              
               /* Disable all interactions */
               * {
                 pointer-events: none !important;
@@ -58,32 +62,38 @@ export const AiGenComponent: React.FC<PreviewProps> = ({
                 display: none !important;
               }
             </style>
+            <base href="${window.location.origin}/">
           </head>
           <body>
             ${processedHtml}
           </body>
         </html>
-      `], { type: 'text/html' });
-      
+      `,
+        ],
+        { type: 'text/html' }
+      )
+
       // Create an object URL from the blob
-      const url = URL.createObjectURL(blob);
-      
+      const url = URL.createObjectURL(blob)
+
       // Set the iframe src to the object URL
       if (iframeRef.current) {
-        iframeRef.current.src = url;
-        
+        iframeRef.current.src = url
+
         // Clean up the object URL when the component unmounts or content changes
         return () => {
-          URL.revokeObjectURL(url);
-        };
+          URL.revokeObjectURL(url)
+        }
       }
     } catch (err) {
-      const errorMsg = `Error loading preview: ${err instanceof Error ? err.message : String(err)}`;
-      setError(errorMsg);
-      if (onError) onError(errorMsg);
+      const errorMsg = `Error loading preview: ${
+        err instanceof Error ? err.message : String(err)
+      }`
+      setError(errorMsg)
+      if (onError) onError(errorMsg)
     }
-  }, [htmlContent, onError]);
- 
+  }, [htmlContent, onError])
+
   if (error) {
     return (
       <div
@@ -93,14 +103,14 @@ export const AiGenComponent: React.FC<PreviewProps> = ({
           border: '1px solid #f44336',
           padding: '1rem',
           backgroundColor: '#ffebee',
-          color: '#d32f2f'
+          color: '#d32f2f',
         }}
       >
         {error}
       </div>
-    );
+    )
   }
- 
+
   return (
     <iframe
       ref={iframeRef}
@@ -109,12 +119,11 @@ export const AiGenComponent: React.FC<PreviewProps> = ({
         width,
         height,
         border: '1px solid #e0e0e0',
-        backgroundColor: 'white'
+        backgroundColor: 'white',
       }}
       sandbox="allow-same-origin"
-      onLoad={() => setIframeLoaded(true)}
       loading="lazy"
       aria-label="Generated website preview"
     />
-  );
-};
+  )
+}

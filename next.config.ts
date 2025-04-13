@@ -22,6 +22,9 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  publicRuntimeConfig: {
+    staticFolder: '/gen_comp',
+  },
 };
 
 export default nextConfig;

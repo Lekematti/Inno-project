@@ -28,8 +28,6 @@ export default function BuildPage() {
     setError,
   } = useFormHandlers()
 
-  //console.log('Form Data Submitted:', formData);
-
   useEffect(() => {
     if (step === 5 && formData.businessType) {
       const hasAllAnswers = checkAllQuestionsAnswered()
@@ -77,7 +75,9 @@ export default function BuildPage() {
       const fieldName = `question${i + 1}` as keyof FormData
       if (
         i < questions.length &&
-        (!formData[fieldName] || String(formData[fieldName]).trim() === '')
+        (!formData[fieldName] ||
+          (typeof formData[fieldName] === 'string' &&
+            formData[fieldName].trim() === ''))
       ) {
         setError('Please answer all questions before proceeding')
         return
@@ -93,7 +93,9 @@ export default function BuildPage() {
       const fieldName = `question${i + 1}` as keyof FormData
       if (
         i < questions.length &&
-        (!formData[fieldName] || String(formData[fieldName]).trim() === '')
+        (!formData[fieldName] ||
+          (typeof formData[fieldName] === 'string' &&
+            formData[fieldName].trim() === ''))
       ) {
         setError('Please answer all questions before proceeding')
         return

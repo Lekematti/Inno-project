@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Geist, Geist_Mono, Inter } from 'next/font/google'
 import './globals.css'
 import 'bootstrap/dist/css/bootstrap.min.css'
 
@@ -13,9 +13,11 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 })
 
+const inter = Inter({ subsets: ['latin'] })
+
 export const metadata: Metadata = {
-  title: 'AiWebsiteBuildr',
-  description: 'Create your new website',
+  title: 'Website Generator',
+  description: 'Generate websites with AI',
 }
 
 export default function RootLayout({
@@ -25,7 +27,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} ${inter.className}`}
+      >
         {children}
       </body>
     </html>

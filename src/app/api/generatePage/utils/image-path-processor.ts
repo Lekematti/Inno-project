@@ -26,9 +26,11 @@ export function processImagePaths(
   processedHTML = processedHTML.replace(/src=["'](\.\/images\/|\/images\/|)(image-\d+\.(?:png|jpg|jpeg|gif|svg))["']/g, 
     'src="./images/$2"');
     
-  // Process paths for preview version
+  // Process paths for preview version - use API route to avoid path issues
   previewHTML = previewHTML.replace(/src=["'](\.\/images\/|\/images\/|)(image-\d+\.(?:png|jpg|jpeg|gif|svg))["']/g, 
-    `src="/gen_comp/${folderName}/images/$2"`);
+    (match, prefix, filename) => {
+      return `src="/api/images/${filename}?folder=${folderName}"`;
+    });
     
   // For standalone HTML, embed images directly as base64
   // First create a map of all image files to their data URLs
@@ -36,26 +38,32 @@ export function processImagePaths(
   const imagesDir = path.join(outputDir, 'images');
   
   if (fs.existsSync(imagesDir)) {
-    const files = fs.readdirSync(imagesDir);
-    console.log(`Found ${files.length} images in ${imagesDir}`);
-    
-    for (const file of files) {
-      if (/^image-\d+\.(png|jpg|jpeg|gif|svg)$/i.exec(file)) {
-        const imagePath = path.join(imagesDir, file);
-        try {
-          const imageBuffer = fs.readFileSync(imagePath);
-          const base64 = imageBuffer.toString('base64');
-          const mimeType = getMimeType(file);
-          imageMap[file] = `data:${mimeType};base64,${base64}`;
-          console.log(`Embedded image ${file} as data URL`);
-        } catch (err) {
-          console.error(`Error reading image ${file}:`, err);
+    try {
+      const files = fs.readdirSync(imagesDir);
+      console.log(`Found ${files.length} images in ${imagesDir}`);
+      
+      for (const file of files) {
+        if (/^image-\d+\.(png|jpg|jpeg|gif|svg)$/i.test(file)) {
+          const imagePath = path.join(imagesDir, file);
+          try {
+            const imageBuffer = fs.readFileSync(imagePath);
+            const base64 = imageBuffer.toString('base64');
+            const mimeType = getMimeType(file);
+            imageMap[file] = `data:${mimeType};base64,${base64}`;
+            console.log(`Embedded image ${file} as data URL`);
+          } catch (err) {
+            console.error(`Error reading image ${file}:`, err);
+          }
         }
       }
+      
+      console.log(`Embedded ${Object.keys(imageMap).length} images as data URLs`);
+    } catch (err) {
+      console.error(`Error reading images directory: ${imagesDir}`, err);
     }
+  } else {
+    console.log(`Images directory does not exist: ${imagesDir}`);
   }
-  
-  console.log(`Embedded ${Object.keys(imageMap).length} images as data URLs`);
   
   // Replace all image references in the standalone HTML
   standaloneHTML = standaloneHTML.replace(
@@ -93,10 +101,11 @@ function getMimeType(filename: string): string {
   const ext = path.extname(filename).toLowerCase().substring(1); // Remove the dot from extension
   switch (ext) {
     case 'png': return 'image/png';
-    case 'jpg': 
+    case 'jpg': return 'image/jpeg'; // Fixed MIME type for jpg
     case 'jpeg': return 'image/jpeg';
     case 'gif': return 'image/gif';
     case 'svg': return 'image/svg+xml';
+    case 'webp': return 'image/webp'; // Added support for WebP format
     default: return 'application/octet-stream';
   }
 }
@@ -104,9 +113,36 @@ function getMimeType(filename: string): string {
 /**
  * Maps image URLs to their public-facing paths for the response
  * @param imageUrls Original image URLs
- * @param folderName Generated folder name
+ * @param folderName Generated folder name 
  * @returns Mapped image URLs
  */
 export function mapImageUrls(imageUrls: string[], folderName: string): string[] {
-  return imageUrls.map(url => url.replace('./images/', `/gen_comp/${folderName}/images/`));
+  if (!imageUrls || !Array.isArray(imageUrls)) {
+    console.warn('Invalid imageUrls provided to mapImageUrls:', imageUrls);
+    return [];
+  }
+
+  console.log(`Mapping ${imageUrls.length} images with folder: ${folderName}`);
+
+  return imageUrls.map(url => {
+    if (!url || typeof url !== 'string') {
+      console.warn('Invalid URL in imageUrls array:', url);
+      return '';
+    }
+    
+    // Only transform relative URLs
+    if (url.startsWith('./images/') || url.startsWith('/images/')) {
+      try {
+        // Always include folderName as a query parameter to ensure correct image is loaded
+        const basename = path.basename(url);
+        const mappedUrl = `/api/images/${basename}?folder=${folderName}`;
+        console.log(`Mapped: ${url} → ${mappedUrl}`);
+        return mappedUrl;
+      } catch (err) {
+        console.error(`Error processing URL ${url}:`, err);
+        return url;
+      }
+    }
+    return url; // Return external URLs as is
+  }).filter(Boolean); // Remove any empty strings
 }

@@ -166,12 +166,12 @@ export const useFormHandlers = (): FormHandlerHook => {
      
       if (data.htmlContent) {
         setGeneratedHtml(data.htmlContent);
-        // Update form data with response data
+        // Update form data with response data - note the lowercase 'h' in standaloneHtml
         setFormData(prev => ({
           ...prev,
           filePath: data.filePath,
           generatedImageUrls: data.imageUrls || [],
-          standaloneHTML: data.standaloneHTML || '' // Store the standalone HTML
+          standaloneHtml: data.standaloneHtml || '' // Make sure this matches the API response property name
         }));
         setIsReady(true);
       } else {

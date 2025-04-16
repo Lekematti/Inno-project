@@ -14,6 +14,7 @@ import { AiGenComponent } from './AiGenComponent'
 import { DownloadSection } from '@/app/build/components/UIHelpers'
 import { WebsiteEditor } from './WebsiteEditor'
 import { WebsitePreviewProps } from '@/types/formData'
+import { usePageRefreshHandler } from '@/hooks/usePageRefreshHandler'
 
 export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   isLoading,
@@ -35,6 +36,16 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   // Get file path from formData if available
   const filePath = formData?.filePath as string
   const standaloneHtml = formData?.standaloneHtml as string
+
+  // If you want to preserve the preview state on refresh
+  const { clearSavedContent } = usePageRefreshHandler({
+    currentContent: updatedHtml || generatedHtml,
+    referenceContent: generatedHtml,
+    storageKey: `website-preview-${formData?.businessName ?? 'default'}`,
+    onRestore: (savedContent) => {
+      setUpdatedHtml(savedContent)
+    },
+  })
 
   // Initialize content when generatedHtml changes
   useEffect(() => {
@@ -100,6 +111,9 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
         setTimeout(() => {
           setSaveStatus('idle')
         }, 3000)
+
+        // After successful save
+        clearSavedContent()
       } catch (error) {
         console.error('Error saving website:', error)
         setSaveStatus('error')
@@ -110,7 +124,7 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
         }, 3000)
       }
     },
-    [filePath]
+    [filePath, clearSavedContent]
   )
 
   // Show loader while generating
@@ -298,6 +312,7 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
 
             <WebsiteEditor
               htmlContent={updatedHtml || generatedHtml}
+              originalHtml={generatedHtml} // Pass the original HTML
               onSave={handleSave}
               standaloneHtml={standaloneHtml || generatedHtml}
             />

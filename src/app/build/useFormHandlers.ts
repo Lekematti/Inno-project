@@ -10,6 +10,7 @@ import {
   ImageSourceType,
   defaultFormData
 } from '@/types/formData';
+import { usePageRefreshHandler } from '@/hooks/usePageRefreshHandler';
 
 /**
  * Hook for managing website generation form state and operations
@@ -17,6 +18,21 @@ import {
 export const useFormHandlers = (): FormHandlerHook => {
   // State management
   const [formData, setFormData] = useState<FormData>(defaultFormData);
+  
+  // Add the refresh handler with form data
+  const { clearSavedContent } = usePageRefreshHandler({
+    currentContent: JSON.stringify(formData),
+    referenceContent: JSON.stringify(defaultFormData),
+    storageKey: 'website-builder-form',
+    onRestore: (savedContent) => {
+      try {
+        const parsedData = JSON.parse(savedContent);
+        setFormData(parsedData);
+      } catch (err) {
+        console.error('Error restoring form data:', err);
+      }
+    }
+  });
  
   // UI state
   const [isLoading, setIsLoading] = useState(false);
@@ -170,10 +186,12 @@ export const useFormHandlers = (): FormHandlerHook => {
         setFormData(prev => ({
           ...prev,
           filePath: data.filePath,
-          generatedImageUrls: data.imageUrls || [],
-          standaloneHtml: data.standaloneHtml || '' // Make sure this matches the API response property name
+          generatedImageUrls: data.imageUrls ?? [],
+          standaloneHtml: data.standaloneHtml ?? '' // Make sure this matches the API response property name
         }));
         setIsReady(true);
+        // Clear saved content after successful generation
+        clearSavedContent();
       } else {
         throw new Error('No HTML content received');
       }
@@ -184,21 +202,26 @@ export const useFormHandlers = (): FormHandlerHook => {
       setIsLoading(false);
       isSubmittingRef.current = false;
     }
-  }, [formData, isLoading, processFormColors]);
+  }, [formData, isLoading, processFormColors, clearSavedContent]);
 
+  // Add this to your return statement
   return {
     formData,
     setFormData,
     isLoading,
+    setIsLoading,  // Make sure this is exposed
     isReady,
+    setIsReady,    // Make sure this is exposed
     generatedHtml,
+    setGeneratedHtml, // Make sure this is exposed
     error,
+    setError,
     step,
     setStep,
     allQuestionsAnswered,
     setAllQuestionsAnswered,
     checkAllQuestionsAnswered,
     generateWebsite,
-    setError,
+    // Other values you might be returning...
   };
 };

@@ -1,43 +1,55 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button, Form, Card, Alert, Row, Col, Modal } from 'react-bootstrap'
 import Image from 'next/image'
+import { usePageRefreshHandler } from '@/hooks/usePageRefreshHandler'
 
 interface WebsiteEditorProps {
   htmlContent: string
+  originalHtml?: string
   onSave: (updatedHtml: string) => void
   standaloneHtml: string
 }
 
 export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
   htmlContent,
+  originalHtml,
   onSave,
-  standaloneHtml,
 }) => {
-  // Initialize with either HTML content
+  // Use originalHtml if provided, otherwise use htmlContent
   const [editableHtml, setEditableHtml] = useState<string>(htmlContent)
 
-  // Add a function to preview the standalone HTML
-  const previewFullWebsite = () => {
-    const blob = new Blob([standaloneHtml], { type: 'text/html' })
-    const url = URL.createObjectURL(blob)
-    window.open(url, '_blank')
-    // Clean up the URL object when done
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-  }
+  // Store the original HTML for reset functionality
+  const [initialHtml, setInitialHtml] = useState<string>(
+    originalHtml || htmlContent
+  )
 
-  // Rest of your component remains the same
+  // Add the page refresh handler
+  const { clearSavedContent } = usePageRefreshHandler({
+    currentContent: editableHtml,
+    referenceContent: initialHtml,
+    storageKey: `website-editor-${btoa(initialHtml.substring(0, 50)).replace(
+      /[+/=]/g,
+      ''
+    )}`,
+    onRestore: (savedContent) => {
+      setEditableHtml(savedContent)
+    },
+  })
+
+  // Interface definition
   interface EditableElement {
     id: string
     content: string
-    type: 'text' | 'image' | 'backgroundImage'
-    element?: string // For text elements
-    alt?: string // For image elements
+    type: 'text' | 'image' | 'backgroundImage' | 'serviceContainer'
+    element?: string
+    alt?: string
     displayName: string
-    selector?: string // For background image elements
-    path?: string // Path to the element in the DOM
+    selector?: string
+    path?: string
   }
 
+  // Component state
   const [editableElements, setEditableElements] = useState<EditableElement[]>(
     []
   )
@@ -48,10 +60,60 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
   const [showTips, setShowTips] = useState<boolean>(true)
   const [showEditPanel, setShowEditPanel] = useState<boolean>(false)
 
-  // Add this to the component state
+  // Image handling state
   const [showAddImageModal, setShowAddImageModal] = useState(false)
   const [imageInsertLocation, setImageInsertLocation] = useState('')
   const [newImageSrc, setNewImageSrc] = useState('')
+
+  // Service handling state
+  const [showAddServiceModal, setShowAddServiceModal] = useState(false)
+  const [serviceIcon, setServiceIcon] = useState('bi-box-seam')
+  const [serviceTitle, setServiceTitle] = useState('')
+  const [serviceDescription, setServiceDescription] = useState('')
+  const [selectedServiceContainer, setSelectedServiceContainer] = useState<
+    string | null
+  >(null)
+
+  // When initializing, store the original HTML
+  useEffect(() => {
+    if (originalHtml) {
+      setInitialHtml(originalHtml)
+    }
+  }, [originalHtml])
+
+  // Function to handle refresh - KEEP THIS ONE DEFINITION
+  const handleRefresh = useCallback(() => {
+    // Confirm with user before reverting changes
+    if (editableHtml !== initialHtml) {
+      const confirmRefresh = window.confirm(
+        'This will reset all your changes to the original generated page. Continue?'
+      )
+      if (!confirmRefresh) return
+    }
+
+    // Reset to original HTML
+    setEditableHtml(initialHtml)
+    setSelectedElement(null)
+    setShowEditPanel(false)
+
+    // Feedback message
+    setSaveSuccess(false)
+    setErrorMessage('')
+    const tempMessage = document.createElement('div')
+    tempMessage.className = 'refresh-message'
+    tempMessage.textContent = 'Page refreshed to original state'
+    document.body.appendChild(tempMessage)
+    setTimeout(() => document.body.removeChild(tempMessage), 2000)
+  }, [initialHtml, editableHtml])
+
+  // Function to preview the website in a new tab
+  const previewFullWebsite = useCallback(() => {
+    const newWindow = window.open('', '_blank')
+    if (newWindow) {
+      newWindow.document.write(editableHtml)
+      newWindow.document.close()
+    }
+  }, [editableHtml])
 
   // Extract editable elements with better identification
   useEffect(() => {
@@ -128,7 +190,29 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
           }
         })
 
-      setEditableElements([...textElements, ...imgElements, ...bgImageElements])
+      // Add detection for service container sections
+      const serviceContainers = Array.from(
+        doc.querySelectorAll(
+          '#services .row, .services-row, .service-container'
+        )
+      ).map((el): EditableElement => {
+        const path = generateElementPath(el)
+        return {
+          id: `service-container-${path}`,
+          content: 'Service Section',
+          type: 'serviceContainer',
+          element: el.tagName.toLowerCase(),
+          path: path,
+          displayName: 'Services Container',
+        }
+      })
+
+      setEditableElements([
+        ...textElements,
+        ...imgElements,
+        ...bgImageElements,
+        ...serviceContainers,
+      ])
     }
   }, [htmlContent])
 
@@ -203,14 +287,39 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
           .image-element:hover { outline:2px dashed #5c7cfa; filter:brightness(1.05); }
           .bg-image-element { outline:1px dashed rgba(250,92,92,0.5); }
           .bg-image-element:hover { outline:2px dashed #fa5c5c; background:rgba(250,92,92,0.1); }
+          .service-container-element { outline:1px dashed rgba(75,181,67,0.5); }
+          .service-container-element:hover { outline:2px dashed #4bb543; background:rgba(75,181,67,0.1); }
           .active-element { outline:2px solid #0d6efd !important; box-shadow:0 0 0 4px rgba(13,110,253,0.25); }
           .editable-highlight::before {
             content:"Click to edit"; position:absolute; top:-30px; left:50%; transform:translateX(-50%);
             background:#0d6efd; color:white; padding:3px 8px; border-radius:4px; font-size:12px;
             white-space:nowrap; z-index:1000; pointer-events:none; opacity:0; transition: opacity 0.2s;
           }
+          .service-container-element::before {
+            content:"Service container - Click to add services"; 
+          }
           .editable-highlight:hover::before {
             opacity:0.9;
+          }
+          @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(-20px); }
+            10% { opacity: 1; transform: translateY(0); }
+            90% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+          }
+          
+          .refresh-message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #198754;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            z-index: 9999;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            animation: fadeInOut 2s ease-in-out forwards;
           }
         `
         doc.head.appendChild(style)
@@ -288,6 +397,33 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
                 'Error adding handler to background image element:',
                 err
               )
+            }
+          })
+
+        // Add handlers to service container elements
+        editableElements
+          .filter((el) => el.type === 'serviceContainer')
+          .forEach((element) => {
+            try {
+              const el = findElementByPath(doc, element)
+              if (el) {
+                el.classList.add(
+                  'editable-highlight',
+                  'service-container-element'
+                )
+                if (selectedElement === element.id)
+                  el.classList.add('active-element')
+
+                el.addEventListener('click', (e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setSelectedElement(element.id)
+                  setSelectedServiceContainer(element.id)
+                  setShowEditPanel(true)
+                })
+              }
+            } catch (err) {
+              console.error('Error adding handler to service container:', err)
             }
           })
       }
@@ -434,10 +570,69 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
     setNewImageSrc('')
   }
 
+  // Function to add a new service item
+  const addNewServiceItem = () => {
+    if (!serviceTitle || !serviceDescription || !selectedServiceContainer)
+      return
+
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(editableHtml, 'text/html')
+
+    // Find the service container element
+    const containerData = editableElements.find(
+      (el) => el.id === selectedServiceContainer
+    )
+    if (!containerData) return
+
+    const container = findElementByPath(doc, containerData)
+    if (!container) return
+
+    // Create a new service column element
+    const newServiceCol = doc.createElement('div')
+    newServiceCol.className = 'col-md-4 text-center'
+
+    // Service icon
+    const iconElement = doc.createElement('i')
+    iconElement.className = `bi ${serviceIcon}`
+    iconElement.setAttribute('style', 'font-size: 2rem; color: #104159;')
+
+    // Service title
+    const titleElement = doc.createElement('h4')
+    titleElement.textContent = serviceTitle
+
+    // Service description
+    const descElement = doc.createElement('p')
+    descElement.textContent = serviceDescription
+
+    // Add all elements to the new service column
+    newServiceCol.appendChild(iconElement)
+    newServiceCol.appendChild(titleElement)
+    newServiceCol.appendChild(descElement)
+
+    // Add the new service to the container
+    container.appendChild(newServiceCol)
+
+    // Update the HTML and refresh the editor
+    setEditableHtml(doc.documentElement.outerHTML)
+
+    // Reset form and close modal
+    setServiceTitle('')
+    setServiceDescription('')
+    setServiceIcon('bi-box-seam')
+    setShowAddServiceModal(false)
+  }
+
   // Handle save
   const handleSave = () => {
     try {
       onSave(editableHtml)
+
+      // Clear the saved content since we've officially saved
+      clearSavedContent()
+
+      // Update our reference point
+      setInitialHtml(editableHtml)
+
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
     } catch {
@@ -514,6 +709,17 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
             </div>
 
             <div>
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                className="me-2"
+                onClick={handleRefresh}
+                title="Reset to original generated page"
+              >
+                <i className="bi bi-arrow-counterclockwise me-1"></i> Reset to
+                Original
+              </Button>
+
               <Button
                 variant="outline-secondary"
                 size="sm"
@@ -638,6 +844,86 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
             </Modal.Footer>
           </Modal>
 
+          {/* Modal for adding new service */}
+          <Modal
+            show={showAddServiceModal}
+            onHide={() => setShowAddServiceModal(false)}
+          >
+            <Modal.Header closeButton>
+              <Modal.Title>Add New Service</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form.Group className="mb-3">
+                <Form.Label>Service Icon</Form.Label>
+                <Form.Select
+                  value={serviceIcon}
+                  onChange={(e) => setServiceIcon(e.target.value)}
+                >
+                  <option value="bi-box-seam">Box (Warehousing)</option>
+                  <option value="bi-truck">Truck (Transport)</option>
+                  <option value="bi-globe">Globe (International)</option>
+                  <option value="bi-graph-up">Graph (Analytics)</option>
+                  <option value="bi-shield-check">Shield (Security)</option>
+                  <option value="bi-clock-history">
+                    Clock (Time-Critical)
+                  </option>
+                  <option value="bi-gear">Gear (Technical)</option>
+                </Form.Select>
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Service Title</Form.Label>
+                <Form.Control
+                  type="text"
+                  placeholder="e.g., Express Delivery"
+                  value={serviceTitle}
+                  onChange={(e) => setServiceTitle(e.target.value)}
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Service Description</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  placeholder="Describe your service in a few sentences..."
+                  value={serviceDescription}
+                  onChange={(e) => setServiceDescription(e.target.value)}
+                />
+              </Form.Group>
+
+              <div className="mt-3 p-3 bg-light rounded">
+                <p className="fw-bold mb-2">Preview:</p>
+                <div className="text-center p-3 border rounded">
+                  <i
+                    className={`bi ${serviceIcon}`}
+                    style={{ fontSize: '2rem', color: '#104159' }}
+                  ></i>
+                  <h4>{serviceTitle || 'Service Title'}</h4>
+                  <p>
+                    {serviceDescription ||
+                      'Service description will appear here.'}
+                  </p>
+                </div>
+              </div>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button
+                variant="secondary"
+                onClick={() => setShowAddServiceModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={addNewServiceItem}
+                disabled={!serviceTitle || !serviceDescription}
+              >
+                Add Service
+              </Button>
+            </Modal.Footer>
+          </Modal>
+
           {/* Status messages */}
           {saveSuccess && (
             <Alert variant="success" className="mt-2 py-2">
@@ -672,7 +958,9 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
                     ? 'Edit Text'
                     : selectedElementData?.type === 'image'
                     ? 'Edit Image'
-                    : 'Edit Background Image'}
+                    : selectedElementData?.type === 'backgroundImage'
+                    ? 'Edit Background Image'
+                    : 'Edit Service Container'}
                 </div>
                 <small className="text-white-50">
                   {selectedElementData?.element || selectedElementData?.type}
@@ -870,6 +1158,40 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
                     </Button>
                   </>
                 )}
+
+                {selectedElementData?.type === 'serviceContainer' && (
+                  <>
+                    <div className="text-center p-3 mb-3 bg-light rounded">
+                      <p className="mb-1">
+                        <i className="bi bi-grid me-2"></i>Service Container
+                      </p>
+                      <small className="text-muted">
+                        This is a container for service items.
+                      </small>
+                    </div>
+
+                    <Button
+                      variant="success"
+                      className="w-100 mb-3"
+                      onClick={() => setShowAddServiceModal(true)}
+                    >
+                      <i className="bi bi-plus-circle me-2"></i>
+                      Add New Service
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline-primary"
+                      className="mt-1"
+                      onClick={() => {
+                        setSelectedElement(null)
+                        setShowEditPanel(false)
+                      }}
+                    >
+                      Done
+                    </Button>
+                  </>
+                )}
               </Card.Body>
             </Card>
           ) : (
@@ -925,11 +1247,11 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
                 </p>
                 <p className="mb-1">
                   <strong>Edit backgrounds:</strong> Elements with background
-                  images have red outlines on hover
+                  images have red outlines
                 </p>
                 <p className="mb-1">
-                  <strong>Add new images:</strong> Use the &quot;Add New
-                  Image&quot; button below the preview
+                  <strong>Add services:</strong> Click on the services container
+                  (green outline)
                 </p>
                 <p className="mb-0">
                   <strong>Save changes:</strong> Click &quot;Save Changes&quot;

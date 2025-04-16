@@ -132,16 +132,20 @@ export interface FormHandlerHook {
   formData: FormData;
   setFormData: Dispatch<SetStateAction<FormData>>;
   isLoading: boolean;
+  setIsLoading: Dispatch<SetStateAction<boolean>>; // Add this
   isReady: boolean;
+  setIsReady: Dispatch<SetStateAction<boolean>>; // Add this
   generatedHtml: string;
+  setGeneratedHtml: Dispatch<SetStateAction<string>>; // Add this
   error: string;
+  setError: Dispatch<SetStateAction<string>>;
   step: number;
   setStep: Dispatch<SetStateAction<number>>;
   allQuestionsAnswered: boolean;
   setAllQuestionsAnswered: Dispatch<SetStateAction<boolean>>;
   checkAllQuestionsAnswered: () => boolean;
   generateWebsite: () => Promise<void>;
-  setError: Dispatch<SetStateAction<string>>;
+  clearSavedContent?: () => void; // Optional function to clear saved content
 }
 
 // API response types

@@ -121,7 +121,7 @@ export const AiGenComponent: React.FC<PreviewProps> = ({
         border: '1px solid #e0e0e0',
         backgroundColor: 'white',
       }}
-      sandbox="allow-same-origin"
+      sandbox="allow-scripts allow-same-origin allow-forms"
       loading="lazy"
       aria-label="Generated website preview"
     />

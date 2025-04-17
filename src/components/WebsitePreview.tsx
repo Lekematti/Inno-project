@@ -191,6 +191,18 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
                 <span className="ms-2">Rendering preview...</span>
               </div>
             ) : null}
+
+            {/* Back to form button at the top of the preview */}
+            <div className="mb-3">
+              <Button
+                variant="success"
+                onClick={() => {
+                  window.location.href = '/build'
+                }}
+              >
+                Back to form
+              </Button>
+            </div>
             <div
               className="preview-container"
               style={{

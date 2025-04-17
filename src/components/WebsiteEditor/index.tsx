@@ -1,7 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { Alert } from 'react-bootstrap'
-import { usePageRefreshHandler } from '@/hooks/usePageRefreshHandler'
+import {
+  usePageRefreshHandler,
+  clearFormData,
+} from '@/hooks/usePageRefreshHandler'
 import { WebsiteEditorProps } from './EditableElement'
 import { useEditableContent } from './hooks/useEditableContent'
 import EditorPreview from './components/EditorPreview'
@@ -235,6 +238,18 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
 
   return (
     <div className="website-editor">
+      <button
+        className="btn btn-success mb-3"
+        onClick={() => {
+          clearFormData() // Clear form-related localStorage
+          // Force navigation to /build page using window.location
+          // This works even if we're in an iframe context
+          window.location.href = '/build'
+        }}
+      >
+        Back to form
+      </button>
+
       <EditorToolbar
         handleRefresh={handleRefresh}
         previewFullWebsite={previewFullWebsite}
@@ -280,28 +295,6 @@ export const WebsiteEditor: React.FC<WebsiteEditorProps> = ({
                   edit
                 </small>
               )}
-            </div>
-
-            <div>
-              <button
-                className="btn btn-outline-secondary btn-sm me-2"
-                onClick={handleRefresh}
-                title="Reset to original generated page"
-              >
-                <i className="bi bi-arrow-counterclockwise me-1"></i> Reset to
-                Original
-              </button>
-
-              <button
-                className="btn btn-outline-secondary btn-sm me-2"
-                onClick={previewFullWebsite}
-              >
-                <i className="bi bi-eye me-1"></i> Preview Full Site
-              </button>
-
-              <button className="btn btn-primary" onClick={handleSave}>
-                <i className="bi bi-save me-1"></i> Save Changes
-              </button>
             </div>
           </div>
 

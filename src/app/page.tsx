@@ -44,10 +44,10 @@ export default function Home() {
             }}
           >
             Welcome to AiWebsiteBuildr, the future of website creation powered
-            by artificial intelligence. Whether you're a small business owner,
-            entrepreneur, or designer, our AI-driven platform makes building
-            stunning, responsive, and fully customizable websites effortless—no
-            coding required.
+            by artificial intelligence. Whether you&apos;re a small business
+            owner, entrepreneur, or designer, our AI-driven platform makes
+            building stunning, responsive, and fully customizable websites
+            effortless—no coding required.
           </p>
           <section
             style={{

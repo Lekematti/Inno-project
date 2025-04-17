@@ -37,7 +37,8 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
       const doc = iframeRef.contentDocument
       if (doc) {
         doc.open()
-        doc.documentElement.innerHTML = editableHtml
+        // Write the HTML as a complete document
+        doc.write(editableHtml)
         doc.close()
       }
     }

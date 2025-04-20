@@ -1,5 +1,5 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Container, ProgressBar } from 'react-bootstrap'
 import { Header } from '@/components/Header'
 import { useFormHandlers } from './useFormHandlers'
@@ -9,7 +9,7 @@ import { Step2Questions } from '../../components/steps/Step2Questions'
 import { Step3Questions } from '../../components/steps/Step3Questions'
 import { Step4ImageInstructions } from '../../components/steps/Step4ImageInstructions'
 import { WebsitePreview } from '@/components/WebsitePreview'
-import { FormData } from '@/types/formData'
+import { ElementEditInstructions, FormData } from '@/types/formData'
 
 export default function BuildPage() {
   const {
@@ -26,9 +26,10 @@ export default function BuildPage() {
     checkAllQuestionsAnswered,
     generateWebsite,
     setError,
+    setGeneratedHtml,
   } = useFormHandlers()
 
-  //console.log('Form Data Submitted:', formData);
+  const [editingElement, setEditingElement] = useState(false)
 
   useEffect(() => {
     if (step === 5 && formData.businessType) {
@@ -53,81 +54,46 @@ export default function BuildPage() {
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    const { name, value, type } = e.target
+    const newVal =
+      type === 'checkbox'
+        ? (e.target as HTMLInputElement).checked
+          ? 'yes'
+          : 'no'
+        : value
+    setFormData((prev) => ({ ...prev, [name]: newVal }))
   }
 
-  const handleSubmitStep1 = () => {
-    if (
-      !formData.businessType ||
-      !formData.address ||
-      !formData.phone ||
-      !formData.email
-    ) {
-      setError('Please fill out all required fields')
-      return
-    }
-    setError('')
-    setStep(2)
-  }
-
-  const handleSubmitStep2 = () => {
-    const questions = getQuestions(formData.businessType)
-    for (let i = 0; i < 5; i++) {
-      const fieldName = `question${i + 1}` as keyof FormData
-      if (
-        i < questions.length &&
-        (!formData[fieldName] || String(formData[fieldName]).trim() === '')
-      ) {
-        setError('Please answer all questions before proceeding')
-        return
-      }
-    }
-    setError('')
-    setStep(3)
-  }
-
-  const handleSubmitStep3 = () => {
-    const questions = getQuestions(formData.businessType)
-    for (let i = 5; i < 10; i++) {
-      const fieldName = `question${i + 1}` as keyof FormData
-      if (
-        i < questions.length &&
-        (!formData[fieldName] || String(formData[fieldName]).trim() === '')
-      ) {
-        setError('Please answer all questions before proceeding')
-        return
-      }
-    }
-    setError('')
-    setStep(4)
-  }
-
-  const handleSubmitStep4 = (updatedFormData?: Partial<FormData>) => {
-    // Check image source and validate accordingly
+  const handleNext = (updatedFormData?: Partial<FormData>) => {
     const imageSource =
-      updatedFormData?.imageSource || formData.imageSource || 'ai'
+      updatedFormData?.imageSource || formData.imageSource || 'none'
 
-    if (imageSource === 'ai') {
-      // For AI-generated images
-      if (
-        !formData.imageInstructions ||
-        String(formData.imageInstructions).trim() === ''
-      ) {
-        setError(
-          'Please describe your image requirements or enter "none" if you don\'t need images'
-        )
-        return
-      }
-    } else if (imageSource === 'manual') {
-      // For manually uploaded images
-      const uploadedImages =
-        updatedFormData?.uploadedImages || formData.uploadedImages || []
-      if (!uploadedImages.length) {
-        setError(
-          'Please upload at least one image or switch to AI-generated images'
-        )
-        return
+    // If it's the image step and "none" is explicitly selected, that's valid
+    // (don't treat as an error case)
+    const isNoneSelected = imageSource === 'none'
+
+    if (!isNoneSelected) {
+      // Only validate non-"none" options
+      if (imageSource === 'ai') {
+        // For AI-generated images
+        const hasInstructions =
+          formData.imageInstructions || updatedFormData?.imageInstructions
+        if (!hasInstructions && step === 4) {
+          setError(
+            'Please provide image instructions or switch to another option'
+          )
+          return
+        }
+      } else if (imageSource === 'manual') {
+        // For manually uploaded images
+        const uploadedImages =
+          updatedFormData?.uploadedImages || formData.uploadedImages || []
+        if (!uploadedImages.length) {
+          setError(
+            'Please upload at least one image or switch to another option'
+          )
+          return
+        }
       }
     }
 
@@ -149,6 +115,97 @@ export default function BuildPage() {
   const handleBack = () => {
     if (step > 1) {
       setStep(step - 1)
+    }
+  }
+
+  // Handle element edits
+  // Update the handleEditElement function
+
+  const handleEditElement = async (
+    editInstructions: ElementEditInstructions,
+    currentFormData: FormData
+  ) => {
+    if (!generatedHtml) return
+
+    setEditingElement(true)
+    setError('')
+
+    try {
+      // First step: Apply the edits to the HTML
+      const response = await fetch('/api/editElement', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          formData: currentFormData,
+          htmlContent: generatedHtml,
+          editInstructions,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(
+          `Error updating element: ${errorText || response.status}`
+        )
+      }
+
+      const data = await response.json()
+
+      if (data.htmlContent) {
+        // Update the generated HTML with the edited version
+        setGeneratedHtml(data.htmlContent)
+
+        // Get the current file path from form data
+        const currentFilePath = currentFormData.filePath || ''
+
+        console.log('Current file path:', currentFilePath)
+        console.log('Saving edited HTML to file...')
+
+        // Second step: Save the edited HTML back to the file
+        try {
+          const saveResponse = await fetch('/api/editSave', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              formData: currentFormData,
+              htmlContent: data.htmlContent,
+              originalFilePath: currentFilePath,
+            }),
+          })
+
+          if (saveResponse.ok) {
+            const saveData = await saveResponse.json()
+            console.log('File saved successfully:', saveData)
+
+            // Update form data with file path (could be same or new)
+            setFormData((prev) => ({
+              ...prev,
+              filePath: saveData.filePath,
+            }))
+          } else {
+            const errorText = await saveResponse.text()
+            console.error('Error saving file:', errorText)
+          }
+        } catch (saveErr) {
+          console.error('Exception saving edited HTML:', saveErr)
+          // Continue with UI update even if save fails
+        }
+      } else {
+        throw new Error('No HTML content received in response')
+      }
+    } catch (err) {
+      console.error('Failed to apply edits:', err)
+      setError(
+        `Failed to apply edits: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      )
+    } finally {
+      setEditingElement(false)
     }
   }
 
@@ -174,95 +231,125 @@ export default function BuildPage() {
       : 0
 
   // Calculate progress - ensure we don't divide by zero and don't exceed 100%
-  const progress =
-    totalQuestions > 0
-      ? Math.min(100, Math.round((answeredQuestions / totalQuestions) * 100))
-      : 0
-
-  // Calculate step-based progress - each step contributes to overall completion
-  const stepProgress = Math.min(100, Math.round(((step - 1) / 4) * 100))
-
-  // Use the larger of question-based or step-based progress
-  const displayProgress = Math.max(progress, stepProgress)
+  const progress = {
+    answeredQuestions,
+    totalQuestions,
+    percentage:
+      totalQuestions > 0
+        ? Math.min(Math.round((answeredQuestions / totalQuestions) * 100), 100)
+        : 0,
+  }
 
   return (
-    <div className="min-vh-100 d-flex flex-column">
-      <Header />
-      <Container className="flex-grow-1 py-4">
-        {step < 5 && (
+    <div>
+      {/* @ts-expect-error Header component does not fully align with expected props */}
+      <Header activePage="build" />
+      {step < 5 && (
+        <div className="bg-primary-subtle py-2 text-center">
+          <div className="container">
+            <div className="d-flex justify-content-between align-items-center">
+              <div className="flex-grow-1 text-center">
+                <strong>Step {step}/4:</strong>{' '}
+                {step === 1
+                  ? 'Basic Information'
+                  : step === 2
+                  ? 'Business Questions'
+                  : step === 3
+                  ? 'Design Questions'
+                  : 'Media Selection'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Container className="pb-5 pt-4">
+        {step < 5 && totalQuestions > 0 && (
           <div className="mb-4">
             <ProgressBar
-              now={step === 4 ? 75 : displayProgress}
-              label={`${step === 4 ? 75 : displayProgress}%`}
+              now={progress.percentage}
+              label={`${progress.percentage}%`}
+              variant="primary"
+              className="mb-2"
             />
+            <div className="text-muted text-center fs-6">
+              <small>
+                {answeredQuestions} of {totalQuestions} questions answered
+              </small>
+            </div>
           </div>
         )}
 
-        {/* Rest of your component remains unchanged */}
-
-        {step === 1 && (
-          <Step1BasicInfo
-            formData={formData}
-            handleChange={handleChange}
-            handleSubmit={handleSubmitStep1}
-            error={error}
-          />
-        )}
-
-        {step === 2 && (
-          <Step2Questions
-            formData={formData}
-            handleChange={handleChange}
-            handleSubmit={handleSubmitStep2}
-            handleBack={handleBack}
-            error={error}
-            setFormData={(data: Partial<FormData>) =>
-              setFormData(
-                (prev: FormData) => ({ ...prev, ...data } as FormData)
+        {(() => {
+          switch (step) {
+            case 1:
+              return (
+                <Step1BasicInfo
+                  formData={formData}
+                  handleChange={handleChange}
+                  handleSubmit={() => setStep(2)}
+                  error={error}
+                />
               )
-            }
-          />
-        )}
-
-        {step === 3 && (
-          <Step3Questions
-            formData={formData}
-            handleChange={handleChange}
-            handleSubmit={handleSubmitStep3}
-            handleBack={handleBack}
-            error={error}
-            setFormData={(data: Partial<FormData>) =>
-              setFormData(
-                (prev: FormData) => ({ ...prev, ...data } as FormData)
+            case 2:
+              return (
+                <Step2Questions
+                  formData={formData}
+                  handleChange={handleChange}
+                  handleSubmit={() => setStep(3)}
+                  handleBack={handleBack}
+                  error={error}
+                  setFormData={(data: Partial<FormData>) =>
+                    setFormData(
+                      (prev: FormData) => ({ ...prev, ...data } as FormData)
+                    )
+                  }
+                />
               )
-            }
-          />
-        )}
-
-        {step === 4 && (
-          <Step4ImageInstructions
-            formData={formData}
-            handleChange={handleChange}
-            handleSubmit={handleSubmitStep4}
-            handleBack={handleBack}
-            error={error}
-            setFormData={(data: Partial<FormData>) =>
-              setFormData(
-                (prev: FormData) => ({ ...prev, ...data } as FormData)
+            case 3:
+              return (
+                <Step3Questions
+                  formData={formData}
+                  handleChange={handleChange}
+                  handleSubmit={() => setStep(4)}
+                  handleBack={handleBack}
+                  error={error}
+                  setFormData={(data: Partial<FormData>) =>
+                    setFormData(
+                      (prev: FormData) => ({ ...prev, ...data } as FormData)
+                    )
+                  }
+                />
               )
-            }
-          />
-        )}
-
-        {step === 5 && (
-          <WebsitePreview
-            isLoading={isLoading}
-            isReady={isReady}
-            generatedHtml={generatedHtml}
-            error={error}
-            formData={formData}
-          />
-        )}
+            case 4:
+              return (
+                <Step4ImageInstructions
+                  formData={formData}
+                  handleChange={handleChange}
+                  handleSubmit={handleNext}
+                  handleBack={handleBack}
+                  error={error}
+                  setFormData={(data: Partial<FormData>) =>
+                    setFormData(
+                      (prev: FormData) => ({ ...prev, ...data } as FormData)
+                    )
+                  }
+                />
+              )
+            case 5:
+            default:
+              return (
+                <WebsitePreview
+                  isLoading={isLoading || editingElement}
+                  isReady={isReady}
+                  generatedHtml={generatedHtml}
+                  error={error}
+                  formData={formData}
+                  onEditElement={handleEditElement}
+                />
+              )
+          }
+        })()}
       </Container>
     </div>
   )

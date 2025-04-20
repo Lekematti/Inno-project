@@ -2,24 +2,25 @@
  * Custom React hook that manages form state and logic for website generation
  */
 import { useState, useCallback, useRef } from 'react'
-import { templates } from '@/functions/inputGenerate'
-import { processUserColors } from '@/app/build/colorProcessor'
 import {
   type FormData,
-  FormHandlerHook,
-  BusinessType,
   ImageSourceType,
-  defaultFormData,
+  FormHandlerHook,
 } from '@/types/formData'
+import { processUserColors } from './colorProcessor'
+import { getQuestions } from './pageUtils'
 
 /**
  * Hook for managing website generation form state and operations
  */
 export const useFormHandlers = (): FormHandlerHook => {
-  // State management
-  const [formData, setFormData] = useState<FormData>(defaultFormData)
-
-  // UI state
+  const [formData, setFormData] = useState<FormData>({
+    businessType: '',
+    address: '',
+    phone: '',
+    email: '',
+    imageSource: 'none',
+  })
   const [isLoading, setIsLoading] = useState(false)
   const [isReady, setIsReady] = useState(false)
   const [generatedHtml, setGeneratedHtml] = useState('')
@@ -27,77 +28,27 @@ export const useFormHandlers = (): FormHandlerHook => {
   const [step, setStep] = useState(1)
   const [allQuestionsAnswered, setAllQuestionsAnswered] = useState(false)
 
-  const isSubmittingRef = useRef(false)
+  // Use a ref to track if a submission is in progress
+  const isSubmittingRef = useRef<boolean>(false)
 
-  /**
-   * Validates that all required form fields are completed
-   */
-  const checkAllQuestionsAnswered = useCallback((): boolean => {
-    if (
-      !formData.businessType ||
-      !formData.address ||
-      !formData.phone ||
-      !formData.email
-    ) {
+  const checkAllQuestionsAnswered = useCallback(() => {
+    if (!formData.businessType) {
       return false
     }
 
-    const businessType = formData.businessType.toLowerCase() as BusinessType
-    if (!['restaurant', 'logistics', 'professional'].includes(businessType)) {
-      return false
-    }
-
-    const template = templates[businessType]
-    const questions = template?.questions || []
-
-    return questions.every((_, i) => {
+    const questions = getQuestions(formData.businessType)
+    for (let i = 0; i < questions.length; i++) {
       const fieldName = `question${i + 1}` as keyof FormData
-      const value = formData[fieldName]
-      return typeof value === 'string' && value.trim() !== ''
-    })
+      if (
+        !formData[fieldName] ||
+        String(formData[fieldName] || '').trim() === ''
+      ) {
+        return false
+      }
+    }
+    return true
   }, [formData])
 
-  /**
-   * Processes all colors in form data to ensure they're web-appropriate
-   */
-  const processFormColors = useCallback((data: FormData): FormData => {
-    const businessType = data.businessType?.toLowerCase() as BusinessType
-
-    // Look for colors in any question field and in the colorScheme field
-    let colorString = data.colorScheme as string
-
-    // If no colorScheme, try to find colors in question fields
-    if (!colorString) {
-      for (let i = 1; i <= 10; i++) {
-        const fieldName = `question${i}` as keyof FormData
-        const value = data[fieldName]
-        if (value && typeof value === 'string' && value.includes('#')) {
-          colorString = value
-          break
-        }
-      }
-    }
-
-    if (colorString && colorString.trim() !== '') {
-      const colors = colorString.split(',').filter(Boolean)
-      if (colors.length > 0) {
-        // Process and validate the colors
-        const processedColors = processUserColors(colors, businessType)
-
-        // Return updated form data with processed colors
-        return {
-          ...data,
-          colorScheme: processedColors.join(','),
-        }
-      }
-    }
-
-    return data
-  }, [])
-
-  /**
-   * Sends form data to the API endpoint to generate website with enhanced error handling
-   */
   const generateWebsite = useCallback(async (): Promise<void> => {
     if (isLoading || isSubmittingRef.current) return
 
@@ -107,7 +58,7 @@ export const useFormHandlers = (): FormHandlerHook => {
 
     try {
       // Process colors before submission
-      const processedFormData = processFormColors(formData)
+      const processedFormData = processUserColors([], formData.businessType)
 
       // Create FormData object for file uploads
       const submitData = new FormData()
@@ -150,8 +101,8 @@ export const useFormHandlers = (): FormHandlerHook => {
         submitData.append('businessName', formData.businessName)
       }
 
-      if (processedFormData.colorScheme) {
-        submitData.append('colorScheme', processedFormData.colorScheme)
+      if (Array.isArray(processedFormData) && processedFormData.length > 0) {
+        submitData.append('colorScheme', processedFormData.join(','))
       }
 
       if (formData.templateVariant) {
@@ -248,7 +199,7 @@ export const useFormHandlers = (): FormHandlerHook => {
       setIsLoading(false)
       isSubmittingRef.current = false
     }
-  }, [formData, isLoading, processFormColors])
+  }, [formData, isLoading])
 
   return {
     formData,
@@ -264,5 +215,6 @@ export const useFormHandlers = (): FormHandlerHook => {
     checkAllQuestionsAnswered,
     generateWebsite,
     setError,
+    setGeneratedHtml,
   }
 }

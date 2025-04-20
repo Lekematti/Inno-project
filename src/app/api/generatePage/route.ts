@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import fs from 'fs'
 import path from 'path'
-import { fetchImages, ensureImageUrlsHaveParams } from '@/app/build/imageProcessor'
+import {
+  fetchImages,
+  ensureImageUrlsHaveParams,
+} from '@/app/build/imageProcessor'
 import { generateLayoutVariations } from '@/app/api/generatePage/utils/layout-generator'
 import { getBusinessPrompt } from '@/app/templates/business-prompts'
 import { buildPrompt } from '@/app/templates/prompt-builder'
@@ -147,13 +150,13 @@ export async function generateCustomPage(
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
-    const requestData = Object.fromEntries(formData.entries());
+    const formData = await request.formData()
+    const requestData = Object.fromEntries(formData.entries())
 
     // Extract image information
-    const imageSource = requestData.imageSource as ImageSourceType;
-    const imageInstructions = requestData.imageInstructions as string;
-    let imageUrls: string[] = [];
+    const imageSource = requestData.imageSource as ImageSourceType
+    const imageInstructions = requestData.imageInstructions as string
+    let imageUrls: string[] = []
 
     // Process images based on the source
     if (imageSource === 'ai') {
@@ -161,41 +164,42 @@ export async function POST(request: NextRequest) {
       imageUrls = await fetchImages(
         imageInstructions || '',
         requestData.businessType as string,
-        'ai' 
-      );
-      
+        'ai'
+      )
+
       // Log the results of image generation
-      console.log(`Generated ${imageUrls.length} AI images for ${requestData.businessType}`);
-      if (imageUrls.length === 0) {
-        console.warn('Warning: No AI images were generated. Check image generation service.');
-      }
+      console.log(
+        `Generated ${imageUrls.length} AI images for ${requestData.businessType}`
+      )
     } else if (imageSource === 'manual') {
       // Process uploaded images
-      const files = formData.getAll('uploadedImages') as File[];
+      const files = formData.getAll('uploadedImages') as File[]
 
       // Create the uploads directory if it doesn't exist
-      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
       if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
+        fs.mkdirSync(uploadsDir, { recursive: true })
       }
 
       // Save each file and collect their URLs
       for (const file of files) {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        // Sanitize the filename to avoid problems
+        const buffer = Buffer.from(await file.arrayBuffer())
         const sanitizedFilename = file.name
           .replace(/['"]/g, '')
           .replace(/\s+/g, '-')
-          .replace(/[^a-zA-Z0-9-_.]/g, '');
-        const filename = `${Date.now()}-${sanitizedFilename}`;
-        const filePath = path.join(uploadsDir, filename);
+          .replace(/[^a-zA-Z0-9-_.]/g, '')
+        const filename = `${Date.now()}-${sanitizedFilename}`
+        const filePath = path.join(uploadsDir, filename)
 
-        fs.writeFileSync(filePath, buffer);
-        // Use an absolute URL path that includes the domain
-        imageUrls.push(`/uploads/${filename}`);
+        fs.writeFileSync(filePath, buffer)
+        imageUrls.push(`/uploads/${filename}`)
       }
 
-      console.log('Manual images saved:', imageUrls);
+      console.log('Manual images saved:', imageUrls)
+    } else {
+      // 'none' option - no images needed
+      console.log('No images requested for this website')
+      imageUrls = []
     }
 
     // Format the form data for processing
@@ -207,13 +211,13 @@ export async function POST(request: NextRequest) {
       imageUrls,
       imageSource,
       colorScheme: requestData.colorScheme as string,
-    };
+    }
 
     // For questions 1-10, add them to the processed form data
     for (let i = 1; i <= 10; i++) {
-      const key = `question${i}`;
+      const key = `question${i}`
       if (requestData[key]) {
-        processedFormData[key] = requestData[key] as string;
+        processedFormData[key] = requestData[key] as string
       }
     }
 
@@ -221,64 +225,61 @@ export async function POST(request: NextRequest) {
     const htmlContent = await generateCustomPage(
       processedFormData as FormData,
       imageSource
-    );
+    )
 
-    const fixedHtmlContent = ensureImageUrlsHaveParams(htmlContent, imageUrls);
+    const fixedHtmlContent = ensureImageUrlsHaveParams(htmlContent, imageUrls)
 
     // Save the generated HTML
-    const now = new Date();
+    const now = new Date()
     const timestamp = `${now.getFullYear()}-${String(
       now.getMonth() + 1
-    ).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const suffix = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`;
+    ).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    const suffix = `${now.getHours()}${now.getMinutes()}${now.getSeconds()}`
     const businessType = Array.isArray(processedFormData.businessType)
       ? processedFormData.businessType[0]
-      : processedFormData.businessType;
-    const fileName = `${businessType.toLowerCase()}-${timestamp}-${suffix}.html`;
-    const outputDir = path.join(process.cwd(), 'gen_comp');
+      : processedFormData.businessType
+    const fileName = `${businessType.toLowerCase()}-${timestamp}-${suffix}.html`
+    const outputDir = path.join(process.cwd(), 'gen_comp')
 
     if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
+      fs.mkdirSync(outputDir, { recursive: true })
     }
 
-    const filePath = path.join(outputDir, fileName);
+    const filePath = path.join(outputDir, fileName)
 
     // Modify the HTML content to ensure images have correct paths
     const modifiedHtml = (() => {
-      let html = fixedHtmlContent; // Using the fixed HTML content
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
-      
-      html = html.replace(
-        /src="\/uploads\//g,
-        `src="${baseUrl}/uploads/`
-      );
-      
+      let html = fixedHtmlContent // Using the fixed HTML content
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || ''
+
+      html = html.replace(/src="\/uploads\//g, `src="${baseUrl}/uploads/`)
+
       html = html.replace(
         /background-image:\s*url\(['"]?\/uploads\//g,
         `background-image: url('${baseUrl}/uploads/`
-      );
-      
+      )
+
       html = html.replace(
         /content="\/uploads\//g,
         `content="${baseUrl}/uploads/`
-      );
-      
-      return html;
-    })();
+      )
 
-    fs.writeFileSync(filePath, modifiedHtml);
+      return html
+    })()
+
+    fs.writeFileSync(filePath, modifiedHtml)
 
     return NextResponse.json({
       htmlContent: modifiedHtml,
       filePath: `/gen_comp/${fileName}`,
       imageUrls,
       imageSource,
-    });
+    })
   } catch (error) {
-    console.error('Error generating page:', error);
+    console.error('Error generating page:', error)
     return NextResponse.json(
       { error: 'Error generating page.' },
       { status: 500 }
-    );
+    )
   }
 }

@@ -4,6 +4,7 @@ import { AiGenComponent } from './AiGenComponent'
 import { Spinner, Alert } from 'react-bootstrap'
 import { DownloadSection } from '@/app/build/components/UIHelpers'
 import { WebsitePreviewProps } from '@/types/formData'
+import { clearFormData } from '../functions/usePageRefreshHandler' // <-- Add this import
 
 export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   isLoading,
@@ -54,7 +55,8 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
         <p>{previewError}</p>
         <div className="mt-3">
           <small>
-            You can still download the HTML even though it can't be previewed.
+            You can still download the HTML even though it can&apos;t be
+            previewed.
           </small>
           {generatedHtml && (
             <div className="mt-2">
@@ -65,6 +67,15 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
             </div>
           )}
         </div>
+        <button
+          className="btn btn-success mt-3"
+          onClick={() => {
+            clearFormData()
+            window.location.href = '/build'
+          }}
+        >
+          Back to form
+        </button>
       </Alert>
     )
   }
@@ -72,6 +83,16 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   if (isReady && generatedHtml) {
     return (
       <>
+        <button
+          className="btn btn-success mb-3"
+          onClick={() => {
+            clearFormData()
+            window.location.href = '/build'
+          }}
+        >
+          Back to form
+        </button>
+
         {isRendering ? (
           <div className="text-center p-3">
             <Spinner animation="border" size="sm" />

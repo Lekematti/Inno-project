@@ -9,6 +9,7 @@ import { Step2Questions } from '../../components/steps/Step2Questions'
 import { Step3Questions } from '../../components/steps/Step3Questions'
 import { Step4ImageInstructions } from '../../components/steps/Step4ImageInstructions'
 import { WebsitePreview } from '@/components/WebsitePreview'
+import { WebsiteEditor } from '@/components/WebsiteEditor'
 import { FormData } from '@/types/formData'
 import { clearFormData } from '@/hooks/usePageRefreshHandler'
 import { useRouter } from 'next/navigation'
@@ -321,13 +322,28 @@ export default function BuildPage() {
 
         {step === 5 && (
           <>
-            <WebsitePreview
-              isLoading={isLoading}
-              isReady={isReady}
-              generatedHtml={generatedHtml}
-              error={error}
-              formData={formData}
-            />
+            {step === 5 && isReady && generatedHtml ? (
+              <WebsiteEditor
+                htmlContent={generatedHtml}
+                originalHtml={generatedHtml}
+                onSave={async (updatedHtml) => {
+                  await fetch('/api/generatePage', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ htmlContent: updatedHtml, filePath: formData.filePath }),
+                  })
+                }}
+                standaloneHtml={generatedHtml}
+              />
+            ) : (
+              <WebsitePreview
+                isLoading={isLoading}
+                isReady={isReady}
+                generatedHtml={generatedHtml}
+                error={error}
+                formData={formData}
+              />
+            )}
 
             {/* Only show Generate button in step 5 and only when not loading */}
             {!isLoading && (

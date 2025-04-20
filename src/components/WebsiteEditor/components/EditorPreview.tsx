@@ -40,6 +40,7 @@ const EditorPreview: React.FC<EditorPreviewProps> = ({
         // Write the HTML as a complete document
         doc.write(editableHtml)
         doc.close()
+        console.log('Injected HTML into iframe')
       }
     }
   }, [editableHtml, iframeRef])

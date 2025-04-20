@@ -114,6 +114,12 @@ export const useEditableContent = (
       ...bgImageElements,
       ...serviceContainers,
     ])
+    console.log('Editable elements:', [
+      ...textElements,
+      ...imgElements,
+      ...bgImageElements,
+      ...serviceContainers,
+    ])
   }
 
   // Function to generate a unique CSS selector for an element

@@ -9,13 +9,14 @@ import { Step2Questions } from '../../components/steps/Step2Questions'
 import { Step3Questions } from '../../components/steps/Step3Questions'
 import { Step4ImageInstructions } from '../../components/steps/Step4ImageInstructions'
 import { WebsitePreview } from '@/components/WebsitePreview'
-import { FormData } from '@/types/formData'
+import { FormData, ElementEditInstructions } from '@/types/formData'
 import { clearFormData } from '@/functions/usePageRefreshHandler'
 import { useRouter } from 'next/navigation'
 
 export default function BuildPage() {
   // Add state to track if we're restoring from storage
   const [isRestoringFromStorage, setIsRestoringFromStorage] = useState(false)
+  const [editingElement, setEditingElement] = useState(false)
 
   const {
     formData,
@@ -215,6 +216,88 @@ export default function BuildPage() {
     }
   }
 
+  // Handle element edits
+  const handleEditElement = async (
+    editInstructions: ElementEditInstructions,
+    currentFormData: FormData
+  ) => {
+    if (!generatedHtml) return
+
+    setEditingElement(true)
+    setError('')
+
+    try {
+      // First step: Apply the edits to the HTML
+      const response = await fetch('/api/editElement', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          formData: currentFormData,
+          htmlContent: generatedHtml,
+          editInstructions,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(
+          `Error updating element: ${errorText || response.status}`
+        )
+      }
+
+      const data = await response.json()
+
+      if (data.htmlContent) {
+        // Update the generated HTML with the edited version
+        setGeneratedHtml(data.htmlContent)
+
+        // Get the current file path from form data
+        const currentFilePath = currentFormData.filePath || ''
+
+        // Second step: Save the edited HTML back to the file
+        try {
+          const saveResponse = await fetch('/api/editSave', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              formData: currentFormData,
+              htmlContent: data.htmlContent,
+              originalFilePath: currentFilePath,
+            }),
+          })
+
+          if (saveResponse.ok) {
+            const saveData = await saveResponse.json()
+            setFormData((prev) => ({
+              ...prev,
+              filePath: saveData.filePath,
+            }))
+          } else {
+            const errorText = await saveResponse.text()
+            console.error('Error saving file:', errorText)
+          }
+        } catch (saveErr) {
+          console.error('Exception saving edited HTML:', saveErr)
+        }
+      } else {
+        throw new Error('No HTML content received in response')
+      }
+    } catch (err) {
+      console.error('Failed to apply edits:', err)
+      setError(
+        `Failed to apply edits: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      )
+    } finally {
+      setEditingElement(false)
+    }
+  }
+
   // Progress calculation
   const questions = getQuestions(formData.businessType || '')
 
@@ -322,11 +405,12 @@ export default function BuildPage() {
         {step === 5 && (
           <>
             <WebsitePreview
-              isLoading={isLoading}
+              isLoading={isLoading || editingElement}
               isReady={isReady}
               generatedHtml={generatedHtml}
               error={error}
               formData={formData}
+              onEditElement={handleEditElement}
             />
 
             {/* Only show Generate button in step 5 and only when not loading */}

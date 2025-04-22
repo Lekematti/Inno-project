@@ -67,6 +67,7 @@ export interface WebsitePreviewProps {
   generatedHtml: string;
   error: string;
   formData: FormData;
+  onEditElement?: (instructions: ElementEditInstructions, formData: FormData) => Promise<void>;
 };
 
 export interface PreviewProps {
@@ -75,6 +76,8 @@ export interface PreviewProps {
   height?: string | number;
   sandboxOptions?: string;
   onError?: (error: string) => void;
+  editMode?: boolean;
+  ref?: React.RefObject<HTMLIFrameElement>;
 };
 
 // Color related types
@@ -99,6 +102,34 @@ export interface ColorPickerProps {
   formData: FormData;
   setFormData: (updater: (prev: FormData) => FormData) => void;
 }
+
+// Website edit types
+export interface ElementEditRequest {
+  tagName: string;
+  classList: string[];
+  id?: string;
+  content: string;
+  elementPath: string;
+  attributes: Record<string, string>;
+  type: string;
+}
+
+export interface ElementEditResponse {
+  elementPath: string;
+  newContent: string;
+  newAttributes: Record<string, string>;
+  success: boolean;
+}
+
+export interface ElementEditInstructions {
+  elementPath: string;
+  elementType: string;
+  tagName: string;
+  elementId: string;
+  editMode: 'simple' | 'advanced';
+  instructions: string;
+}
+
 
 // Image processing types
 export interface ImageRequest {
@@ -132,11 +163,10 @@ export interface FormHandlerHook {
   formData: FormData;
   setFormData: Dispatch<SetStateAction<FormData>>;
   isLoading: boolean;
-  setIsLoading: Dispatch<SetStateAction<boolean>>; // Add this
+  setIsLoading: Dispatch<SetStateAction<boolean>>;
   isReady: boolean;
-  setIsReady: Dispatch<SetStateAction<boolean>>; // Add this
+  setIsReady: Dispatch<SetStateAction<boolean>>;
   generatedHtml: string;
-  setGeneratedHtml: Dispatch<SetStateAction<string>>; // Add this
   error: string;
   setError: Dispatch<SetStateAction<string>>;
   step: number;
@@ -146,6 +176,7 @@ export interface FormHandlerHook {
   checkAllQuestionsAnswered: () => boolean;
   generateWebsite: () => Promise<void>;
   clearSavedContent?: () => void; // Optional function to clear saved content
+  setGeneratedHtml: React.Dispatch<React.SetStateAction<string>>
 }
 
 // API response types
@@ -167,6 +198,13 @@ export interface GeneratePageRequest {
   imageInstructions?: string;
   userUploads?: File[] | { url: string; name: string }[]; 
   [key: string]: unknown; 
+}
+
+// Edit request types
+export interface EditElementRequest {
+  formData: FormData;
+  htmlContent: string;
+  editInstructions: ElementEditInstructions;
 }
 
 // Constants

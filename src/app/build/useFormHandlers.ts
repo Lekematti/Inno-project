@@ -7,10 +7,10 @@ import { templates } from '@/functions/inputGenerate';
 import { processUserColors } from '@/app/build/colorProcessor';
 import {
   type FormData,
-  FormHandlerHook,
   ImageSourceType,
-  defaultFormData
-} from '@/types/formData';
+  FormHandlerHook,
+  defaultFormData,
+} from '@/types/formData'
 import { usePageRefreshHandler } from '@/functions/usePageRefreshHandler';
 
 /**
@@ -157,6 +157,9 @@ export const useFormHandlers = (): FormHandlerHook => {
       
       if (processedFormData.colorScheme) {
         submitData.append('colorScheme', processedFormData.colorScheme);
+
+      if (Array.isArray(processedFormData) && processedFormData.length > 0) {
+        submitData.append('colorScheme', processedFormData.join(','))
       }
       
       if (formData.templateVariant) {
@@ -196,14 +199,17 @@ export const useFormHandlers = (): FormHandlerHook => {
       } else {
         throw new Error('No HTML content received');
       }
+    }
     } catch (err) {
       console.error('Error generating website:', err instanceof Error ? err.message : String(err));
       setError('Failed to generate website. Please try again.');
+
     } finally {
       setIsLoading(false);
       isSubmittingRef.current = false;
     }
   }, [formData, isLoading, processFormColors, clearSavedContent]);
+
 
   // Add this to your return statement
   return {
@@ -223,6 +229,5 @@ export const useFormHandlers = (): FormHandlerHook => {
     setAllQuestionsAnswered,
     checkAllQuestionsAnswered,
     generateWebsite,
-    // Other values you might be returning...
-  };
-};
+  }
+}

@@ -194,8 +194,56 @@ export async function POST(request: NextRequest) {
     // Extract image information
     const imageSource = requestData.imageSource as ImageSourceType
     const imageInstructions = requestData.imageInstructions as string
+    let imageUrls: string[] = []
 
-    // Pre-process the formData for generation
+    // Process images based on the source
+    if (imageSource === 'ai') {
+      // Use the existing AI image generation path
+      imageUrls = await fetchImages(
+        imageInstructions || '',
+        requestData.businessType as string,
+        'ai'
+      )
+
+      // Log the results of image generation
+      console.log(
+        `Generated ${imageUrls.length} AI images for ${requestData.businessType}`
+      )
+      if (imageUrls.length === 0) {
+        console.warn(
+          'Warning: No AI images were generated. Check image generation service.'
+        )
+      }
+    } else if (imageSource === 'manual') {
+      // Process uploaded images
+      const files = formData.getAll('uploadedImages') as File[]
+
+      // Create the uploads directory if it doesn't exist
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true })
+      }
+
+      // Save each file and collect their URLs
+      for (const file of files) {
+        const buffer = Buffer.from(await file.arrayBuffer())
+        // Sanitize the filename to avoid problems
+        const sanitizedFilename = file.name
+          .replace(/['"]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/[^a-zA-Z0-9-_.]/g, '')
+        const filename = `${Date.now()}-${sanitizedFilename}`
+        const filePath = path.join(uploadsDir, filename)
+
+        fs.writeFileSync(filePath, buffer)
+        // Use an absolute URL path that includes the domain
+        imageUrls.push(`/uploads/${filename}`)
+      }
+
+      console.log('Manual images saved:', imageUrls)
+    }
+
+    // Format the form data for processing
     const processedFormData: Record<string, string | string[]> = {
       businessType: requestData.businessType as string,
       address: requestData.address as string,

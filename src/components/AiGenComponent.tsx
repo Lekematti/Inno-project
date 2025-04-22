@@ -1,16 +1,21 @@
-import React, { useRef, useEffect, useState } from 'react'
+import React, { useEffect, useState, forwardRef, useImperativeHandle } from 'react'
 import { PreviewProps } from '@/types/formData'
 
-export const AiGenComponent: React.FC<PreviewProps> = ({
+export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(({
   htmlContent,
   width = '100%',
   height = '100%',
   onError,
-}) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-  const [error, setError] = useState<string>('')
-  const [iframeLoaded, setIframeLoaded] = useState<boolean>(false)
+  editMode = false,
+  sandboxOptions = 'allow-same-origin allow-scripts allow-modals allow-forms',
+}, ref) => {
+  const [error, setError] = useState<string>('');
+  const [iframeLoaded, setIframeLoaded] = useState<boolean>(false);
   const [loadingImages, setLoadingImages] = useState<boolean>(true)
+  const internalRef = React.useRef<HTMLIFrameElement>(null);
+ 
+  // Forward the ref while maintaining our internal ref
+  useImperativeHandle(ref, () => internalRef.current!, []);
 
   useEffect(() => {
     if (!htmlContent) {
@@ -36,7 +41,8 @@ export const AiGenComponent: React.FC<PreviewProps> = ({
             <title>Website Preview</title>
             <base href="${window.location.origin}/">
             <style>
-              /* Disable all interactions */
+              /* Disable interactions based on edit mode */
+              ${!editMode ? `
               * {
                 pointer-events: none !important;
                 user-select: none !important;
@@ -47,16 +53,17 @@ export const AiGenComponent: React.FC<PreviewProps> = ({
                 user-select: none !important;
                 opacity: 0.7;
               }
+              ` : ''}
               /* Make the body scrollable to view entire content */
               body {
                 overflow-y: auto;
-                cursor: default !important;
+                cursor: ${editMode ? 'default' : 'default'} !important;
               }
               /* Prevent event bubbling */
               html, body {
                 pointer-events: auto !important; /* Allow scrolling */
               }
-              /* Disable all JavaScript execution except our loader */
+              /* Disable all JavaScript execution except our loader during preview */
               script:not(#image-loader-script) {
                 display: none !important;
               }
@@ -391,8 +398,8 @@ export const AiGenComponent: React.FC<PreviewProps> = ({
       const url = URL.createObjectURL(blob)
 
       // Set the iframe src to the object URL
-      if (iframeRef.current) {
-        iframeRef.current.src = url
+      if (internalRef.current) {
+        internalRef.current.src = url
 
         // Listen for messages from the iframe
         const handleMessage = (event: MessageEvent) => {
@@ -418,8 +425,8 @@ export const AiGenComponent: React.FC<PreviewProps> = ({
       setError(errorMsg)
       if (onError) onError(errorMsg)
     }
-  }, [htmlContent, onError])
-
+  }, [htmlContent, onError, editMode]);
+ 
   if (error) {
     return (
       <div
@@ -438,39 +445,22 @@ export const AiGenComponent: React.FC<PreviewProps> = ({
   }
 
   return (
-    <div style={{ width, height, position: 'relative' }}>
-      <iframe
-        ref={iframeRef}
-        title="Website Preview"
-        style={{
-          width: '100%',
-          height: '100%',
-          border: '1px solid #e0e0e0',
-          backgroundColor: 'white',
-        }}
-        sandbox="allow-same-origin allow-scripts"
-        onLoad={() => setIframeLoaded(true)}
-        loading="lazy"
-        aria-label="Generated website preview"
-      />
+    <iframe
+      ref={internalRef}
+      title="Website Preview"
+      style={{
+        width,
+        height,
+        border: '1px solid #e0e0e0',
+        backgroundColor: 'white'
+      }}
+      sandbox={sandboxOptions}
+      onLoad={() => setIframeLoaded(true)}
+      loading="lazy"
+      aria-label="Generated website preview"
+    />
+  );
+});
 
-      {iframeLoaded && loadingImages && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            background: 'rgba(0,0,0,0.7)',
-            color: 'white',
-            padding: '5px 10px',
-            borderRadius: '4px',
-            fontSize: '12px',
-            zIndex: 1000,
-          }}
-        >
-          Loading images...
-        </div>
-      )}
-    </div>
-  )
-}
+// Add display name for better debugging and React DevTools
+AiGenComponent.displayName = 'AiGenComponent';

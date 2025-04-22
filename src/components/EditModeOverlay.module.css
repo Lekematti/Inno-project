@@ -1,9 +1,9 @@
 .overlayContainer {
-  position: absolute;
+  position: fixed; /* was absolute */
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;    /* was 100% */
+  height: 100vh;   /* was 100% */
   pointer-events: none;
   z-index: 1000;
 }

@@ -1,38 +1,45 @@
-import React, { useEffect, useState, forwardRef, useImperativeHandle } from 'react'
+import React, {
+  useEffect,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+} from 'react'
 import { PreviewProps } from '@/types/formData'
 
-export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(({
-  htmlContent,
-  width = '100%',
-  height = '100%',
-  onError,
-  editMode = false,
-  sandboxOptions = 'allow-same-origin allow-scripts allow-modals allow-forms',
-}, ref) => {
-  const [error, setError] = useState<string>('');
-  const [iframeLoaded, setIframeLoaded] = useState<boolean>(false);
-  const [loadingImages, setLoadingImages] = useState<boolean>(true)
-  const internalRef = React.useRef<HTMLIFrameElement>(null);
- 
-  // Forward the ref while maintaining our internal ref
-  useImperativeHandle(ref, () => internalRef.current!, []);
+export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(
+  (
+    {
+      htmlContent,
+      width = '100%',
+      height = '100%',
+      onError,
+      editMode = false,
+      sandboxOptions = 'allow-same-origin allow-scripts allow-modals allow-forms',
+    },
+    ref
+  ) => {
+    const [error, setError] = useState<string>('')
+    const internalRef = React.useRef<HTMLIFrameElement>(null)
 
-  useEffect(() => {
-    if (!htmlContent) {
-      setError('No content to display')
-      return
-    }
+    // Forward the ref while maintaining our internal ref
+    useImperativeHandle(ref, () => internalRef.current!, [])
 
-    try {
-      // Create a blob from the HTML content
-      const processedHtml = htmlContent.replace(
-        /src="\/uploads\//g,
-        `src="${window.location.origin}/uploads/`
-      )
+    useEffect(() => {
+      if (!htmlContent) {
+        setError('No content to display')
+        return
+      }
 
-      // Add image loading tracking script to check when all images are loaded
-      // Including tracking for CSS background images
-      const htmlWithImageTracking = `
+      try {
+        // Create a blob from the HTML content
+        const processedHtml = htmlContent.replace(
+          /src="\/uploads\//g,
+          `src="${window.location.origin}/uploads/`
+        )
+
+        // Add image loading tracking script to check when all images are loaded
+        // Including tracking for CSS background images
+        const htmlWithImageTracking = `
         <!DOCTYPE html>
         <html lang="en">
           <head>
@@ -42,7 +49,9 @@ export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(({
             <base href="${window.location.origin}/">
             <style>
               /* Disable interactions based on edit mode */
-              ${!editMode ? `
+              ${
+                !editMode
+                  ? `
               * {
                 pointer-events: none !important;
                 user-select: none !important;
@@ -53,11 +62,13 @@ export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(({
                 user-select: none !important;
                 opacity: 0.7;
               }
-              ` : ''}
+              `
+                  : ''
+              }
               /* Make the body scrollable to view entire content */
               body {
                 overflow-y: auto;
-                cursor: ${editMode ? 'default' : 'default'} !important;
+                cursor: default !important;
               }
               /* Prevent event bubbling */
               html, body {
@@ -150,7 +161,12 @@ export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(({
                 // Function to preload an image and return a promise
                 function preloadImage(url) {
                   return new Promise((resolve, reject) => {
-                    if (!url || url === 'none' || url === 'transparent') {
+                    if (
+                      !url ||
+                      url === 'none' ||
+                      url === 'transparent' ||
+                      url.startsWith('linear-gradient') // <-- skip gradients
+                    ) {
                       resolve();
                       return;
                     }
@@ -393,74 +409,73 @@ export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(({
         </html>
       `
 
-      // Create an object URL from the blob
-      const blob = new Blob([htmlWithImageTracking], { type: 'text/html' })
-      const url = URL.createObjectURL(blob)
+        // Create an object URL from the blob
+        const blob = new Blob([htmlWithImageTracking], { type: 'text/html' })
+        const url = URL.createObjectURL(blob)
 
-      // Set the iframe src to the object URL
-      if (internalRef.current) {
-        internalRef.current.src = url
+        // Set the iframe src to the object URL
+        if (internalRef.current) {
+          internalRef.current.src = url
 
-        // Listen for messages from the iframe
-        const handleMessage = (event: MessageEvent) => {
-          // Check if the message is from our iframe
-          if (event.data && event.data.type === 'IMAGES_LOADED') {
-            setLoadingImages(false)
-            console.log('Images loaded status:', event.data)
+          // Listen for messages from the iframe
+          const handleMessage = (event: MessageEvent) => {
+            // Check if the message is from our iframe
+            if (event.data && event.data.type === 'IMAGES_LOADED') {
+              console.log('Images loaded status:', event.data)
+            }
+          }
+
+          window.addEventListener('message', handleMessage)
+
+          // Clean up the object URL and event listener when the component unmounts or content changes
+          return () => {
+            URL.revokeObjectURL(url)
+            window.removeEventListener('message', handleMessage)
           }
         }
-
-        window.addEventListener('message', handleMessage)
-
-        // Clean up the object URL and event listener when the component unmounts or content changes
-        return () => {
-          URL.revokeObjectURL(url)
-          window.removeEventListener('message', handleMessage)
-        }
+      } catch (err) {
+        const errorMsg = `Error loading preview: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+        setError(errorMsg)
+        if (onError) onError(errorMsg)
       }
-    } catch (err) {
-      const errorMsg = `Error loading preview: ${
-        err instanceof Error ? err.message : String(err)
-      }`
-      setError(errorMsg)
-      if (onError) onError(errorMsg)
+    }, [htmlContent, onError, editMode])
+
+    if (error) {
+      return (
+        <div
+          style={{
+            width,
+            height,
+            border: '1px solid #f44336',
+            padding: '1rem',
+            backgroundColor: '#ffebee',
+            color: '#d32f2f',
+          }}
+        >
+          {error}
+        </div>
+      )
     }
-  }, [htmlContent, onError, editMode]);
- 
-  if (error) {
+
     return (
-      <div
+      <iframe
+        ref={internalRef}
+        title="Website Preview"
         style={{
           width,
           height,
-          border: '1px solid #f44336',
-          padding: '1rem',
-          backgroundColor: '#ffebee',
-          color: '#d32f2f',
+          border: '1px solid #e0e0e0',
+          backgroundColor: 'white',
         }}
-      >
-        {error}
-      </div>
+        sandbox={sandboxOptions}
+        loading="lazy"
+        aria-label="Generated website preview"
+      />
     )
   }
-
-  return (
-    <iframe
-      ref={internalRef}
-      title="Website Preview"
-      style={{
-        width,
-        height,
-        border: '1px solid #e0e0e0',
-        backgroundColor: 'white'
-      }}
-      sandbox={sandboxOptions}
-      onLoad={() => setIframeLoaded(true)}
-      loading="lazy"
-      aria-label="Generated website preview"
-    />
-  );
-});
+)
 
 // Add display name for better debugging and React DevTools
-AiGenComponent.displayName = 'AiGenComponent';
+AiGenComponent.displayName = 'AiGenComponent'

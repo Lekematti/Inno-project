@@ -24,6 +24,7 @@ type User = {
 type AuthContextType = {
   user: User | null
   loading: boolean
+  error: string | null
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   register: (name: string, email: string, password: string) => Promise<void>
@@ -31,15 +32,16 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { readonly children: ReactNode }) {
   const { data: session, status } = useSession()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
   const router = useRouter()
 
+  const [error, setError] = useState<string | null>(null)
+
   // Update user state when session changes
   useEffect(() => {
-
     if (status === 'loading') {
       setLoading(true)
       return
@@ -49,15 +51,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session.user as User)
     } else {
       setUser(null)
-
     }
 
+    setError(null) // Optionally clear error on session change
     setLoading(false)
   }, [session, status])
 
   // Login function
   const login = async (email: string, password: string) => {
     setLoading(true)
+    setError(null) // Clear error before login
     try {
       // First authenticate with our API
       const response = await fetch('/api/auth/login', {
@@ -74,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Login failed')
+        throw new Error(data.error ?? 'Login failed')
       }
 
       // Then use NextAuth to establish a session
@@ -92,10 +95,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.refresh()
     } catch (error) {
       console.error('Login error:', error)
+      setError(error instanceof Error ? error.message : String(error)) // Set error
       throw error
     } finally {
       setLoading(false)
-
     }
   }
 
@@ -110,7 +113,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Logout error:', error)
     } finally {
       setLoading(false)
-
     }
   }
 
@@ -133,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Registration failed')
+        throw new Error(data.error ?? 'Registration failed')
       }
 
       // Auto-login after successful registration
@@ -143,13 +145,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error
     } finally {
       setLoading(false)
-
     }
   }
 
   const value = {
     user,
     loading,
+    error,
     login,
     logout,
     register,
@@ -168,7 +170,7 @@ export const useAuth = () => {
 }
 
 // Function to import and use in client components
-export function signIn(provider: string, options: any) {
+export function signIn(provider: string, options: Record<string, unknown>) {
   return import('next-auth/react').then(({ signIn }) =>
     signIn(provider, options)
   )

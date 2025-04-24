@@ -26,6 +26,12 @@ export const templates: Record<BusinessType, Template> = {
     questions: [
       // ...professional questions...
     ]
+  },
+  custom: {
+    name: "Custom Business",
+    questions: [
+      // ...custom questions...
+    ]
   }
 };
 

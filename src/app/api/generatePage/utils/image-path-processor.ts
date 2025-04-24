@@ -155,7 +155,7 @@ export function mapImageUrls(
       return `/api/static/${folderName}/images/${url.substring(
         '/images/'.length
       )}?v=${cacheBuster}`
-    } else if (url.match(/^image-\d+\.(png|jpg|jpeg|gif|svg)$/i)) {
+    } else if (/^image-\d+\.(png|jpg|jpeg|gif|svg)$/i.exec(url)) {
       // Handle case when we just have the filename
       return `/api/static/${folderName}/images/${url}?v=${cacheBuster}`
     }

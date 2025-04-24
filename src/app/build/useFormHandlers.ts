@@ -3,7 +3,7 @@
  * Custom React hook that manages form state and logic for website generation
  */
 import { useState, useCallback, useRef } from 'react';
-import { templates } from '@/functions/inputGenerate';
+import { templates} from '@/functions/inputGenerate';
 import { processUserColors } from '@/app/build/colorProcessor';
 import {
   type FormData,
@@ -58,7 +58,7 @@ export const useFormHandlers = (): FormHandlerHook => {
       return false;
     }
    
-    const template = templates[businessType];
+    const template = templates[businessType as keyof typeof templates];
     const questions = template?.questions || [];
    
     return questions.every((_, i) => {

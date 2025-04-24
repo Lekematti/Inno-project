@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       password,
       options: {
         data: {
-          full_name: name || '',
+          full_name: name ?? '',
         },
       },
     })

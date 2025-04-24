@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       const timestamp = date.toISOString().replace(/[-:]/g, '').split('.')[0];
       
       // Use business name from formData if available
-      const businessName = formData.businessName || formData.question1 || formData.businessType || 'website';
+      const businessName = formData.businessName ?? formData.question1 ?? formData.businessType ?? 'website';
       const sanitizedBusinessName = businessName.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 30);
       
       // Create filename with business name and timestamp
@@ -61,15 +61,15 @@ export async function POST(request: NextRequest) {
     // Include metadata in HTML comment
     const metadataComment = `
 <!-- 
-  Generated website for: ${formData.businessName || formData.question1 || formData.businessType || 'Unknown business'}
-  Business type: ${formData.businessType || 'Not specified'}
+  Generated website for: ${formData.businessName ?? formData.question1 ?? formData.businessType ?? 'Unknown business'}
+  Business type: ${formData.businessType ?? 'Not specified'}
   Last edited: ${new Date().toISOString()}
 -->
 `;
     
     // Process the HTML content
     let modifiedHtml = htmlContent;
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? '';
 
     // Add metadata at the beginning of the <head> tag
     modifiedHtml = modifiedHtml.replace(/<head>/, `<head>${metadataComment}`);

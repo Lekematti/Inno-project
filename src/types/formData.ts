@@ -209,7 +209,7 @@ export interface EditElementRequest {
 
 // Constants
 export const defaultFormData: FormData = {
-  businessType: '',
+  businessType: 'defaultBusinessType' as BusinessType,
   address: '',
   phone: '',
   email: '',

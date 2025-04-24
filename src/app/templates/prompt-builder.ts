@@ -66,6 +66,10 @@ export function buildPrompt(
     5. Create balanced, asymmetrical layouts for visual interest
     6. Implement subtle parallax or scroll effects for key sections
     7. Use gradient overlays for image-based sections to ensure text readability
+
+    IMPORTANT GRADIENT USAGE INSTRUCTION:
+    - When using CSS gradients, use \`background: linear-gradient(...)\` or \`background-image: linear-gradient(...)\` directly, NOT inside \`url()\`, and never as an <img src>.
+    - Do NOT use \`linear-gradient(...)\` as a value for \`src\` attributes or inside \`url()\`.
     
     FOOTER REQUIREMENT:
     Include a professionally designed footer with multiple columns:
@@ -118,7 +122,7 @@ export function buildPrompt(
  */
 function processColorScheme(colorScheme: string, templateType: string): string {
   // If we have a list of user-provided colors
-  if (colorScheme && colorScheme.includes(',')) {
+  if (colorScheme?.includes(',')) {
     const colors = colorScheme.split(',').filter(Boolean)
 
     // If we have valid colors, generate specific CSS variable guidance

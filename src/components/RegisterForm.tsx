@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useAuth } from '../app/context/AuthContext'
-import Link from 'next/link'
 
 export default function RegisterForm() {
   const [credentials, setCredentials] = useState({
@@ -8,7 +7,7 @@ export default function RegisterForm() {
     email: '',
     password: '',
   })
-  const { register, isLoading, error } = useAuth()
+  const { register, error } = useAuth()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -17,7 +16,8 @@ export default function RegisterForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await register(credentials)
+    const { name, email, password } = credentials
+    await register(name, email, password)
   }
 
   return (
@@ -77,23 +77,8 @@ export default function RegisterForm() {
           </div>
 
           <div className="d-grid gap-2">
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <span
-                    className="spinner-border spinner-border-sm me-2"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                  Registering...
-                </>
-              ) : (
-                'Register'
-              )}
+            <button type="submit" className="btn btn-primary">
+              Register
             </button>
           </div>
         </form>

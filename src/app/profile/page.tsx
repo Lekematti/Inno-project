@@ -11,7 +11,13 @@ import { useRouter } from 'next/navigation'
 // Main Profile Page Component
 export default function ProfilePage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
-  const [userData, setUserData] = useState<any>(null)
+  interface UserData {
+    name?: string
+    email?: string
+    id?: string
+  }
+
+  const [userData, setUserData] = useState<UserData | null>(null)
   const router = useRouter()
 
   // Check for the authenticated cookie on component mount
@@ -96,7 +102,7 @@ export default function ProfilePage() {
           <Col className="text-center">
             <div className="bg-white p-6 rounded-lg shadow-md">
               <h1 className="text-2xl font-bold mb-4">
-                Welcome, {userData?.name || userData?.email || 'User'}
+                Welcome, {userData?.name ?? userData?.email ?? 'User'}
               </h1>
               <div className="mb-4">
                 {userData?.email && (

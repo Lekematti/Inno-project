@@ -3,7 +3,7 @@ import { useAuth } from '../app/context/AuthContext'
 
 export default function LoginForm() {
   const [credentials, setCredentials] = useState({ email: '', password: '' })
-  const { login, isLoading, error } = useAuth()
+  const { login, error } = useAuth()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -12,7 +12,8 @@ export default function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await login(credentials)
+    const { email, password } = credentials
+    await login(email, password)
   }
 
   return (
@@ -59,27 +60,11 @@ export default function LoginForm() {
           </div>
 
           <div className="d-grid gap-2">
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <span
-                    className="spinner-border spinner-border-sm me-2"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                  Logging in...
-                </>
-              ) : (
-                'Log In'
-              )}
+            <button type="submit" className="btn btn-primary" disabled={false}>
+              Log In
             </button>
           </div>
         </form>
-
       </div>
     </div>
   )

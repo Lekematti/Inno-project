@@ -101,7 +101,7 @@ export const EditElementForm: React.FC<EditElementFormProps> = ({
         elementPath: element.elementPath,
         elementType: element.type,
         tagName: element.tagName,
-        elementId: element.id || '',
+        elementId: element.id ?? '',
         editMode: 'advanced',
         instructions: aiInstruction,
       }
@@ -122,7 +122,7 @@ export const EditElementForm: React.FC<EditElementFormProps> = ({
         elementPath: element.elementPath,
         elementType: element.type,
         tagName: element.tagName,
-        elementId: element.id || '',
+        elementId: element.id ?? '',
         editMode: 'simple',
         instructions: `Replace content with: ${directContent}${
           Object.keys(editableAttributes).length > 0

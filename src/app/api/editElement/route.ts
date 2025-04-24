@@ -82,10 +82,11 @@ export async function POST(request: NextRequest) {
       max_tokens: 4096,
     });
 
-    const updatedHtml = completion.choices[0]?.message?.content || '';
+    const updatedHtml = completion.choices[0]?.message?.content ?? '';
     
     // Extract the HTML content from the response (in case it includes markdown code fences)
-    const htmlMatch = updatedHtml.match(/<!DOCTYPE html>[\s\S]*<\/html>/);
+    const htmlRegex = /<!DOCTYPE html>[\s\S]*<\/html>/;
+    const htmlMatch = htmlRegex.exec(updatedHtml);
     const processedHtml = htmlMatch ? htmlMatch[0] : updatedHtml;
     
     // Generate a timestamp for the file name

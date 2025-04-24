@@ -254,7 +254,7 @@ export default function BuildPage() {
         setGeneratedHtml(data.htmlContent)
 
         // Get the current file path from form data
-        const currentFilePath = currentFormData.filePath || ''
+        const currentFilePath = currentFormData.filePath ?? ''
 
         // Second step: Save the edited HTML back to the file
         try {

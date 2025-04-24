@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
 
       // Log the results of image generation
       console.log(
-        `Generated ${imageUrls.length} AI images for ${requestData.businessType}`
+        `Generated ${imageUrls.length} AI images for ${typeof requestData.businessType === 'string' ? requestData.businessType : ''}`
       )
       if (imageUrls.length === 0) {
         console.warn(

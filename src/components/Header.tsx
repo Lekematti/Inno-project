@@ -2,45 +2,11 @@ import Link from 'next/link'
 
 export const Header = () => {
   return (
-    <div
-      style={{
-        width: '100%',
-        padding: 10,
-        display: 'flex',
-        background: '#3B82F6',
-        alignItems: 'center',
-      }}
-    >
-      <p
-        style={{
-          color: '#1F2937',
-          fontWeight: 'bold',
-        }}
-      >
-        AiWebsiteBuildr
-      </p>
-      <ul
-        style={{
-          display: 'flex',
-          width: '100%',
-          flexDirection: 'row',
-          justifyContent: 'flex-end',
-          listStyle: 'none',
-          margin: 2,
-        }}
-      >
+    <div className="w-100 p-2 d-flex bg-primary align-items-center">
+      <p className="text-dark fw-bold mb-0">AiWebsiteBuildr</p>
+      <ul className="d-flex w-100 flex-row justify-content-end list-unstyled m-1">
         <Link
-          style={{
-            fontSize: 16,
-            padding: 5,
-            marginRight: 5,
-            marginLeft: 5,
-            color: 'black',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textDecoration: 'none',
-          }}
+          className="fs-6 p-1 mx-1 text-dark d-flex flex-column align-items-center text-decoration-none "
           href={'/'}
         >
           <svg
@@ -56,18 +22,9 @@ export const Header = () => {
           </svg>
           HOME
         </Link>
+
         <Link
-          style={{
-            fontSize: 16,
-            padding: 5,
-            marginRight: 5,
-            marginLeft: 5,
-            color: 'black',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textDecoration: 'none',
-          }}
+          className="fs-6 p-1 mx-1 text-dark d-flex flex-column align-items-center text-decoration-none"
           href={'/build'}
         >
           <svg
@@ -83,17 +40,7 @@ export const Header = () => {
           BUILD
         </Link>
         <Link
-          style={{
-            fontSize: 16,
-            padding: 5,
-            marginRight: 5,
-            marginLeft: 5,
-            color: 'black',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textDecoration: 'none',
-          }}
+          className="fs-6 p-1 mx-1 text-dark d-flex flex-column align-items-center text-decoration-none"
           href={'/contact'}
         >
           <svg
@@ -109,16 +56,7 @@ export const Header = () => {
           CONTACT
         </Link>
         <Link
-          style={{
-            padding: 5,
-            marginRight: 5,
-            marginLeft: 5,
-            color: 'black',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textDecoration: 'none',
-          }}
+          className="p-1 mx-1 text-dark d-flex flex-column align-items-center text-decoration-none"
           href={'/profile'}
         >
           <svg

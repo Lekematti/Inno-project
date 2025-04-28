@@ -215,3 +215,10 @@ export const defaultFormData: FormData = {
   email: '',
   imageSource: 'none'
 };
+
+// Website folder structure
+export interface WebsiteFolder {
+  name: '',
+  html: ''[],
+  images: ''[],
+};

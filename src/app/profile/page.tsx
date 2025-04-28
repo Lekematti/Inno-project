@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Container, Row, Col, Button } from 'react-bootstrap'
 import { Header } from '@/components/Header'
 import RegisterForm from './RegisterForm'
@@ -8,6 +8,7 @@ import LoginForm from './LoginForm'
 import Cookies from 'js-cookie'
 import { useRouter } from 'next/navigation'
 import { postBlob } from '../../functions/blobStorage'
+import { WebsiteFolder } from '@/types/formData'
 
 // Main Profile Page Component
 export default function ProfilePage() {
@@ -20,6 +21,9 @@ export default function ProfilePage() {
   }
 
   const [userData, setUserData] = useState<UserData | null>(null)
+
+  const [websiteFolders, setWebsiteFolders] = useState<WebsiteFolder[]>([])
+  const [expanded, setExpanded] = useState<string | null>(null)
   const router = useRouter()
 
   // Check for the authenticated cookie on component mount
@@ -41,6 +45,12 @@ export default function ProfilePage() {
     }
 
     checkAuth()
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/user-websites')
+      .then((res) => res.json())
+      .then((data) => setWebsiteFolders(data.folders ?? []))
   }, [])
 
   // Handle logout
@@ -150,6 +160,90 @@ export default function ProfilePage() {
                   Submit image
                 </Button>
               </form>
+            </div>
+          </Col>
+        </Row>
+        <Row className="justify-content-center">
+          <Col md={8}>
+            <h2 className="mb-3">Your Generated Websites</h2>
+            <div
+              style={{
+                maxHeight: 300,
+                overflowY: 'auto',
+                border: '1px solid #eee',
+                borderRadius: 8,
+                padding: 16,
+                background: '#fafbfc',
+              }}
+            >
+              {websiteFolders.length === 0 ? (
+                <div className="text-muted">No generated websites found.</div>
+              ) : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {websiteFolders.map((folder) => (
+                    <li key={folder.name} style={{ marginBottom: 12 }}>
+                      <button
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#2563eb',
+                          textDecoration: 'underline',
+                          cursor: 'pointer',
+                          fontWeight: 'bold',
+                        }}
+                        onClick={() =>
+                          setExpanded(
+                            expanded === folder.name ? null : folder.name
+                          )
+                        }
+                      >
+                        {folder.name}
+                      </button>
+                      {expanded === folder.name && (
+                        <ul style={{ marginTop: 8, marginLeft: 16 }}>
+                          {folder.html.map((file: string) => (
+                            <li key={file}>
+                              <a
+                                href={`/gen_comp/${folder.name}/${file}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  color: '#2563eb',
+                                  textDecoration: 'underline',
+                                }}
+                              >
+                                {file}
+                              </a>
+                            </li>
+                          ))}
+                          {folder.images.length > 0 && (
+                            <li>
+                              <strong>Images:</strong>
+                              <ul>
+                                {folder.images.map((img: string) => (
+                                  <li key={img}>
+                                    <a
+                                      href={`/gen_comp/${folder.name}/${img}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      style={{
+                                        color: '#2563eb',
+                                        textDecoration: 'underline',
+                                      }}
+                                    >
+                                      {img}
+                                    </a>
+                                  </li>
+                                ))}
+                              </ul>
+                            </li>
+                          )}
+                        </ul>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </Col>
         </Row>

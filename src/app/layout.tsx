@@ -33,7 +33,6 @@ export default function RootLayout({
     <html lang="en" className={`${rajdhani.variable} ${inter.variable}`}>
       <body className="bg-gray-50 min-h-screen">
         {children}
-        {children}
         <StateCleanup />
       </body>
     </html>

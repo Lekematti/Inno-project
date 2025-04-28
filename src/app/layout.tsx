@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import { Rajdhani, Inter } from 'next/font/google'
+import { StateCleanup } from '@/components/StateCleanup'
 
 export const rajdhani = Rajdhani({
   variable: '--font-rajdhani',
@@ -30,7 +31,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${rajdhani.variable} ${inter.variable}`}>
-      <body className="bg-gray-50 min-h-screen">{children}</body>
+      <body className="bg-gray-50 min-h-screen">
+        {children}
+        {children}
+        <StateCleanup />
+      </body>
     </html>
   )
 }

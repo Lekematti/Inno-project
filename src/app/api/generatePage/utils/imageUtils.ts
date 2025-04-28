@@ -9,7 +9,7 @@ export async function processImages(formData: FormData): Promise<string[]> {
   
   switch(imageSource) {
     case 'ai':
-      return await fetchImages(imageInstructions || '', businessType || 'restaurant');
+      return await fetchImages(imageInstructions ?? '', businessType || 'restaurant');
     case 'manual':
       return userImageUrls || [];
     case 'none':

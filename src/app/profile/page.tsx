@@ -13,7 +13,13 @@ import { postBlob } from '../../functions/blobStorage'
 export default function ProfilePage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
-  const [userData, setUserData] = useState<any>(null)
+  interface UserData {
+    name?: string
+    email?: string
+    id?: string
+  }
+
+  const [userData, setUserData] = useState<UserData | null>(null)
   const router = useRouter()
 
   // Check for the authenticated cookie on component mount
@@ -112,8 +118,8 @@ export default function ProfilePage() {
         <Row>
           <Col className="text-center">
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <h1 className="text-2xl font-bold mb-4 my-4">
-                Welcome, {userData?.name || userData?.email || 'User'}
+              <h1 className="text-2xl font-bold mb-4">
+                Welcome, {userData?.name ?? userData?.email ?? 'User'}
               </h1>
             </div>
             <Button

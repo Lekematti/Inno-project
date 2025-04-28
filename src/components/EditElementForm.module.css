@@ -1,0 +1,58 @@
+.editFormContainer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10000;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.editCard {
+  width: 100%;
+  max-width: 800px;
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.editCardHeader {
+  background-color: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+}
+
+.elementPath {
+  color: #6c757d;
+  font-family: monospace;
+  margin-top: 5px;
+}
+
+.editModeTabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.editModeButton {
+  flex: 1;
+}
+
+.aiInstructions {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 5px;
+  margin-top: 15px;
+  font-size: 0.9rem;
+}
+
+.aiInstructions ul {
+  margin-bottom: 0;
+  padding-left: 20px;
+}
+
+.editCardFooter {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px;
+}

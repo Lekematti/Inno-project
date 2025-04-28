@@ -55,7 +55,7 @@ const RegisterForm = () => {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create account')
+        throw new Error(data.error ?? 'Failed to create account')
       }
 
       setSuccess('Account created successfully! You can now log in.')
@@ -65,9 +65,13 @@ const RegisterForm = () => {
         password: '',
         confirmPassword: '',
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Registration error:', error)
-      setError(error.message || 'An unexpected error occurred')
+      if (error instanceof Error) {
+        setError(error.message)
+      } else {
+        setError('An unexpected error occurred')
+      }
     } finally {
       setLoading(false)
     }

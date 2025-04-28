@@ -1,9 +1,16 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { AiGenComponent } from './AiGenComponent'
-import { Spinner, Alert } from 'react-bootstrap'
+import { Spinner, Alert, Button } from 'react-bootstrap'
 import { DownloadSection } from '@/app/build/components/UIHelpers'
-import { WebsitePreviewProps } from '@/types/formData'
+import {
+  WebsitePreviewProps,
+  ElementEditRequest,
+  ElementEditInstructions,
+} from '@/types/formData'
+import { clearFormData } from '../functions/usePageRefreshHandler' // <-- Add this import
+import { EditModeOverlay } from './EditModeOverlay'
+import { EditElementForm } from './EditElementForm'
 
 export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   isLoading,
@@ -11,9 +18,17 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   generatedHtml,
   error,
   formData,
+  onEditElement,
 }) => {
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [isRendering, setIsRendering] = useState<boolean>(false)
+  const [editMode, setEditMode] = useState<boolean>(false)
+  const [selectedElement, setSelectedElement] =
+    useState<ElementEditRequest | null>(null)
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState<boolean>(false)
+  const iframeRef = useRef<HTMLIFrameElement>(
+    null
+  ) as React.RefObject<HTMLIFrameElement>
 
   useEffect(() => {
     // Reset error state when new content arrives
@@ -32,10 +47,42 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
     setPreviewError(err)
   }
 
+  const handleElementSelect = (element: ElementEditRequest) => {
+    setSelectedElement(element)
+  }
+
+  const handleEditSave = async (instructions: ElementEditInstructions) => {
+    setIsSubmittingEdit(true)
+    try {
+      if (onEditElement) {
+        await onEditElement(instructions, formData)
+        // Successfully edited and saved - reset UI state
+        setSelectedElement(null)
+      }
+    } catch (err) {
+      console.error('Error applying edits:', err)
+      setPreviewError(
+        `Failed to apply edits: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      )
+    } finally {
+      setIsSubmittingEdit(false)
+    }
+  }
+
+  const toggleEditMode = () => {
+    setEditMode(!editMode)
+    // Reset selected element when toggling edit mode
+    if (selectedElement) {
+      setSelectedElement(null)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="d-flex flex-column align-items-center justify-content-center p-5">
-        <output>
+        <output className="spinner-border">
           <Spinner animation="border" variant="primary" />
         </output>
         <p className="mt-3">Generating your custom website...</p>
@@ -54,7 +101,8 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
         <p>{previewError}</p>
         <div className="mt-3">
           <small>
-            You can still download the HTML even though it can't be previewed.
+            You can still download the HTML even though it can&apos;t be
+            previewed.
           </small>
           {generatedHtml && (
             <div className="mt-2">
@@ -65,6 +113,15 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
             </div>
           )}
         </div>
+        <button
+          className="btn btn-success mt-3"
+          onClick={() => {
+            clearFormData()
+            window.location.href = '/build'
+          }}
+        >
+          Back to form
+        </button>
       </Alert>
     )
   }
@@ -72,6 +129,16 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   if (isReady && generatedHtml) {
     return (
       <>
+        <button
+          className="btn btn-success mb-3"
+          onClick={() => {
+            clearFormData()
+            window.location.href = '/build'
+          }}
+        >
+          Back to form
+        </button>
+
         {isRendering ? (
           <div className="text-center p-3">
             <Spinner animation="border" size="sm" />
@@ -79,8 +146,33 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
           </div>
         ) : null}
 
+        <div className="d-flex justify-content-end mb-2">
+          <Button
+            variant={editMode ? 'warning' : 'outline-primary'}
+            size="sm"
+            onClick={toggleEditMode}
+            className="d-flex align-items-center"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              fill="currentColor"
+              className="bi bi-pencil-square me-1"
+              viewBox="0 0 16 16"
+            >
+              <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+              <path
+                fillRule="evenodd"
+                d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"
+              />
+            </svg>
+            {editMode ? 'Exit Edit Mode' : 'Edit Website'}
+          </Button>
+        </div>
+
         <div
-          className="preview-container"
+          className="preview-container position-relative"
           style={{
             height: '70vh',
             width: '100%',
@@ -91,8 +183,28 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
           <AiGenComponent
             htmlContent={generatedHtml}
             onError={handleRenderingError}
+            editMode={editMode}
+            ref={iframeRef}
           />
+
+          {editMode && (
+            <EditModeOverlay
+              isActive={editMode}
+              onExit={toggleEditMode}
+              onElementSelect={handleElementSelect}
+              iframeRef={iframeRef}
+            />
+          )}
         </div>
+
+        {selectedElement && (
+          <EditElementForm
+            editRequest={selectedElement}
+            onClose={() => setSelectedElement(null)}
+            onSave={handleEditSave}
+            isSubmitting={isSubmittingEdit}
+          />
+        )}
 
         <div className="mt-4">
           <DownloadSection generatedHtml={generatedHtml} formData={formData} />

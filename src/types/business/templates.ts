@@ -42,6 +42,15 @@ export const businessTemplates: BusinessTemplates = {
         components: ['portfolio', 'testimonials', 'contact-form', 'services']
       }
     }
+  },
+  custom: {
+    baseStyle: {
+      layout: 'flexible',
+      components: ['custom-component'],
+      animations: ['none'],
+      navigation: 'none'
+    },
+    variants: {}
   }
 };
 

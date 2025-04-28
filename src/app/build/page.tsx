@@ -1,6 +1,6 @@
 'use client'
-import { useEffect } from 'react'
-import { Container, ProgressBar } from 'react-bootstrap'
+import { useEffect, useState } from 'react' // Add useState
+import { Container, ProgressBar, Button } from 'react-bootstrap'
 import { Header } from '@/components/Header'
 import { useFormHandlers } from './useFormHandlers'
 import { getQuestions } from './pageUtils'
@@ -9,9 +9,15 @@ import { Step2Questions } from '../../components/steps/Step2Questions'
 import { Step3Questions } from '../../components/steps/Step3Questions'
 import { Step4ImageInstructions } from '../../components/steps/Step4ImageInstructions'
 import { WebsitePreview } from '@/components/WebsitePreview'
-import { FormData } from '@/types/formData'
+import { FormData, ElementEditInstructions } from '@/types/formData'
+import { clearFormData } from '@/functions/usePageRefreshHandler'
+import { useRouter } from 'next/navigation'
 
 export default function BuildPage() {
+  // Add state to track if we're restoring from storage
+  const [isRestoringFromStorage, setIsRestoringFromStorage] = useState(false)
+  const [editingElement, setEditingElement] = useState(false)
+
   const {
     formData,
     setFormData,
@@ -21,17 +27,46 @@ export default function BuildPage() {
     error,
     step,
     setStep,
-    /*allQuestionsAnswered,*/
     setAllQuestionsAnswered,
     checkAllQuestionsAnswered,
     generateWebsite,
     setError,
+    setGeneratedHtml, // Make sure this is exposed in useFormHandlers
+    setIsReady, // Make sure this is exposed in useFormHandlers
   } = useFormHandlers()
 
-  //console.log('Form Data Submitted:', formData);
+  const router = useRouter()
 
+  // Check for saved state on initial load
   useEffect(() => {
-    if (step === 5 && formData.businessType) {
+    if (typeof window !== 'undefined') {
+      const savedHtml = localStorage.getItem('latest_generated_html')
+      const savedStep = localStorage.getItem('form_current_step')
+
+      if (savedHtml && savedStep === '5') {
+        // We have saved HTML and we were on step 5
+        setIsRestoringFromStorage(true)
+        setGeneratedHtml(savedHtml)
+        setStep(5)
+        setIsReady(true)
+      }
+    }
+  }, [setGeneratedHtml, setIsReady, setStep])
+
+  // Save state whenever HTML is generated or step changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (generatedHtml) {
+        localStorage.setItem('latest_generated_html', generatedHtml)
+      }
+
+      localStorage.setItem('form_current_step', step.toString())
+    }
+  }, [generatedHtml, step])
+
+  // Run the normal generate logic only if we're not restoring
+  useEffect(() => {
+    if (!isRestoringFromStorage && step === 5 && formData.businessType) {
       const hasAllAnswers = checkAllQuestionsAnswered()
       setAllQuestionsAnswered(hasAllAnswers)
       if (hasAllAnswers && !isLoading && !isReady) {
@@ -39,6 +74,7 @@ export default function BuildPage() {
       }
     }
   }, [
+    isRestoringFromStorage,
     step,
     formData.businessType,
     checkAllQuestionsAnswered,
@@ -77,7 +113,9 @@ export default function BuildPage() {
       const fieldName = `question${i + 1}` as keyof FormData
       if (
         i < questions.length &&
-        (!formData[fieldName] || String(formData[fieldName]).trim() === '')
+        (!formData[fieldName] ||
+          (typeof formData[fieldName] === 'string' &&
+            formData[fieldName].trim() === ''))
       ) {
         setError('Please answer all questions before proceeding')
         return
@@ -93,7 +131,9 @@ export default function BuildPage() {
       const fieldName = `question${i + 1}` as keyof FormData
       if (
         i < questions.length &&
-        (!formData[fieldName] || String(formData[fieldName]).trim() === '')
+        (!formData[fieldName] ||
+          (typeof formData[fieldName] === 'string' &&
+            formData[fieldName].trim() === ''))
       ) {
         setError('Please answer all questions before proceeding')
         return
@@ -106,7 +146,7 @@ export default function BuildPage() {
   const handleSubmitStep4 = (updatedFormData?: Partial<FormData>) => {
     // Check image source and validate accordingly
     const imageSource =
-      updatedFormData?.imageSource || formData.imageSource || 'ai'
+      updatedFormData?.imageSource ?? formData.imageSource ?? 'ai'
 
     if (imageSource === 'ai') {
       // For AI-generated images
@@ -152,6 +192,112 @@ export default function BuildPage() {
     }
   }
 
+  // Modify the handleSubmit function to clear localStorage when navigating away
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ): Promise<void> => {
+    e.preventDefault()
+
+    try {
+      // Your existing form submission code
+      await generateWebsite()
+
+      // Clear form data right after successful submission
+      clearFormData()
+
+      // Also clear our saved state since we're moving to results
+      localStorage.removeItem('latest_generated_html')
+      localStorage.removeItem('form_current_step')
+
+      // Navigate to results or next page
+      router.push('/results')
+    } catch (error) {
+      console.error('Form submission error:', error)
+    }
+  }
+
+  // Handle element edits
+  const handleEditElement = async (
+    editInstructions: ElementEditInstructions,
+    currentFormData: FormData
+  ) => {
+    if (!generatedHtml) return
+
+    setEditingElement(true)
+    setError('')
+
+    try {
+      // First step: Apply the edits to the HTML
+      const response = await fetch('/api/editElement', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          formData: currentFormData,
+          htmlContent: generatedHtml,
+          editInstructions,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(
+          `Error updating element: ${errorText || response.status}`
+        )
+      }
+
+      const data = await response.json()
+
+      if (data.htmlContent) {
+        // Update the generated HTML with the edited version
+        setGeneratedHtml(data.htmlContent)
+
+        // Get the current file path from form data
+        const currentFilePath = currentFormData.filePath ?? ''
+
+        // Second step: Save the edited HTML back to the file
+        try {
+          const saveResponse = await fetch('/api/editSave', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              formData: currentFormData,
+              htmlContent: data.htmlContent,
+              originalFilePath: currentFilePath,
+            }),
+          })
+
+          if (saveResponse.ok) {
+            const saveData = await saveResponse.json()
+            setFormData((prev) => ({
+              ...prev,
+              filePath: saveData.filePath,
+            }))
+          } else {
+            const errorText = await saveResponse.text()
+            console.error('Error saving file:', errorText)
+          }
+        } catch (saveErr) {
+          console.error('Exception saving edited HTML:', saveErr)
+        }
+      } else {
+        throw new Error('No HTML content received in response')
+      }
+    } catch (err) {
+      console.error('Failed to apply edits:', err)
+      setError(
+        `Failed to apply edits: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      )
+    } finally {
+      setEditingElement(false)
+    }
+  }
+
   // Progress calculation
   const questions = getQuestions(formData.businessType || '')
 
@@ -168,7 +314,9 @@ export default function BuildPage() {
             return (
               questionNum <= totalQuestions &&
               formData[key as keyof FormData] !== undefined &&
-              String(formData[key as keyof FormData] || '').trim() !== ''
+              typeof formData[key as keyof FormData] === 'string' &&
+              typeof formData[key as keyof FormData] === 'string' &&
+              (formData[key as keyof FormData] as string).trim() !== ''
             )
           }).length
       : 0
@@ -198,7 +346,7 @@ export default function BuildPage() {
           </div>
         )}
 
-        {/* Rest of your component remains unchanged */}
+        {/* Step components remain the same */}
 
         {step === 1 && (
           <Step1BasicInfo
@@ -255,14 +403,34 @@ export default function BuildPage() {
         )}
 
         {step === 5 && (
-          <WebsitePreview
-            isLoading={isLoading}
-            isReady={isReady}
-            generatedHtml={generatedHtml}
-            error={error}
-            formData={formData}
-          />
+          <>
+            <WebsitePreview
+              isLoading={isLoading || editingElement}
+              isReady={isReady}
+              generatedHtml={generatedHtml}
+              error={error}
+              formData={formData}
+              onEditElement={handleEditElement}
+            />
+
+            {/* Only show Generate button in step 5 and only when not loading */}
+            {!isLoading && (
+              <form onSubmit={handleSubmit} className="mt-4">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  onClick={() => {
+                    clearFormData()
+                  }}
+                >
+                  Generate Page
+                </Button>
+              </form>
+            )}
+          </>
         )}
+
+        {/* Remove the form that was outside the step conditionals */}
       </Container>
     </div>
   )

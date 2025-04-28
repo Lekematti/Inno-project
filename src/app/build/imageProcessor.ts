@@ -118,6 +118,7 @@ const templateImageRequirements: Record<BusinessType, ImageRequest[]> = {
       height: 600,
     },
   ],
+  custom: [],
 }
 
 // Quality enhancement phrases for more realistic and impressive outputs

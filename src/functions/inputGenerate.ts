@@ -5,6 +5,28 @@ dotenv.config();
 
 // Define template structure with proper typing
 export const templates: Record<BusinessType, Template> = {
+    custom: {
+        name: "Custom Business",
+        questions: [
+            {
+                id: 'name',
+                text: "What is the name of your business?",
+                type: 'text',
+                placeholder: 'e.g., My Custom Business'
+            },
+            {
+                id: 'description',
+                text: "Provide a brief description of your business:",
+                type: 'text',
+                placeholder: 'e.g., A unique business offering tailored solutions'
+            },
+            {
+                id: 'colorScheme',
+                text: "Choose your brand's color scheme:",
+                type: 'color'
+            }
+        ]
+    },
     restaurant: {
         name: "Restaurant/Food/Catering",
         questions: [
@@ -160,7 +182,7 @@ export const templates: Record<BusinessType, Template> = {
 };
 
 // Add a helper function to get questions
-export const getBusinessQuestions = (businessType: BusinessType | ''): Template['questions'] => {
+export const getBusinessQuestions = (businessType: BusinessType | undefined): Template['questions'] => {
   console.log('Getting questions for business type:', businessType);
   if (!businessType) {
     console.log('No business type provided');

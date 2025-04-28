@@ -274,8 +274,9 @@ export default function BuildPage() {
             const saveData = await saveResponse.json()
             setFormData((prev) => ({
               ...prev,
-              filePath: saveData.filePath,
+              filePath: saveData.filePath, // Use the new file path
             }))
+            setGeneratedHtml(data.htmlContent) // Use the new HTML
           } else {
             const errorText = await saveResponse.text()
             console.error('Error saving file:', errorText)

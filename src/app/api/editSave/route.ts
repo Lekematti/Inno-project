@@ -23,41 +23,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // This will hold our final file path
-    let filePath;
-    let fileName;
-    
-    // Check if we're updating an existing file
+    // Determine output directory from originalFilePath
+    let outputDir: string;
+    let filePath: string;
     if (originalFilePath && originalFilePath.trim() !== '') {
-      // Original file exists - update in place
+      // Remove leading slash and split path
       const cleanPath = originalFilePath.replace(/^\//, '');
-      filePath = path.join(process.cwd(), cleanPath);
-      fileName = path.basename(filePath);
-      
-      console.log('Updating existing file:', filePath);
-    } else {
-      // No original file - create new one
-      // Generate a timestamp for the file name
-      const date = new Date();
-      const timestamp = date.toISOString().replace(/[-:]/g, '').split('.')[0];
-      
-      // Use business name from formData if available
-      const businessName = formData.businessName ?? formData.question1 ?? formData.businessType ?? 'website';
-      const sanitizedBusinessName = businessName.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 30);
-      
-      // Create filename with business name and timestamp
-      fileName = `${sanitizedBusinessName}-edited-${timestamp}.html`;
-      const outputDir = path.join(process.cwd(), 'gen_comp');
-      
-      // Create directory if it doesn't exist
-      if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
+      // Get the path after 'gen_comp/'
+      const genCompIndex = cleanPath.indexOf('gen_comp/');
+      let relToGenComp = '';
+      if (genCompIndex !== -1) {
+        relToGenComp = cleanPath.substring('gen_comp/'.length);
+      } else {
+        relToGenComp = cleanPath;
       }
-      
-      filePath = path.join(outputDir, fileName);
-      console.log('Creating new file:', filePath);
+      // Remove the filename to get the folder
+      const relDir = path.dirname(relToGenComp);
+      outputDir = path.join(process.cwd(), 'gen_comp', relDir);
+      filePath = path.join(outputDir, 'index.html');
+    } else {
+      outputDir = path.join(process.cwd(), 'gen_comp');
+      filePath = path.join(outputDir, 'index.html');
     }
-    
+
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    // If index.html exists, rename it to index_old.html
+    const oldFilePath = path.join(outputDir, 'index_old.html');
+    if (fs.existsSync(filePath)) {
+      // Remove previous index_old.html if it exists
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+      }
+      fs.renameSync(filePath, oldFilePath);
+    }
+
     // Include metadata in HTML comment
     const metadataComment = `
 <!-- 
@@ -97,7 +100,7 @@ export async function POST(request: NextRequest) {
     // Determine the relative path for the response
     const relativePath = path.relative(process.cwd(), filePath).replace(/\\/g, '/');
     
-    // Return the file path (either updated or new)
+    // Return the file path (always /gen_comp/.../index.html)
     return NextResponse.json({
       filePath: `/${relativePath}`,
       success: true,

@@ -95,6 +95,8 @@ export default function ProfilePage() {
               <div className="my-4">
                 <LoginForm />
               </div>
+            </Col>
+            <Col>
               <div className="my-4">
                 <RegisterForm />
               </div>

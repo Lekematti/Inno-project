@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button } from 'react-bootstrap'
+import { Button, Alert } from 'react-bootstrap'
 import { useRouter } from 'next/navigation'
 import Cookies from 'js-cookie'
 
@@ -68,13 +68,13 @@ const LoginForm = () => {
   }
 
   return (
-    <div className="m-2 p-2">
+    <div className="m-2 p-2 p-6 rounded-lg shadow-md">
       <h2 className="font-bold mb-4">Login</h2>
 
       {error && (
-        <div className="bg-red-50 p-3 rounded mb-4">
-          <p className="text-red-700 text-sm">{error}</p>
-        </div>
+        <Alert variant="danger" className="mb-4">
+          {error}
+        </Alert>
       )}
 
       <form onSubmit={handleSubmit}>

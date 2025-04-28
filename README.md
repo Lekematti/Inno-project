@@ -8,9 +8,9 @@ AI Website Builder is a full-stack web application that allows users to instantl
 
 - **AI-Powered Website Generation**: Instantly create a complete, mobile-friendly website for your business (restaurant, logistics, professional services, or custom) by answering a guided form.
 - **Business-Type Templates**: Each business type has tailored questions and design templates for relevant, high-converting layouts.
-- **Drag & Drop Simplicity**: Customize layouts, colors, and content with an intuitive, step-by-step interface.
+- **Simplicity In Customization**: Customize layouts, colors, and content with an intuitive interface.
 - **AI & Manual Image Integration**: Generate images with AI based on your instructions, or upload your own. Images are automatically integrated into the generated site.
-- **Live Preview & Editing**: Instantly preview your site. Use the visual editor to select and edit any element, with both direct and AI-assisted editing modes.
+- **Preview & Editing**: Instantly preview your site. Use the visual editor to select and edit any element, with both direct and AI-assisted editing modes.
 - **Color Palette Customization**: Choose or generate harmonious color schemes, with validation for accessibility and brand appropriateness.
 - **SEO & Performance Optimized**: All sites include semantic HTML, meta tags, Open Graph/Twitter cards, and are optimized for speed and search engines.
 - **Accessibility First**: Generated sites comply with WCAG standards for inclusivity.
@@ -19,13 +19,12 @@ AI Website Builder is a full-stack web application that allows users to instantl
 
 ## How It Works
 
-1. **Select Business Type**: Choose from Restaurant, Logistics, Professional Services, or Custom.
+1. **Select Business Type**: Choose from Restaurant, Logistics or Professional Services.
 2. **Answer Guided Questions**: Fill out a dynamic form tailored to your business type (name, services, specialties, etc.).
 3. **Choose Image Source**: Select AI-generated images (describe what you want), upload your own, or opt for a text-only site.
 4. **Customize Colors**: Pick a color scheme or let the AI suggest harmonious palettes.
 5. **Generate Website**: The AI creates a complete, production-ready website with your content, images, and branding.
 6. **Preview & Edit**: Instantly preview your site. Use the visual editor to select and edit any element (text, images, styles) directly or with AI help.
-7. **Download or Share**: Download your HTML file or share your site.
 
 ## How to Use
 
@@ -34,6 +33,8 @@ AI Website Builder is a full-stack web application that allows users to instantl
 - Node.js (v18+ recommended)
 - npm or yarn
 - OpenAI API key (for AI generation)
+- Azure BlobStorage API key
+- Supabase / nextauth
 
 ### Setup
 
@@ -54,10 +55,12 @@ AI Website Builder is a full-stack web application that allows users to instantl
 
 3. **Configure environment variables**
 
-   - Copy `.env.example` to `.env.local` and add your OpenAI API key:
+   - Copy `.example.env` to `.env` and add your API key:
 
      ```env
      OPENAI_API_KEY=your-key-here
+     AZURE_STORAGE_ACCOUNT_KEY=your-key-here
+     SUPABASE_SERVICE_ROLE_KEY=your-key-here
      ```
 
 4. **Run the development server**
@@ -89,7 +92,7 @@ AI Website Builder is a full-stack web application that allows users to instantl
 ## Technologies Used
 
 - Next.js (App Router)
-- React & TypeScript
+- React, TypeScript, JavaScript
 - OpenAI API (GPT-4o)
 - Bootstrap 5
 - React-Bootstrap
@@ -106,10 +109,6 @@ AI Website Builder is a full-stack web application that allows users to instantl
 ## Contributing
 
 Pull requests are welcome! Please open an issue first to discuss major changes.
-
-## License
-
-MIT
 
 ---
 

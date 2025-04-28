@@ -1,17 +1,21 @@
 'use client'
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import 'bootstrap/dist/css/bootstrap.min.css'
+import { Rajdhani, Inter } from 'next/font/google'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+export const rajdhani = Rajdhani({
+  variable: '--font-rajdhani',
   subsets: ['latin'],
+  weight: ['600', '700'],
+  display: 'swap',
 })
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+export const inter = Inter({
+  variable: '--font-inter',
   subsets: ['latin'],
+  weight: ['400', '500'],
+  display: 'swap',
 })
 
 const metadata: Metadata = {
@@ -25,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${rajdhani.variable} ${inter.variable}`}>
       <body className="bg-gray-50 min-h-screen">{children}</body>
     </html>
   )

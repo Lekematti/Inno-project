@@ -7,9 +7,11 @@ import RegisterForm from './RegisterForm'
 import LoginForm from './LoginForm'
 import Cookies from 'js-cookie'
 import { useRouter } from 'next/navigation'
+import { postBlob } from '../../functions/blobStorage'
 
 // Main Profile Page Component
 export default function ProfilePage() {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [userData, setUserData] = useState<any>(null)
   const router = useRouter()
@@ -87,6 +89,21 @@ export default function ProfilePage() {
     )
   }
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFile(e.target.files[0]) // Store selected file in state
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedFile) {
+      alert('Submit a file!')
+      return
+    }
+    postBlob(selectedFile)
+  }
+
   // If authenticated, show user profile
   return (
     <div>
@@ -95,27 +112,38 @@ export default function ProfilePage() {
         <Row>
           <Col className="text-center">
             <div className="bg-white p-6 rounded-lg shadow-md">
-              <h1 className="text-2xl font-bold mb-4">
+              <h1 className="text-2xl font-bold mb-4 my-4">
                 Welcome, {userData?.name || userData?.email || 'User'}
               </h1>
-              <div className="mb-4">
-                {userData?.email && (
-                  <p>
-                    <strong>Email:</strong> {userData.email}
-                  </p>
-                )}
-                {userData?.id && (
-                  <p>
-                    <strong>User ID:</strong> {userData.id}
-                  </p>
-                )}
-              </div>
-              <Button
-                onClick={handleLogout}
-                className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600"
-              >
-                Log out
-              </Button>
+            </div>
+            <Button
+              onClick={handleLogout}
+              className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600"
+            >
+              Log out
+            </Button>
+          </Col>
+        </Row>
+        <Row className=" row-cols-1 justify-content-center">
+          <Col className="my-5 text-center col-4">
+            <div>
+              <h1>Add images to use on your website:</h1>
+              <form onSubmit={handleSubmit}>
+                <div className="mb-3">
+                  <label htmlFor="formFile" className="form-label">
+                    Add png or jpg files:
+                  </label>
+                  <input
+                    className="form-control"
+                    type="file"
+                    id="formFile"
+                    onChange={handleFileChange}
+                  />
+                </div>
+                <Button type="submit" className="btn btn-primary">
+                  Submit image
+                </Button>
+              </form>
             </div>
           </Col>
         </Row>

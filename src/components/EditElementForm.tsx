@@ -10,6 +10,11 @@ interface EditElementFormProps {
   onClose: () => void
   onSave: (instructions: ElementEditInstructions) => Promise<void>
   isSubmitting: boolean
+  onDirectEditDomUpdate?: (
+    elementPath: string,
+    content: string,
+    attributes: Record<string, string>
+  ) => void // <-- Add this
 }
 
 export const EditElementForm: React.FC<EditElementFormProps> = ({
@@ -17,6 +22,7 @@ export const EditElementForm: React.FC<EditElementFormProps> = ({
   onClose,
   onSave,
   isSubmitting,
+  onDirectEditDomUpdate,
 }) => {
   const [editMode, setEditMode] = useState<'direct' | 'ai'>('direct')
   const [directContent, setDirectContent] = useState('')
@@ -118,6 +124,18 @@ export const EditElementForm: React.FC<EditElementFormProps> = ({
     if (!element) return
 
     try {
+      // Call the DOM update function if provided
+      if (onDirectEditDomUpdate) {
+        onDirectEditDomUpdate(
+          element.elementPath,
+          directContent,
+          editableAttributes
+        )
+        onClose()
+        return
+      }
+
+      // Fallback: old behavior (API call)
       const instructions: ElementEditInstructions = {
         elementPath: element.elementPath,
         elementType: element.type,
@@ -192,21 +210,89 @@ export const EditElementForm: React.FC<EditElementFormProps> = ({
               </Form.Group>
 
               {/* Attributes section */}
+              <Form.Group className="mb-3">
+                <Form.Label>Text Color</Form.Label>
+                <Form.Control
+                  type="color"
+                  value={(() => {
+                    const style = editableAttributes.style || ''
+                    const match = /color:\s*([^;]+);?/i.exec(style)
+                    return match ? match[1].trim() : '#000000'
+                  })()}
+                  onChange={(e) => {
+                    let style = editableAttributes.style || ''
+                    const color = e.target.value
+                    if (/color:\s*[^;]+;?/i.test(style)) {
+                      style = style.replace(
+                        /color:\s*[^;]+;?/i,
+                        `color: ${color};`
+                      )
+                    } else {
+                      style += ` color: ${color};`
+                    }
+                    handleAttributeChange('style', style.trim())
+                  }}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3">
+                <Form.Label>Background Color</Form.Label>
+                <Form.Control
+                  type="color"
+                  value={(() => {
+                    const style = editableAttributes.style || ''
+                    const match = /background-color:\s*([^;]+);?/i.exec(style)
+                    return match ? match[1].trim() : '#ffffff'
+                  })()}
+                  onChange={(e) => {
+                    let style = editableAttributes.style || ''
+                    const color = e.target.value
+                    if (/background-color:\s*[^;]+;?/i.test(style)) {
+                      style = style.replace(
+                        /background-color:\s*[^;]+;?/i,
+                        `background-color: ${color};`
+                      )
+                    } else {
+                      style += ` background-color: ${color};`
+                    }
+                    handleAttributeChange('style', style.trim())
+                  }}
+                />
+              </Form.Group>
+
+              {/* Now render the rest of the attributes as before */}
               {Object.keys(editableAttributes).length > 0 && (
                 <>
                   <h6 className="mt-4">Attributes</h6>
-                  {Object.entries(editableAttributes).map(([key, value]) => (
-                    <Form.Group className="mb-3" key={key}>
-                      <Form.Label>{key}</Form.Label>
-                      <Form.Control
-                        type="text"
-                        value={value}
-                        onChange={(e) =>
-                          handleAttributeChange(key, e.target.value)
-                        }
-                      />
-                    </Form.Group>
-                  ))}
+                  {Object.entries(editableAttributes).map(([key, value]) => {
+                    if (key === 'style') {
+                      // Optionally show a raw style input for advanced users
+                      return (
+                        <Form.Group className="mb-3" key={key}>
+                          <Form.Label>Raw Style (advanced)</Form.Label>
+                          <Form.Control
+                            type="text"
+                            value={value}
+                            onChange={(e) =>
+                              handleAttributeChange('style', e.target.value)
+                            }
+                          />
+                        </Form.Group>
+                      )
+                    }
+                    // Default for other attributes
+                    return (
+                      <Form.Group className="mb-3" key={key}>
+                        <Form.Label>{key}</Form.Label>
+                        <Form.Control
+                          type="text"
+                          value={value}
+                          onChange={(e) =>
+                            handleAttributeChange(key, e.target.value)
+                          }
+                        />
+                      </Form.Group>
+                    )
+                  })}
                 </>
               )}
             </Form>

@@ -412,6 +412,7 @@ export default function BuildPage() {
               error={error}
               formData={formData}
               onEditElement={handleEditElement}
+              onUpdateGeneratedHtml={setGeneratedHtml}
             />
 
             {/* Only show Generate button in step 5 and only when not loading */}
@@ -430,8 +431,6 @@ export default function BuildPage() {
             )}
           </>
         )}
-
-        {/* Remove the form that was outside the step conditionals */}
       </Container>
     </div>
   )

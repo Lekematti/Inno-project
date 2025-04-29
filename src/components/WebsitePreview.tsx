@@ -19,6 +19,7 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   error,
   formData,
   onEditElement,
+  onUpdateGeneratedHtml,
 }) => {
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [isRendering, setIsRendering] = useState<boolean>(false)
@@ -76,6 +77,37 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
     // Reset selected element when toggling edit mode
     if (selectedElement) {
       setSelectedElement(null)
+    }
+  }
+
+  const handleDirectEditDomUpdate = (
+    elementPath: string,
+    content: string,
+    attributes: Record<string, string>
+  ) => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+    const doc = iframe.contentDocument || iframe.contentWindow?.document
+    if (!doc) return
+
+    try {
+      const el = doc.querySelector(elementPath)
+      if (el) {
+        el.textContent = content
+        Object.entries(attributes).forEach(([key, value]) => {
+          if (value) {
+            el.setAttribute(key, value)
+          } else {
+            el.removeAttribute(key)
+          }
+        })
+        // Update the HTML in parent state
+        if (typeof onUpdateGeneratedHtml === 'function') {
+          onUpdateGeneratedHtml(doc.documentElement.outerHTML)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update element in iframe:', err)
     }
   }
 
@@ -203,6 +235,7 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
             onClose={() => setSelectedElement(null)}
             onSave={handleEditSave}
             isSubmitting={isSubmittingEdit}
+            onDirectEditDomUpdate={handleDirectEditDomUpdate} // <-- Add this prop
           />
         )}
 

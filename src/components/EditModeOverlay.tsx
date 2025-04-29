@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, RefObject } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ElementEditRequest } from '@/types/formData'
 import styles from './EditModeOverlay.module.css'
 
@@ -7,12 +7,11 @@ interface EditModeOverlayProps {
   isActive: boolean
   onExit: () => void
   onElementSelect: (element: ElementEditRequest) => void
-  iframeRef: RefObject<HTMLIFrameElement>
+  iframeRef: React.RefObject<HTMLIFrameElement>
 }
 
 export const EditModeOverlay: React.FC<EditModeOverlayProps> = ({
   isActive,
-  onExit,
   onElementSelect,
   iframeRef,
 }) => {
@@ -241,17 +240,6 @@ export const EditModeOverlay: React.FC<EditModeOverlayProps> = ({
           </div>
         </div>
       )}
-
-      {/* Help overlay */}
-      <div className={styles.helpOverlay}>
-        <div className={styles.helpContent}>
-          <h5>Edit Mode</h5>
-          <p>Hover over elements and click to edit them</p>
-          <button className={styles.exitButton} onClick={onExit}>
-            Exit Edit Mode
-          </button>
-        </div>
-      </div>
 
       {/* Instructions modal - show initially */}
       {showInstructions && (

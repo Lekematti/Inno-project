@@ -24,6 +24,9 @@ export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(
     // Forward the ref while maintaining our internal ref
     useImperativeHandle(ref, () => internalRef.current!, [])
 
+    const removeLoaderScript = (html: string) =>
+      html.replace(/<script id="image-loader-script"[\s\S]*?<\/script>/gi, '')
+
     useEffect(() => {
       if (!htmlContent) {
         setError('No content to display')
@@ -31,12 +34,8 @@ export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(
       }
 
       try {
-        // Create a blob from the HTML content
-        const processedHtml = htmlContent.replace(
-          /src="\/uploads\//g,
-          `src="${window.location.origin}/uploads/`
-        )
-
+        // Remove any existing loader script to avoid duplication
+        const processedHtml = removeLoaderScript(htmlContent)
         // Add image loading tracking script to check when all images are loaded
         // Including tracking for CSS background images
         const htmlWithImageTracking = `

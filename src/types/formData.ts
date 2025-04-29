@@ -62,13 +62,14 @@ export interface StepWithBackProps extends BaseStepProps {
 
 // Preview related types
 export interface WebsitePreviewProps {
-  isLoading: boolean;
-  isReady: boolean;
-  generatedHtml: string;
-  error: string;
-  formData: FormData;
-  onEditElement?: (instructions: ElementEditInstructions, formData: FormData) => Promise<void>;
-};
+  isLoading: boolean
+  isReady: boolean
+  generatedHtml: string | null
+  error: string | null
+  formData: FormData
+  onEditElement?: (instructions: ElementEditInstructions, formData: FormData) => Promise<void>
+  onUpdateGeneratedHtml?: (updatedHtml: string) => void
+}
 
 export interface PreviewProps {
   htmlContent: string;

@@ -142,12 +142,12 @@ export default function BuildPage() {
   const modifiedGenerateWebsite = useCallback(async () => {
     setTimeout(() => {
     setGenerationProgress({ stage: 'preparing', percent: 10 });
-    },3000);
+    },1000);
 
     const progressIntervals = [
       { stage: 'analyzing', percent: 25, delay: 5000},
       { stage: 'generating', percent: 50, delay: 15000},
-      { stage: 'optimizing', percent: 75, delay: 10000},
+      { stage: 'optimizing', percent: 75, delay: 30000},
     ];
 
     progressIntervals.forEach(({ stage, percent, delay }) => {

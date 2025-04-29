@@ -1111,7 +1111,7 @@ export async function fetchImages(
   businessType: string = 'restaurant',
   imageSource: 'ai' | 'manual' | 'none' = 'ai'
 ): Promise<string[]> {
-  // If image source is 'none' or no instructions for AI, return empty array
+  // Quick exit conditions
   if (
     imageSource === 'none' || 
     (imageSource === 'ai' && (!imageInstructions || imageInstructions.trim().toLowerCase() === 'none'))
@@ -1124,77 +1124,50 @@ export async function fetchImages(
     return [];
   }
   
-  const imageUrls: string[] = [];
+  // Check cached results first - simple in-memory cache with 15 minute TTL
+  const cacheKey = `${businessType}-${imageInstructions.slice(0, 100)}`;
+  const cachedResult = imageFetchCache.get(cacheKey);
+  if (cachedResult && (Date.now() - cachedResult.timestamp) < 900000) { // 15 minutes
+    console.log('🔄 Using cached image URLs');
+    return cachedResult.urls;
+  }
+  
   console.log(`🖼️ Processing AI image instructions for ${businessType}...`);
   
   try {
-    // Process the requirements with enhanced prompt engineering
-    const imageRequests = processImageRequirements(imageInstructions, businessType);
+    // Process the requirements with enhanced prompt engineering - limit to 5 images for performance
+    const imageRequests = processImageRequirements(imageInstructions, businessType).slice(0, 5);
     
-    // Handle empty requests with smart defaults
-    if (imageRequests.length === 0) {
-      console.log('No valid image requests processed. Using enhanced default template.');
-      // Get the default template for this business type
-      const normalizedType = businessType.toLowerCase() as BusinessType;
-      if (['restaurant', 'logistics', 'professional'].includes(normalizedType)) {
-        // Use randomized default images for better variety
-        const defaultRequests = getRandomizedTemplateImages(normalizedType, 3);
-        
-        // Add these default requests to our processed requests
-        for (const req of defaultRequests) {
-          imageRequests.push(req);
-        }
-      }
-    }
+    // Generate URLs immediately without hitting the generation API
+    const simulatedImageUrls = imageRequests.map((req, i) => {
+      // Create a URL that will be processed later by the actual image API
+      const uniqueId = `img-${Date.now()}-${i}`;
+      const sanitizedDesc = req.description.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '-');
+      
+      // Create URL with all necessary parameters
+      return `https://webweave-imagegen.onrender.com/jukka/images/${uniqueId}-${sanitizedDesc}.jpg?description=${encodeURIComponent(req.description)}&width=${req.width}&height=${req.height}&style=${req.style}&seed=${Math.floor(Math.random() * 1000000)}`;
+    });
     
-    // Generate unique identifiers for the image URLs with better uniqueness properties
-    const timestamp = Date.now();
-    const randomId = Math.random().toString(36).substring(2, 10); // Longer random string
+    // Store in cache
+    imageFetchCache.set(cacheKey, {
+      urls: simulatedImageUrls,
+      timestamp: Date.now()
+    });
     
-    // Generate URLs with parallel processing in mind - each request gets a unique seed
-    for (let i = 0; i < imageRequests.length; i++) {
-      const { description, style, width, height } = imageRequests[i];
-      
-      // Adjust style if needed using enhanced complexity detection
-      const finalStyle = (style === 'real' && isDescriptionTooComplex(description)) 
-        ? 'artistic' 
-        : style;
-      
-      // Create a more robust hash from the description - ensure it's URL-safe
-      const descHash = Buffer.from(description).toString('base64')
-        .replace(/[/+=]/g, '')
-        .substring(0, 8);
-      
-      // Generate a more unique identifier for better cache avoidance and distribution
-      const uniqueId = `${timestamp}-${randomId}-${i+1}-${descHash}`;
-      
-      // Add a seed parameter for consistent but varied image generation
-      const seed = Math.floor(Math.random() * 1000000);
-      
-      // Create sanitized description with proper URL encoding for the filename part
-      const sanitizedDesc = description
-        .replace(/[']/g, "") // Remove apostrophes
-        .replace(/[^a-zA-Z0-9-_.]/g, "-") // Replace other special chars with hyphens
-        .trim()
-        .replace(/\s+/g, "-") // Replace spaces with hyphens
-        .substring(0, 20); // Limit length
-      
-      // Fully encode the query parameter separately to ensure proper handling
-      const encodedFullDescription = encodeURIComponent(description);
-      
-      // Fixed URL construction with guaranteed query parameters
-      const url = `https://webweave-imagegen.onrender.com/jukka/images/${uniqueId}-${sanitizedDesc}.jpg?description=${encodedFullDescription}&width=${width}&height=${height}&style=${finalStyle}&seed=${seed}&quality=high`;
-      
-      console.log(`Generating ${finalStyle} image (${i+1}/${imageRequests.length}): "${description.substring(0, 60)}${description.length > 60 ? '...' : ''}"`);
-      imageUrls.push(url);
-    }
-    
-    return imageUrls;
+    return simulatedImageUrls;
   } catch (error) {
     console.error("Error generating images:", error);
     return [];
   }
 }
+
+// In-memory image URL cache
+interface ImageCache {
+  urls: string[];
+  timestamp: number;
+}
+
+const imageFetchCache = new Map<string, ImageCache>();
 
 /**
  * Helper function to ensure all image URLs in HTML have query parameters

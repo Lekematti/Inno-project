@@ -1,4 +1,3 @@
-
 /**
  * Custom React hook that manages form state and logic for website generation
  */
@@ -119,8 +118,13 @@ export const useFormHandlers = (): FormHandlerHook => {
     try {
       // Process colors before submission
       const processedFormData = processFormColors(formData);
+      
       // Create FormData object for file uploads
       const submitData = new FormData();
+      
+      // Add client ID to prevent race conditions
+      const clientId = localStorage.getItem('client_id') || `client-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      submitData.append('clientId', clientId);
       
       // Add basic fields
       submitData.append('businessType', formData.businessType);
@@ -128,19 +132,20 @@ export const useFormHandlers = (): FormHandlerHook => {
       submitData.append('phone', formData.phone);
       submitData.append('email', formData.email);
       
-      // Add image source
+      // Add image source - set default to 'none' if not specified
       const imageSource = (formData.imageSource as ImageSourceType) || 'none';
       submitData.append('imageSource', imageSource);
       
-      // Process images based on source type
+      // Only include necessary image data based on source type
       if (imageSource === 'ai' && formData.imageInstructions) {
         submitData.append('imageInstructions', formData.imageInstructions);
       } else if (imageSource === 'manual' && formData.uploadedImages && formData.uploadedImages.length > 0) {
-        // Add all uploaded files individually with the same field name
-        for (const image of formData.uploadedImages) {
+        // Only include necessary image data to reduce payload size
+        const optimizedUploads = [...formData.uploadedImages].slice(0, 10);
+        for (const image of optimizedUploads) {
           submitData.append('uploadedImages', image);
         }
-        console.log(`Uploading ${formData.uploadedImages.length} images`);
+        console.log(`Uploading ${optimizedUploads.length} images`);
       }
       
       // Add all question answers
@@ -150,65 +155,75 @@ export const useFormHandlers = (): FormHandlerHook => {
         }
       });
       
-      // Add any optional fields that might be needed
+      // Add optional fields
       if (formData.businessName) {
         submitData.append('businessName', formData.businessName);
       }
       
       if (processedFormData.colorScheme) {
         submitData.append('colorScheme', processedFormData.colorScheme);
+      }
 
-      if (Array.isArray(processedFormData) && processedFormData.length > 0) {
-        submitData.append('colorScheme', processedFormData.join(','))
+      if (Array.isArray(processedFormData.colorScheme) && processedFormData.colorScheme.length > 0) {
+        submitData.append('colorScheme', processedFormData.colorScheme.join(','));
       }
       
       if (formData.templateVariant) {
         submitData.append('templateVariant', formData.templateVariant);
       }
       
-      console.log('Submitting form data with image source:', imageSource);
-      // Note: Don't set Content-Type header when using FormData
-      // The browser will automatically set it with the correct boundary
-      const response = await fetch('/api/generatePage', {
-        method: 'POST',
-        body: submitData
-      });
-     
-      if (!response.ok) {
-        throw new Error(`Server responded with status: ${response.status}`);
+      // Use a timeout to handle hang prevention
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+        throw new Error('Request timed out - took too long to generate');
+      }, 120000); // 2 minutes timeout
+      
+      try {
+        const response = await fetch('/api/generatePage', {
+          method: 'POST',
+          body: submitData,
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`Server responded with status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        if (data.htmlContent) {
+          setGeneratedHtml(data.htmlContent);
+          // Update form data with response data
+          setFormData(prev => ({
+            ...prev,
+            filePath: data.filePath,
+            generatedImageUrls: data.imageUrls ?? [],
+            standaloneHtml: data.standaloneHtml ?? ''
+          }));
+          setIsReady(true);
+          // Clear saved content after successful generation
+          clearSavedContent();
+        } else {
+          throw new Error('No HTML content received');
+        }
+      } finally {
+        clearTimeout(timeoutId);
       }
-     
-      const data = await response.json();
-     
-      if (data.error) {
-        throw new Error(data.error);
-      }
-     
-      if (data.htmlContent) {
-        setGeneratedHtml(data.htmlContent);
-        // Update form data with response data - note the lowercase 'h' in standaloneHtml
-        setFormData(prev => ({
-          ...prev,
-          filePath: data.filePath,
-          generatedImageUrls: data.imageUrls ?? [],
-          standaloneHtml: data.standaloneHtml ?? '' // Make sure this matches the API response property name
-        }));
-        setIsReady(true);
-        // Clear saved content after successful generation
-        clearSavedContent();
-      } else {
-        throw new Error('No HTML content received');
-      }
-    }
     } catch (err) {
       console.error('Error generating website:', err instanceof Error ? err.message : String(err));
       setError('Failed to generate website. Please try again.');
-
     } finally {
       setIsLoading(false);
       isSubmittingRef.current = false;
     }
-  }, [formData, isLoading, processFormColors, clearSavedContent]);
+  }, [formData, isLoading, processFormColors, clearSavedContent, setFormData, setGeneratedHtml, setIsReady]);
 
 
   // Add this to your return statement

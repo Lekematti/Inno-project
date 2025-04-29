@@ -20,6 +20,7 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   formData,
   onEditElement,
   onUpdateGeneratedHtml,
+  loadingComponent, // New prop for custom loading indicator
 }) => {
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [isRendering, setIsRendering] = useState<boolean>(false)
@@ -112,7 +113,8 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   }
 
   if (isLoading) {
-    return (
+    // Use custom loading component if provided, otherwise use default
+    return loadingComponent || (
       <div className="d-flex flex-column align-items-center justify-content-center p-5">
         <output className="spinner-border">
           <Spinner animation="border" variant="primary" />

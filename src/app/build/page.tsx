@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useState } from 'react' // Add useState
-import { Container, ProgressBar, Button } from 'react-bootstrap'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { Container, ProgressBar, Button, Spinner } from 'react-bootstrap'
 import { Header } from '@/components/Header'
 import { useFormHandlers } from './useFormHandlers'
 import { getQuestions } from './pageUtils'
@@ -13,10 +13,97 @@ import { FormData, ElementEditInstructions } from '@/types/formData'
 import { clearFormData } from '@/functions/usePageRefreshHandler'
 import { useRouter } from 'next/navigation'
 
+// Helper functions for storage
+const safelySetItem = (key: string, value: string): boolean => {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    console.warn(`Failed to save ${key} to localStorage:`, error);
+    return false;
+  }
+};
+
+const getSafeFormData = (data: FormData): Partial<FormData> => {
+  // Create a copy without potentially large data
+  const safeData: Partial<FormData> = { ...data };
+  
+  // Remove binary data like uploaded images
+  if (safeData.uploadedImages) {
+    delete safeData.uploadedImages;
+  }
+  
+  // Trim large strings
+  Object.keys(safeData).forEach(key => {
+    const typedKey = key as keyof FormData;
+    const value = safeData[typedKey];
+    
+    if (typeof value === 'string' && value.length > 500) {
+      safeData[typedKey] = (value.substring(0, 500) + '...') as any;
+    }
+  });
+  
+  return safeData;
+};
+
+// Storage manager to handle localStorage intelligently
+const storageManager = {
+  priorityKeys: ['form_current_step', 'client_id', 'last_submission_time'],
+  
+  // Save with priority (will clear lower priority items if needed)
+  saveWithPriority: function(key: string, value: string): boolean {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch {
+      // If storage is full, clear space starting with non-priority items
+      this.makeSpace();
+      try {
+        localStorage.setItem(key, value);
+        return true;
+      } catch (innerError) {
+        console.error(`Failed to save ${key} even after clearing space:`, innerError);
+        return false;
+      }
+    }
+  },
+  
+  makeSpace: function(): void {
+    // First, try to remove items not in the priority list
+    const keysToPreserve = new Set(this.priorityKeys);
+    
+    // Get all keys and sort by priority (non-priority first)
+    const allKeys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && !keysToPreserve.has(key)) {
+        allKeys.push(key);
+      }
+    }
+    
+    // Remove non-priority items first
+    for (const key of allKeys) {
+      localStorage.removeItem(key);
+      try {
+        // Test if we can store a small item now
+        localStorage.setItem('test', '1');
+        localStorage.removeItem('test');
+        return; // We freed enough space
+      } catch {
+        // Continue removing items
+      }
+    }
+  }
+};
+
 export default function BuildPage() {
-  // Add state to track if we're restoring from storage
   const [isRestoringFromStorage, setIsRestoringFromStorage] = useState(false)
   const [editingElement, setEditingElement] = useState(false)
+  const [generationProgress, setGenerationProgress] = useState({
+    stage: 'starting',
+    percent: 0,
+  })
+  const [storageWarning, setStorageWarning] = useState(false)
 
   const {
     formData,
@@ -31,38 +118,132 @@ export default function BuildPage() {
     checkAllQuestionsAnswered,
     generateWebsite,
     setError,
-    setGeneratedHtml, // Make sure this is exposed in useFormHandlers
-    setIsReady, // Make sure this is exposed in useFormHandlers
+    setGeneratedHtml,
+    setIsReady,
   } = useFormHandlers()
 
   const router = useRouter()
 
+  // Add a unique client ID for the session to prevent race conditions
+  const clientId = useRef<string>(
+    typeof window !== 'undefined' 
+      ? localStorage.getItem('client_id') || `client-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+      : `client-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+  );
+
+  // Store the client ID in localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      safelySetItem('client_id', clientId.current);
+    }
+  }, []);
+
+  // Modified to prevent multiple submissions and improve performance
+  const modifiedGenerateWebsite = useCallback(async () => {
+    setTimeout(() => {
+    setGenerationProgress({ stage: 'preparing', percent: 10 });
+    },3000);
+
+    const progressIntervals = [
+      { stage: 'analyzing', percent: 25, delay: 5000},
+      { stage: 'generating', percent: 50, delay: 15000},
+      { stage: 'optimizing', percent: 75, delay: 10000},
+    ];
+
+    progressIntervals.forEach(({ stage, percent, delay }) => {
+      setTimeout(() => {
+        setGenerationProgress({ stage, percent });
+      }, delay);
+    });
+
+    // Store the current timestamp to prevent double submissions
+    const submissionTime = Date.now();
+    safelySetItem('last_submission_time', submissionTime.toString());
+
+    try {
+      await generateWebsite();
+      setGenerationProgress({ stage: 'complete', percent: 100 });
+    } catch (error) {
+      console.error('Generation failed:', error);
+      setError('Generation failed. Please try again.');
+    }
+  }, [generateWebsite, setGenerationProgress, setError]);
+
   // Check for saved state on initial load
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedHtml = localStorage.getItem('latest_generated_html')
-      const savedStep = localStorage.getItem('form_current_step')
+      try {
+        const savedHtml = localStorage.getItem('latest_generated_html')
+        const savedStep = localStorage.getItem('form_current_step')
+        const savedData = localStorage.getItem('form_data')
 
-      if (savedHtml && savedStep === '5') {
-        // We have saved HTML and we were on step 5
-        setIsRestoringFromStorage(true)
-        setGeneratedHtml(savedHtml)
-        setStep(5)
-        setIsReady(true)
+        if (savedHtml && savedStep === '5') {
+          setIsRestoringFromStorage(true)
+          setGeneratedHtml(savedHtml)
+          setStep(5)
+          setIsReady(true)
+
+          if (savedData) {
+            try {
+              const parsedData = JSON.parse(savedData)
+              setFormData(parsedData)
+            } catch {
+              console.error('Error parsing saved form data')
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Error accessing localStorage:', error);
       }
     }
-  }, [setGeneratedHtml, setIsReady, setStep])
+  }, [setGeneratedHtml, setIsReady, setStep, setFormData]);
 
-  // Save state whenever HTML is generated or step changes
+  // Save state whenever HTML is generated or step changes - with error handling
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      if (generatedHtml) {
-        localStorage.setItem('latest_generated_html', generatedHtml)
+      try {
+        // Always prioritize saving the current step (it's small)
+        safelySetItem('form_current_step', step.toString());
+        
+        // Then try to save form data (if not empty)
+        if (Object.keys(formData).length > 0) {
+          try {
+            // Create a smaller version of the form data
+            const safeData = getSafeFormData(formData);
+            const formDataString = JSON.stringify(safeData);
+            
+            if (!safelySetItem('form_data', formDataString)) {
+              // If we couldn't save the form data, set a warning flag
+              setStorageWarning(true);
+              
+              // Try to save just the business type and basic info
+              const minimalData = {
+                businessType: formData.businessType,
+                step: step
+              };
+              safelySetItem('form_data', JSON.stringify(minimalData));
+            }
+          } catch (error) {
+            console.error('Error stringifying form data:', error);
+            setStorageWarning(true);
+          }
+        }
+        
+        // Only try to save HTML last (it's likely the largest item)
+        if (generatedHtml) {
+          // Try to save HTML, but don't break if it fails
+          const success = safelySetItem('latest_generated_html', generatedHtml);
+          if (!success) {
+            console.warn('Could not save generated HTML due to size limitations');
+            setStorageWarning(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error in storage effect:', error);
+        setStorageWarning(true);
       }
-
-      localStorage.setItem('form_current_step', step.toString())
     }
-  }, [generatedHtml, step])
+  }, [generatedHtml, step, formData]);
 
   // Run the normal generate logic only if we're not restoring
   useEffect(() => {
@@ -70,7 +251,7 @@ export default function BuildPage() {
       const hasAllAnswers = checkAllQuestionsAnswered()
       setAllQuestionsAnswered(hasAllAnswers)
       if (hasAllAnswers && !isLoading && !isReady) {
-        generateWebsite()
+        modifiedGenerateWebsite()
       }
     }
   }, [
@@ -78,10 +259,10 @@ export default function BuildPage() {
     step,
     formData.businessType,
     checkAllQuestionsAnswered,
-    generateWebsite,
     isLoading,
     isReady,
     setAllQuestionsAnswered,
+    modifiedGenerateWebsite,
   ])
 
   const handleChange = (
@@ -144,12 +325,10 @@ export default function BuildPage() {
   }
 
   const handleSubmitStep4 = (updatedFormData?: Partial<FormData>) => {
-    // Check image source and validate accordingly
     const imageSource =
       updatedFormData?.imageSource ?? formData.imageSource ?? 'ai'
 
     if (imageSource === 'ai') {
-      // For AI-generated images
       if (
         !formData.imageInstructions ||
         String(formData.imageInstructions).trim() === ''
@@ -160,7 +339,6 @@ export default function BuildPage() {
         return
       }
     } else if (imageSource === 'manual') {
-      // For manually uploaded images
       const uploadedImages =
         updatedFormData?.uploadedImages || formData.uploadedImages || []
       if (!uploadedImages.length) {
@@ -171,7 +349,6 @@ export default function BuildPage() {
       }
     }
 
-    // If updatedFormData is provided, merge it with the current formData
     if (updatedFormData) {
       setFormData((prev) => ({
         ...prev,
@@ -192,31 +369,43 @@ export default function BuildPage() {
     }
   }
 
-  // Modify the handleSubmit function to clear localStorage when navigating away
   const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement>
   ): Promise<void> => {
     e.preventDefault()
 
+    // Check if there was a recent submission to prevent duplicates
     try {
-      // Your existing form submission code
-      await generateWebsite()
+      const lastSubmission = localStorage.getItem('last_submission_time');
+      if (lastSubmission && Date.now() - parseInt(lastSubmission) < 5000) {
+        console.log('Preventing duplicate submission');
+        return;
+      }
+    } catch {
+      // Ignore storage errors here
+    }
 
-      // Clear form data right after successful submission
-      clearFormData()
+    try {
+      // Store the current timestamp
+      safelySetItem('last_submission_time', Date.now().toString());
+      await generateWebsite();
 
-      // Also clear our saved state since we're moving to results
-      localStorage.removeItem('latest_generated_html')
-      localStorage.removeItem('form_current_step')
+      // Clean up after successful submission - but handle errors
+      try {
+        clearFormData();
+        localStorage.removeItem('latest_generated_html');
+        localStorage.removeItem('form_current_step');
+      } catch (storageError) {
+        console.warn("Could not clear storage, but proceeding anyway:", storageError);
+      }
 
-      // Navigate to results or next page
-      router.push('/results')
+      router.push('/results');
     } catch (error) {
-      console.error('Form submission error:', error)
+      console.error('Form submission error:', error);
+      setError('Submission failed. Please try again.');
     }
   }
 
-  // Handle element edits
   const handleEditElement = async (
     editInstructions: ElementEditInstructions,
     currentFormData: FormData
@@ -227,7 +416,6 @@ export default function BuildPage() {
     setError('')
 
     try {
-      // First step: Apply the edits to the HTML
       const response = await fetch('/api/editElement', {
         method: 'POST',
         headers: {
@@ -250,13 +438,10 @@ export default function BuildPage() {
       const data = await response.json()
 
       if (data.htmlContent) {
-        // Update the generated HTML with the edited version
         setGeneratedHtml(data.htmlContent)
 
-        // Get the current file path from form data
         const currentFilePath = currentFormData.filePath ?? ''
 
-        // Second step: Save the edited HTML back to the file
         try {
           const saveResponse = await fetch('/api/editSave', {
             method: 'POST',
@@ -274,9 +459,9 @@ export default function BuildPage() {
             const saveData = await saveResponse.json()
             setFormData((prev) => ({
               ...prev,
-              filePath: saveData.filePath, // Use the new file path
+              filePath: saveData.filePath,
             }))
-            setGeneratedHtml(data.htmlContent) // Use the new HTML
+            setGeneratedHtml(data.htmlContent)
           } else {
             const errorText = await saveResponse.text()
             console.error('Error saving file:', errorText)
@@ -299,13 +484,28 @@ export default function BuildPage() {
     }
   }
 
-  // Progress calculation
+  const renderLoadingIndicator = () => (
+    <div className="d-flex flex-column align-items-center justify-content-center p-5">
+      <output className="spinner-border">
+        <Spinner animation="border" variant="primary" />
+      </output>
+      <p className="mt-3">
+        {generationProgress.stage === 'preparing' && 'Preparing your website...'}
+        {generationProgress.stage === 'analyzing' && 'Analyzing your inputs...'}
+        {generationProgress.stage === 'generating' &&
+          'Generating your custom website...'}
+        {generationProgress.stage === 'optimizing' &&
+          'Optimizing your website...'}
+        {generationProgress.stage === 'complete' && 'Your website is ready!'}
+      </p>
+      <ProgressBar now={generationProgress.percent} className="w-75 mt-2" />
+    </div>
+  )
+
   const questions = getQuestions(formData.businessType || '')
 
-  // Get total number of questions across all steps (excluding the current step if it's the image step)
   const totalQuestions = questions.length
 
-  // Count how many questions have been answered so far
   const answeredQuestions =
     totalQuestions > 0
       ? Object.keys(formData)
@@ -316,28 +516,31 @@ export default function BuildPage() {
               questionNum <= totalQuestions &&
               formData[key as keyof FormData] !== undefined &&
               typeof formData[key as keyof FormData] === 'string' &&
-              typeof formData[key as keyof FormData] === 'string' &&
               (formData[key as keyof FormData] as string).trim() !== ''
             )
           }).length
       : 0
 
-  // Calculate progress - ensure we don't divide by zero and don't exceed 100%
   const progress =
     totalQuestions > 0
       ? Math.min(100, Math.round((answeredQuestions / totalQuestions) * 100))
       : 0
 
-  // Calculate step-based progress - each step contributes to overall completion
   const stepProgress = Math.min(100, Math.round(((step - 1) / 4) * 100))
 
-  // Use the larger of question-based or step-based progress
   const displayProgress = Math.max(progress, stepProgress)
 
   return (
     <div className="min-vh-100 d-flex flex-column">
       <Header />
       <Container className="flex-grow-1 py-4">
+        {storageWarning && (
+          <div className="alert alert-warning mb-3">
+            <strong>Storage Limit Warning:</strong> Some data couldn&apos;t be saved to browser storage. 
+            Your progress might not be fully restored if you leave this page.
+          </div>
+        )}
+
         {step < 5 && (
           <div className="mb-4">
             <ProgressBar
@@ -346,8 +549,6 @@ export default function BuildPage() {
             />
           </div>
         )}
-
-        {/* Step components remain the same */}
 
         {step === 1 && (
           <Step1BasicInfo
@@ -413,16 +614,20 @@ export default function BuildPage() {
               formData={formData}
               onEditElement={handleEditElement}
               onUpdateGeneratedHtml={setGeneratedHtml}
+              loadingComponent={renderLoadingIndicator()}
             />
 
-            {/* Only show Generate button in step 5 and only when not loading */}
             {!isLoading && (
               <form onSubmit={handleSubmit} className="mt-4">
                 <Button
                   type="submit"
                   variant="primary"
                   onClick={() => {
-                    clearFormData()
+                    try {
+                      clearFormData();
+                    } catch (e) {
+                      console.warn("Could not clear form data:", e);
+                    }
                   }}
                 >
                   Generate Page

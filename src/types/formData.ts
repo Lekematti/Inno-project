@@ -69,6 +69,7 @@ export interface WebsitePreviewProps {
   formData: FormData
   onEditElement?: (instructions: ElementEditInstructions, formData: FormData) => Promise<void>
   onUpdateGeneratedHtml?: (updatedHtml: string) => void
+  loadingComponent?: React.ReactNode 
 }
 
 export interface PreviewProps {

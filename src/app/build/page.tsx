@@ -325,22 +325,29 @@ export default function BuildPage() {
   }
 
   const handleSubmitStep4 = (updatedFormData?: Partial<FormData>) => {
-    const imageSource =
-      updatedFormData?.imageSource ?? formData.imageSource ?? 'ai'
-
+    const imageSource = updatedFormData?.imageSource ?? formData.imageSource ?? 'ai'
+  
     if (imageSource === 'ai') {
-      if (
-        !formData.imageInstructions ||
-        String(formData.imageInstructions).trim() === ''
-      ) {
+      // Check if we have image descriptions in the new format
+      const imageDescriptions = updatedFormData?.imageDescriptions || formData.imageDescriptions || []
+      
+      // Check if we have any non-empty image descriptions
+      const hasValidDescriptions = Array.isArray(imageDescriptions) && 
+        imageDescriptions.some(desc => desc && desc.trim() !== '')
+        
+      // If we have descriptions in the new format, use those
+      if (hasValidDescriptions) {
+        // Continue to step 5, everything is valid
+      } 
+      // Fall back to the old format validation if no descriptions array is found
+      else if (!formData.imageInstructions || String(formData.imageInstructions).trim() === '') {
         setError(
-          'Please describe your image requirements or enter "none" if you don\'t need images'
+          'Please provide at least one image description or choose a different image source'
         )
         return
       }
     } else if (imageSource === 'manual') {
-      const uploadedImages =
-        updatedFormData?.uploadedImages || formData.uploadedImages || []
+      const uploadedImages = updatedFormData?.uploadedImages || formData.uploadedImages || []
       if (!uploadedImages.length) {
         setError(
           'Please upload at least one image or switch to AI-generated images'
@@ -348,17 +355,18 @@ export default function BuildPage() {
         return
       }
     }
-
+  
     if (updatedFormData) {
       setFormData((prev) => ({
         ...prev,
         ...updatedFormData,
-        imageInstructions:
-          updatedFormData?.imageInstructions ?? prev.imageInstructions,
+        // Ensure all needed fields are preserved
+        imageInstructions: updatedFormData?.imageInstructions ?? prev.imageInstructions,
+        imageDescriptions: updatedFormData?.imageDescriptions ?? prev.imageDescriptions,
         uploadedImages: updatedFormData?.uploadedImages ?? prev.uploadedImages,
       }))
     }
-
+  
     setError('')
     setStep(5)
   }

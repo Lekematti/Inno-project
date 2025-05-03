@@ -2,10 +2,10 @@ import { ImageRequest, OptimizedImagePrompt } from '@/types/formData'
 import { BusinessType } from '@/types/business/types'
 
 /**
- * Advanced image processing for website generation with improved AI prompting
+ * Image processing for website generation
  */
 
-// Enhanced template image requirements with wider variety and higher quality specifications
+// Default image templates by business type (used only as fallback)
 const templateImageRequirements: Record<BusinessType, ImageRequest[]> = {
   restaurant: [
     {
@@ -29,20 +29,6 @@ const templateImageRequirements: Record<BusinessType, ImageRequest[]> = {
       width: 1200,
       height: 600,
     },
-    {
-      description: 'chef preparing gourmet meal in professional kitchen',
-      subject: 'people',
-      style: 'real',
-      width: 800,
-      height: 800,
-    },
-    {
-      description: 'elegant table setting with fine dining presentation',
-      subject: 'product',
-      style: 'real',
-      width: 800,
-      height: 600,
-    },
   ],
   logistics: [
     {
@@ -60,25 +46,11 @@ const templateImageRequirements: Record<BusinessType, ImageRequest[]> = {
       height: 600,
     },
     {
-      description: 'warehouse management system with organized inventory',
-      subject: 'interior',
-      style: 'real',
-      width: 1200,
-      height: 600,
-    },
-    {
       description: 'logistics professionals coordinating shipments',
       subject: 'people',
       style: 'real',
       width: 800,
       height: 800,
-    },
-    {
-      description: 'cutting-edge logistics technology and tracking systems',
-      subject: 'product',
-      style: 'real',
-      width: 1000,
-      height: 600,
     },
   ],
   professional: [
@@ -97,952 +69,239 @@ const templateImageRequirements: Record<BusinessType, ImageRequest[]> = {
       height: 800,
     },
     {
-      description: 'professional service presentation with client',
-      subject: 'product',
-      style: 'artistic',
-      width: 800,
-      height: 600,
-    },
-    {
       description: 'modern office building exterior with architectural details',
       subject: 'exterior',
       style: 'real',
       width: 1200,
       height: 600,
     },
-    {
-      description: 'executive workspace with professional environment',
-      subject: 'interior',
-      style: 'real',
-      width: 1000,
-      height: 600,
-    },
   ],
   custom: [],
 }
 
-// Quality enhancement phrases for more realistic and impressive outputs
+// Quality enhancement phrases simplified
 const qualityEnhancementPhrases = {
-  real: [
-    'professional photography, 4K resolution, natural lighting',
-    'DSLR photography, studio lighting, professional composition',
-    'high-quality image, sharp focus, professional color grading',
-    'commercial photography, professional staging, high-end',
-    'professional photoshoot, high detail, magazine quality',
-  ],
-  artistic: [
-    'high-quality digital art, detailed composition, vivid colors',
-    'professional illustration, artistic detail, modern style',
-    'creative digital rendering, expressive style, high resolution',
-    'artistic composition, professional design, stylized rendering',
-    'creative visual, professional artistic elements, vibrant',
-  ],
-}
-
-// Enhanced subject-specific phrases to get better results
-const subjectEnhancementPhrases: Record<string, string[]> = {
-  food: [
-    'chef-prepared cuisine, professional food styling, culinary artistry',
-    'gourmet presentation, appetizing colors, expert plating',
-    'fresh ingredients, culinary masterpiece, professional food photography',
-  ],
-  interior: [
-    'thoughtfully designed space, professional interior photography, architectural details',
-    'well-composed interior, perfect lighting, professional staging',
-    'architectural photography, interior design showcase, spatial composition',
-  ],
-  exterior: [
-    'architectural photography, professional exterior shot, golden hour lighting',
-    'building exterior with context, professional real estate photography',
-    'commercial photography, architectural features, perfect exposure',
-  ],
-  people: [
-    'candid professional moment, authentic interaction, professional portrait',
-    'diverse team, professional setting, natural expressions',
-    'professional workplace culture, authentic engagement, commercial photography',
-  ],
-  product: [
-    'product showcase, professional studio lighting, commercial quality',
-    'detailed product photography, professional staging, premium presentation',
-    'commercial product shot, professional composition, marketing quality',
-  ],
-  logo: [
-    'clean vector design, professional branding, scalable logo',
-    'minimalist logo design, professional identity, high contrast',
-    'brand identity element, professional logo design, versatile mark',
-  ],
+  real: 'professional photography, 4K resolution, natural lighting',
+  artistic: 'high-quality digital art, detailed composition, vivid colors',
 }
 
 /**
- * Process and optimize image generation requests based on user input and business type
- * Enhanced to create more customized and varied images
+ * Debug function to log details about the image processing
+ */
+function logDebug(message: string, data?: unknown) {
+  console.log(`🔍 [ImageProcessor] ${message}`);
+  if (data) {
+    console.log(data);
+  }
+}
+
+/**
+ * Process image requirements based on user input and business type
+ * Now optimized for the structured format from the slider UI
  */
 export function processImageRequirements(
   userInput: string,
   businessType: string
 ): OptimizedImagePrompt[] {
   if (!userInput || userInput.trim().toLowerCase() === 'none') {
+    logDebug("No user input provided, returning empty array");
     return []
   }
 
-  console.log(
-    `🎨 Processing image requirements for ${businessType} template...`
-  )
+  // Log the raw input to help with debugging
+  logDebug(`Processing image requirements for "${businessType}" with input:`, userInput);
 
-  // Normalize business type to match our template keys
+  // Normalize business type
   const normalizedType = businessType.toLowerCase() as BusinessType
   const isValidType = ['restaurant', 'logistics', 'professional'].includes(
     normalizedType
   )
 
-  // Extract user image requests with enhanced parsing
-  const userRequests = extractImageRequests(userInput, normalizedType)
-
-  // If no valid business type or no user requests, return default set
-  if (!isValidType || userRequests.length === 0) {
-    if (isValidType) {
-      console.log(
-        'No valid user requests detected, using enhanced default template'
-      )
-      // Use randomized selection from templates for variety
-      return getRandomizedTemplateImages(normalizedType, 3)
-    }
+  if (!isValidType) {
+    logDebug(`Invalid business type: ${businessType}, returning empty array`);
     return []
   }
 
-  // Create optimized prompts based on both user requests and template needs
-  const optimizedRequests = createOptimizedPrompts(userRequests, normalizedType)
+  // Use default templates if requested
+  if (userInput.trim().toLowerCase() === 'default') {
+    logDebug("Using default images for business type");
+    return getDefaultImages(normalizedType)
+  }
 
-  return optimizedRequests
+  // Parse the numbered format from the UI (1.description1 2.description2 3.description3)
+  const structuredPrompts = parseNumberedFormat(userInput, normalizedType);
+  
+  // If we got valid prompts, return them
+  if (structuredPrompts.length > 0) {
+    logDebug(`Successfully processed ${structuredPrompts.length} image descriptions`);
+    return structuredPrompts;
+  }
+  
+  // Fallback to defaults if parsing failed
+  logDebug("Failed to parse image descriptions, using defaults");
+  return getDefaultImages(normalizedType);
 }
 
 /**
- * Gets a randomized selection of template images
- * This provides variety even for default cases
+ * Parse numbered format from the slider UI
+ * Format: "1.description1 2.description2 3.description3"
  */
-function getRandomizedTemplateImages(
-  businessType: BusinessType,
-  count: number = 3
+function parseNumberedFormat(
+  userInput: string,
+  businessType: BusinessType
 ): OptimizedImagePrompt[] {
-  const templates = templateImageRequirements[businessType]
-  const shuffled = [...templates].sort(() => 0.5 - Math.random())
-  const selected = shuffled.slice(0, count)
+  const prompts: OptimizedImagePrompt[] = [];
+  
+  // Quick validation - must contain numbered format
+  if (!userInput || !userInput.includes('.')) {
+    return prompts;
+  }
 
-  return selected.map((req) => ({
-    description: createEnhancedPrompt(
-      req.description,
-      req.subject,
-      req.style,
+  try {
+    // Split by numbered prefixes - improved regex to better match the format from UI
+    // This regex finds segments that start with a digit followed by a dot or parenthesis
+    const regex = /(\d+[\.\)].*?)(?=\s+\d+[\.\)]|$)/g;
+    const matches = userInput.match(regex);
+    
+    if (!matches || matches.length === 0) {
+      logDebug("No matches found with primary regex, trying alternative pattern");
+      
+      // Try an alternative simpler regex as fallback
+      const simpleRegex = /(\d+\..*?)(?=\d+\.|$)/g;
+      const simpleMatches = userInput.match(simpleRegex);
+      
+      if (!simpleMatches || simpleMatches.length === 0) {
+        logDebug("No matches found with alternative regex either");
+        return prompts;
+      }
+      
+      logDebug(`Found ${simpleMatches.length} descriptions with alternative regex`);
+      
+      for (const match of simpleMatches) {
+        // Process each match
+        const numberEndIndex = match.indexOf('.');
+        if (numberEndIndex < 0) continue;
+        
+        // The description is everything after the number and dot
+        const description = match.substring(numberEndIndex + 1).trim();
+        
+        if (description.length <= 3) continue;
+        
+        addPrompt(description, businessType, prompts);
+      }
+      
+      return prompts;
+    }
+    
+    logDebug(`Found ${matches.length} numbered descriptions with primary regex`);
+    
+    // Process each numbered description
+    for (const match of matches) {
+      let description = '';
+      
+      // Handle dot format (1.description)
+      if (match.includes('.')) {
+        const parts = match.split('.');
+        if (parts.length < 2) continue;
+        
+        // The description is everything after the number and dot
+        description = parts.slice(1).join('.').trim();
+      } 
+      // Handle parenthesis format (1)description)
+      else if (match.includes(')')) {
+        const parts = match.split(')');
+        if (parts.length < 2) continue;
+        
+        // The description is everything after the number and parenthesis
+        description = parts.slice(1).join(')').trim();
+      }
+      
+      if (description.length <= 3) continue;
+      
+      addPrompt(description, businessType, prompts);
+    }
+  } catch (error) {
+    logDebug(`Error parsing numbered format: ${error}`);
+  }
+  
+  return prompts;
+}
+
+/**
+ * Helper function to add a prompt to the collection with style and dimensions
+ */
+function addPrompt(
+  description: string,
+  businessType: string,
+  prompts: OptimizedImagePrompt[]
+): void {
+  // Determine style (real or artistic)
+  const style = description.toLowerCase().includes('artistic') ? 'artistic' : 'real';
+  
+  // Set dimensions based on content keywords
+  let width = 800, height = 600;
+  
+  if (description.toLowerCase().includes('landscape') || 
+      description.toLowerCase().includes('wide')) {
+    width = 1200;
+    height = 600;
+  } else if (description.toLowerCase().includes('portrait') || 
+            description.toLowerCase().includes('tall')) {
+    width = 600;
+    height = 900;
+  } else if (description.toLowerCase().includes('square')) {
+    width = 800;
+    height = 800;
+  }
+  
+  // Add enhanced prompt to the list
+  prompts.push({
+    description: enhancePrompt(description, style, businessType),
+    style: style as 'real' | 'artistic',
+    width,
+    height
+  });
+}
+
+/**
+ * Get default images for a business type
+ */
+function getDefaultImages(businessType: BusinessType): OptimizedImagePrompt[] {
+  const templates = templateImageRequirements[businessType]
+
+  return templates.map((template) => ({
+    description: enhancePrompt(
+      template.description,
+      template.style,
       businessType
     ),
-    style: req.style as 'real' | 'artistic',
-    width: req.width,
-    height: req.height,
+    style: template.style as 'real' | 'artistic',
+    width: template.width,
+    height: template.height,
   }))
 }
 
 /**
- * Extract image requests from user's instructions with improved NLP parsing
+ * Enhance a prompt with quality phrases
  */
-function extractImageRequests(
-  userInput: string,
-  businessType: BusinessType
-): ImageRequest[] {
-  const requests: ImageRequest[] = []
-
-  // Enhanced patterns to look for in the user input
-  const subjectPatterns = [
-    {
-      pattern:
-        /food|dish|meal|menu|cuisine|pizza|pasta|burger|appetizer|dessert|plat(e|ing)|culinary|dining/i,
-      subject: 'food',
-    },
-    {
-      pattern:
-        /interior|inside|room|dining|decor|atmosphere|space|indoor|area|office space|workplace|seating|furniture/i,
-      subject: 'interior',
-    },
-    {
-      pattern:
-        /exterior|outside|building|storefront|facade|entrance|frontage|outdoor|street view|architecture|facility/i,
-      subject: 'exterior',
-    },
-    {
-      pattern:
-        /person|people|staff|team|employee|chef|worker|professional|customer|client|guest|patron|group|meeting/i,
-      subject: 'people',
-    },
-    {
-      pattern:
-        /product|item|goods|equipment|vehicle|truck|fleet|service|offering|solution|tool|device|merchandise/i,
-      subject: 'product',
-    },
-    {
-      pattern:
-        /logo|brand|symbol|identity|banner|header|emblem|signature|mark|icon|branding/i,
-      subject: 'logo',
-    },
-  ]
-
-  // Improved sentence breaking for better context analysis
-  const sentences = userInput
-    .split(/[.!?]+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 5)
-
-  // First pass: identify direct image requests
-  for (const sentence of sentences) {
-    // More advanced image request detection
-    if (
-      !/image|photo|picture|visual|shot|scene|view|banner|logo|display|show|depict|portray|representation/i.test(
-        sentence
-      )
-    ) {
-      continue
-    }
-
-    // Enhanced style detection with more patterns
-    const styleHints = sentence.toLowerCase()
-    let style: 'real' | 'artistic' = 'real'
-
-    if (
-      /realistic|real|photo|photograph|actual|authentic|true-to-life|lifelike/i.test(
-        styleHints
-      )
-    ) {
-      style = 'real'
-    } else if (
-      /artistic|creative|stylized|illustrated|abstract|modern|digital art|design|rendered/i.test(
-        styleHints
-      )
-    ) {
-      style = 'artistic'
-    } else {
-      // Default to the most appropriate style based on subject
-      // (most product/people/exterior images look better as real photos)
-      if (/people|exterior|interior|product/i.test(styleHints)) {
-        style = 'real'
-      } else {
-        style = 'artistic'
-      }
-    }
-
-    // More intelligent description extraction
-    let description = sentence
-      .replace(
-        /i need|i want|please add|include|create|make|generate|provide|give me|show me|display/gi,
-        ''
-      )
-      .replace(
-        /an image of|a photo of|a picture of|image showing|picture showing|photo showing|visual of|showing/gi,
-        ''
-      )
-      .replace(
-        /realistic|artistic|real|style|high quality|professional|good|nice/gi,
-        ''
-      )
-      .trim()
-
-    // Determine the subject matter based on keywords with enhanced detection
-    let subject = 'general'
-    for (const { pattern, subject: subjectType } of subjectPatterns) {
-      if (pattern.test(sentence)) {
-        subject = subjectType
-        break
-      }
-    }
-
-    // Set appropriate dimensions based on subject type and context
-    let width = 800,
-      height = 600
-
-    if (subject === 'exterior' || subject === 'interior') {
-      width = 1200
-      height = 600
-    } else if (subject === 'people') {
-      width = 800
-      height = 800
-    } else if (subject === 'logo') {
-      width = 400
-      height = 400
-    } else if (
-      subject === 'food' &&
-      /close-up|detail|macro/i.test(description)
-    ) {
-      width = 800
-      height = 800
-    }
-
-    // Add the request if we have a meaningful description
-    if (description.length > 5) {
-      // Context enhancement: Add business type if not mentioned
-      if (!description.toLowerCase().includes(businessType)) {
-        description += ` for ${businessType}`
-      }
-
-      requests.push({
-        description,
-        subject,
-        style,
-        width,
-        height,
-      })
-    }
-  }
-
-  // Second pass: If no explicit image requests, analyze the whole content
-  if (requests.length === 0) {
-    // Extract key phrases that might indicate what the business values
-    const keywords = extractKeyPhrases(userInput, 5)
-    const keySubjects = determineKeySubjects(keywords, businessType)
-
-    // Create requests based on key subjects and business type
-    for (const subject of keySubjects) {
-      const templateOptions = templateImageRequirements[businessType].filter(
-        (req) => req.subject === subject
-      )
-
-      if (templateOptions.length > 0) {
-        // Select a random template option for this subject
-        const selectedTemplate =
-          templateOptions[Math.floor(Math.random() * templateOptions.length)]
-
-        // Enhance description with keywords
-        let enhancedDesc = selectedTemplate.description
-        if (keywords.length > 0) {
-          const relevantKeywords = keywords
-            .filter((k) => !enhancedDesc.includes(k))
-            .slice(0, 2)
-          if (relevantKeywords.length > 0) {
-            enhancedDesc += ` with ${relevantKeywords.join(' and ')}`
-          }
-        }
-
-        requests.push({
-          description: enhancedDesc,
-          subject,
-          style: selectedTemplate.style,
-          width: selectedTemplate.width,
-          height: selectedTemplate.height,
-        })
-      }
-    }
-  }
-
-  // If still no requests but we have some content, create intelligent defaults
-  if (requests.length === 0 && userInput.trim().length > 10) {
-    return createIntelligentDefaultRequests(userInput, businessType)
-  }
-
-  return requests
-}
-
-/**
- * Creates intelligent default requests based on input content
- */
-function createIntelligentDefaultRequests(
-  userInput: string,
-  businessType: BusinessType
-): ImageRequest[] {
-  const defaults: ImageRequest[] = []
-
-  // Extract the most important subjects for this business type
-  const importantSubjects = getImportantSubjectsForBusiness(businessType)
-
-  // Create requests for each important subject
-  for (const subject of importantSubjects) {
-    // Get templates for this subject
-    const templatesForSubject = templateImageRequirements[businessType].filter(
-      (t) => t.subject === subject
-    )
-
-    if (templatesForSubject.length > 0) {
-      // Pick a random template from the options
-      const template =
-        templatesForSubject[
-          Math.floor(Math.random() * templatesForSubject.length)
-        ]
-
-      // Create a generic but effective description
-      let description = template.description
-
-      // Add a touch of personalization from the input if possible
-      const tone = detectTone(userInput)
-      if (tone) {
-        description = customizeDescriptionByTone(description, tone)
-      }
-
-      defaults.push({
-        description,
-        subject,
-        style: template.style,
-        width: template.width,
-        height: template.height,
-      })
-    }
-  }
-
-  return defaults.slice(0, 3) // Limit to 3 images
-}
-
-/**
- * Gets the most important subjects for a business type
- */
-function getImportantSubjectsForBusiness(businessType: BusinessType): string[] {
-  switch (businessType) {
-    case 'restaurant':
-      return ['food', 'interior', 'exterior']
-    case 'logistics':
-      return ['product', 'exterior', 'people']
-    case 'professional':
-      return ['people', 'interior', 'exterior']
-    default:
-      return ['interior', 'people', 'exterior']
-  }
-}
-
-/**
- * Detects the tone of the input text
- */
-function detectTone(text: string): string | null {
-  const lowerText = text.toLowerCase()
-
-  if (/luxur|premium|high-end|sophisticated|elegant|upscale/i.test(lowerText)) {
-    return 'luxury'
-  } else if (
-    /modern|tech|innovative|cutting-edge|advanced|digital/i.test(lowerText)
-  ) {
-    return 'modern'
-  } else if (/friendly|welcom|warm|casual|comfort|relax/i.test(lowerText)) {
-    return 'friendly'
-  } else if (/professional|business|corporate|formal|expert/i.test(lowerText)) {
-    return 'professional'
-  } else if (
-    /creative|artistic|unique|design|colorful|vibrant/i.test(lowerText)
-  ) {
-    return 'creative'
-  }
-
-  return null
-}
-
-/**
- * Customizes a description based on detected tone
- */
-function customizeDescriptionByTone(description: string, tone: string): string {
-  switch (tone) {
-    case 'luxury':
-      return description
-        .replace(/modern|standard|regular/g, 'luxury')
-        .concat(', upscale, sophisticated')
-    case 'modern':
-      return description
-        .replace(/traditional|classic/g, 'modern')
-        .concat(', contemporary, innovative')
-    case 'friendly':
-      return description
-        .replace(/formal|corporate/g, 'welcoming')
-        .concat(', warm, inviting')
-    case 'professional':
-      return description
-        .replace(/casual|relaxed/g, 'professional')
-        .concat(', corporate, business-oriented')
-    case 'creative':
-      return description
-        .replace(/standard|conventional/g, 'creative')
-        .concat(', unique, artistic')
-    default:
-      return description
-  }
-}
-
-/**
- * Extract key phrases from text for better image understanding
- */
-function extractKeyPhrases(text: string, maxPhrases: number = 5): string[] {
-  // Basic keyword extraction (could be replaced with more sophisticated NLP)
-  const commonWords = new Set([
-    'the',
-    'and',
-    'a',
-    'an',
-    'of',
-    'to',
-    'in',
-    'that',
-    'is',
-    'are',
-    'for',
-    'with',
-    'as',
-    'on',
-    'at',
-    'by',
-    'from',
-    'we',
-    'our',
-    'us',
-  ])
-
-  // Extract words, filter common ones, and get frequency
-  const words = text
-    .toLowerCase()
-    .replace(/[^\w\s]/g, '')
-    .split(/\s+/)
-    .filter((word) => word.length > 3 && !commonWords.has(word))
-
-  // Count frequency
-  const wordFrequency: Record<string, number> = {}
-  words.forEach((word) => {
-    wordFrequency[word] = (wordFrequency[word] || 0) + 1
-  })
-
-  // Sort by frequency and return top phrases
-  return Object.entries(wordFrequency)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, maxPhrases)
-    .map((entry) => entry[0])
-}
-
-/**
- * Determine key subjects based on keywords and business type
- */
-function determineKeySubjects(
-  keywords: string[],
-  businessType: BusinessType
-): string[] {
-  // Map keywords to likely subjects
-  const subjectMapping: Record<string, Record<string, string[]>> = {
-    restaurant: {
-      food: [
-        'food',
-        'dish',
-        'meal',
-        'cuisine',
-        'menu',
-        'chef',
-        'cooking',
-        'restaurant',
-        'dining',
-        'taste',
-        'flavor',
-        'culinary',
-      ],
-      interior: [
-        'interior',
-        'decor',
-        'atmosphere',
-        'ambiance',
-        'seating',
-        'dining',
-        'table',
-        'restaurant',
-        'space',
-      ],
-      exterior: [
-        'building',
-        'exterior',
-        'facade',
-        'storefront',
-        'entrance',
-        'restaurant',
-        'location',
-      ],
-      people: [
-        'staff',
-        'chef',
-        'server',
-        'team',
-        'service',
-        'customer',
-        'guest',
-        'people',
-      ],
-    },
-    logistics: {
-      product: [
-        'product',
-        'package',
-        'delivery',
-        'shipment',
-        'goods',
-        'cargo',
-        'freight',
-        'inventory',
-        'logistics',
-      ],
-      exterior: [
-        'facility',
-        'warehouse',
-        'building',
-        'center',
-        'hub',
-        'exterior',
-        'location',
-      ],
-      interior: [
-        'warehouse',
-        'facility',
-        'storage',
-        'operation',
-        'interior',
-        'inventory',
-        'sorting',
-      ],
-      people: [
-        'staff',
-        'team',
-        'employee',
-        'worker',
-        'driver',
-        'personnel',
-        'professional',
-      ],
-    },
-    professional: {
-      people: [
-        'team',
-        'staff',
-        'professional',
-        'expert',
-        'consultant',
-        'advisor',
-        'employee',
-        'specialist',
-        'executive',
-      ],
-      interior: [
-        'office',
-        'workspace',
-        'interior',
-        'space',
-        'environment',
-        'facility',
-        'conference',
-        'desk',
-        'meeting',
-      ],
-      exterior: [
-        'building',
-        'office',
-        'headquarters',
-        'location',
-        'exterior',
-        'entrance',
-        'facade',
-      ],
-      product: [
-        'service',
-        'product',
-        'solution',
-        'offering',
-        'consultation',
-        'expertise',
-        'project',
-      ],
-    },
-  }
-
-  // Score subjects based on keyword matches
-  const subjectScores: Record<string, number> = {
-    food: 0,
-    interior: 0,
-    exterior: 0,
-    people: 0,
-    product: 0,
-  }
-
-  // For each keyword, increase scores of matching subjects
-  for (const keyword of keywords) {
-    for (const [subject, relatedTerms] of Object.entries(
-      subjectMapping[businessType] || {}
-    )) {
-      if (
-        Array.isArray(relatedTerms) &&
-        relatedTerms.some(
-          (term) => keyword.includes(term) || term.includes(keyword)
-        )
-      ) {
-        subjectScores[subject] += 1
-      }
-    }
-  }
-
-  // Get the top 3 subjects by score
-  const topSubjects = Object.entries(subjectScores)
-    .sort((a, b) => b[1] - a[1])
-    .map((entry) => entry[0])
-    .slice(0, 3)
-
-  // If we couldn't determine good subjects, fall back to defaults
-  if (topSubjects.every((subject) => subjectScores[subject] === 0)) {
-    return getImportantSubjectsForBusiness(businessType)
-  }
-
-  return topSubjects
-}
-
-/**
- * Create optimized prompts based on user requests and business type
- * Enhanced with better prompt engineering and diversity
- */
-function createOptimizedPrompts(
-  userRequests: ImageRequest[],
-  businessType: BusinessType
-): OptimizedImagePrompt[] {
-  const optimizedPrompts: OptimizedImagePrompt[] = []
-
-  // Get default requirements for this business type
-  const defaultRequirements = templateImageRequirements[businessType] || []
-
-  // Track which subjects we've already covered
-  const coveredSubjects = new Set<string>()
-
-  // First, process user requests
-  for (const request of userRequests) {
-    const { description, subject, style } = request
-
-    // Set dimensions based on subject type and aspect ratio needs
-    let width = 800,
-      height = 600
-
-    if (subject === 'exterior' || subject === 'interior') {
-      width = 1200
-      height = 600
-    } else if (subject === 'people') {
-      width = 800
-      height = 800
-    } else if (subject === 'logo') {
-      width = 400
-      height = 400
-    } else if (
-      subject === 'food' &&
-      /close-up|detail|macro/i.test(description)
-    ) {
-      width = 800
-      height = 800
-    }
-
-    // Create an optimized prompt based on the subject and style
-    const optimizedDescription = createEnhancedPrompt(
-      description,
-      subject,
-      style,
-      businessType
-    )
-
-    // Add to our list and mark this subject as covered
-    optimizedPrompts.push({
-      description: optimizedDescription,
-      style: style as 'real' | 'artistic',
-      width,
-      height,
-    })
-
-    coveredSubjects.add(subject)
-  }
-
-  // Fill in with smart defaults if we don't have enough images
-  if (optimizedPrompts.length < 3) {
-    // Determine which subjects we should prioritize
-    const importantSubjects = getImportantSubjectsForBusiness(businessType)
-    const remainingSubjects = importantSubjects.filter(
-      (s) => !coveredSubjects.has(s)
-    )
-
-    // Add images for important but uncovered subjects
-    for (const subject of remainingSubjects) {
-      const relevantTemplates = defaultRequirements.filter(
-        (req) => req.subject === subject
-      )
-
-      if (relevantTemplates.length > 0) {
-        // Choose a random template for variety
-        const template =
-          relevantTemplates[
-            Math.floor(Math.random() * relevantTemplates.length)
-          ]
-
-        optimizedPrompts.push({
-          description: createEnhancedPrompt(
-            template.description,
-            template.subject,
-            template.style,
-            businessType
-          ),
-          style: template.style as 'real' | 'artistic',
-          width: template.width,
-          height: template.height,
-        })
-
-        coveredSubjects.add(subject)
-      }
-
-      // Stop once we have enough images
-      if (optimizedPrompts.length >= 3) {
-        break
-      }
-    }
-
-    // If we still need more images, add variety from any remaining templates
-    if (optimizedPrompts.length < 3) {
-      // Filter out templates for subjects we've already covered
-      const remainingTemplates = defaultRequirements.filter(
-        (req) => !coveredSubjects.has(req.subject)
-      )
-
-      // If we have remaining templates, add them
-      if (remainingTemplates.length > 0) {
-        const shuffled = [...remainingTemplates].sort(() => 0.5 - Math.random())
-        const needed = 3 - optimizedPrompts.length
-
-        for (let i = 0; i < Math.min(needed, shuffled.length); i++) {
-          const template = shuffled[i]
-
-          optimizedPrompts.push({
-            description: createEnhancedPrompt(
-              template.description,
-              template.subject,
-              template.style,
-              businessType
-            ),
-            style: template.style as 'real' | 'artistic',
-            width: template.width,
-            height: template.height,
-          })
-
-          coveredSubjects.add(template.subject)
-        }
-      }
-
-      // Last resort: If we still need more, add alternatives of already covered subjects
-      if (optimizedPrompts.length < 3) {
-        const needed = 3 - optimizedPrompts.length
-        const alternatives = defaultRequirements
-          .filter(
-            (req) =>
-              !optimizedPrompts.some(
-                (p) =>
-                  p.description ===
-                  createEnhancedPrompt(
-                    req.description,
-                    req.subject,
-                    req.style,
-                    businessType
-                  )
-              )
-          )
-          .sort(() => 0.5 - Math.random())
-          .slice(0, needed)
-
-        for (const alt of alternatives) {
-          optimizedPrompts.push({
-            description: createEnhancedPrompt(
-              alt.description,
-              alt.subject,
-              alt.style,
-              businessType
-            ),
-            style: alt.style as 'real' | 'artistic',
-            width: alt.width,
-            height: alt.height,
-          })
-        }
-      }
-    }
-  }
-
-  // Ensure we don't have duplicate descriptions
-  const uniquePrompts = Array.from(
-    new Map(
-      optimizedPrompts.map((item) => [item.description.toLowerCase(), item])
-    ).values()
-  )
-
-  return uniquePrompts
-}
-
-/**
- * Creates an enhanced, AI-friendly prompt from a user description
- * Improved with advanced prompt engineering techniques
- */
-function createEnhancedPrompt(
+function enhancePrompt(
   description: string,
-  subject: string,
   style: string,
-  businessType: BusinessType
+  businessType: string
 ): string {
+  // Always add business type context
   let enhancedPrompt = description.trim()
-
-  // Add business type context if not already present
+  
+  // Always add the business type as context to ensure relevance
   if (!enhancedPrompt.toLowerCase().includes(businessType)) {
     enhancedPrompt += ` for ${businessType} business`
   }
 
-  // Add randomized quality enhancement for variety
-  const qualityOptions = qualityEnhancementPhrases[style as 'real' | 'artistic']
-  const qualityPhrase =
-    qualityOptions[Math.floor(Math.random() * qualityOptions.length)]
+  // Add quality enhancement only if appropriate
+  const qualityPhrase = qualityEnhancementPhrases[style as 'real' | 'artistic']
   enhancedPrompt += `, ${qualityPhrase}`
 
-  // Add subject-specific enhancements randomly for variety
-  if (subjectEnhancementPhrases[subject]) {
-    const subjectOptions = subjectEnhancementPhrases[subject]
-    const subjectPhrase =
-      subjectOptions[Math.floor(Math.random() * subjectOptions.length)]
-    enhancedPrompt += `, ${subjectPhrase}`
-  }
-
-  // Add business-specific context
-  if (businessType === 'restaurant') {
-    switch (subject) {
-      case 'food':
-        enhancedPrompt += ', culinary excellence, appetizing presentation'
-        break
-      case 'interior':
-        enhancedPrompt += ', restaurant ambiance, dining atmosphere'
-        break
-      case 'exterior':
-        enhancedPrompt += ', restaurant storefront, inviting entrance'
-        break
-      case 'people':
-        enhancedPrompt += ', restaurant staff, culinary team'
-        break
-    }
-  } else if (businessType === 'professional') {
-    switch (subject) {
-      case 'interior':
-        enhancedPrompt += ', professional workspace, business environment'
-        break
-      case 'exterior':
-        enhancedPrompt +=
-          ', professional office building, business headquarters'
-        break
-      case 'people':
-        enhancedPrompt += ', business professionals, corporate team'
-        break
-      case 'product':
-        enhancedPrompt += ', professional service, business solution'
-        break
-    }
-  } else if (businessType === 'logistics') {
-    switch (subject) {
-      case 'interior':
-        enhancedPrompt += ', logistics facility, organized workspace'
-        break
-      case 'exterior':
-        enhancedPrompt += ', logistics center, distribution facility'
-        break
-      case 'people':
-        enhancedPrompt += ', logistics team, delivery professionals'
-        break
-      case 'product':
-        enhancedPrompt += ', logistics equipment, transportation vehicles'
-        break
-    }
-  }
-
-  // Truncate if too long for API limits
+  // Truncate if too long
   if (enhancedPrompt.length > 300) {
     enhancedPrompt = enhancedPrompt.substring(0, 297) + '...'
   }
@@ -1050,161 +309,148 @@ function createEnhancedPrompt(
   return enhancedPrompt
 }
 
-/**
- * Checks if a description is too complex for real-style images
- * Enhanced with more patterns for better detection
- */
-export function isDescriptionTooComplex(description: string): boolean {
-  // Complex concept keywords with expanded patterns
-  const complexTerms = [
-    'fantasy',
-    'surreal',
-    'futuristic',
-    'fictional',
-    'magical',
-    'abstract',
-    'imaginary',
-    'alien',
-    'dragon',
-    'unicorn',
-    'creature',
-    'mythical',
-    'impossible',
-    'supernatural',
-    'fairytale',
-    'sci-fi',
-    'floating',
-    'levitating',
-    'dream',
-    'cartoon',
-    'anime',
-    'illustration',
-    '3d render',
-    'digital art',
-    'concept art',
-  ]
-
-  const descLower = description.toLowerCase()
-
-  // Check complexity indicators with improved patterns
-  if (
-    complexTerms.some((term) => descLower.includes(term)) ||
-    description.length > 100 ||
-    /flying .* underwater|people .* space|animals? .* driving|talking .* objects|impossible .* physics|cartoon .* style|animation .* style/i.test(
-      description
-    ) ||
-    /(in the style of|inspired by) .* (anime|cartoon|illustration|painting|drawing)/i.test(
-      description
-    )
-  ) {
-    return true
-  }
-
-  return false
+// Simple in-memory image URL cache
+interface ImageCache {
+  urls: string[]
+  timestamp: number
 }
 
+const imageFetchCache = new Map<string, ImageCache>()
+
 /**
- * Generates image URLs based on user instructions and business type with improved query parameter preservation
+ * Fetch images based on user instructions
  */
 export async function fetchImages(
-  imageInstructions: string, 
+  imageInstructions: string,
   businessType: string = 'restaurant',
   imageSource: 'ai' | 'manual' | 'none' = 'ai'
 ): Promise<string[]> {
   // Quick exit conditions
   if (
-    imageSource === 'none' || 
-    (imageSource === 'ai' && (!imageInstructions || imageInstructions.trim().toLowerCase() === 'none'))
+    imageSource === 'none' ||
+    (imageSource === 'ai' &&
+      (!imageInstructions || imageInstructions.trim().toLowerCase() === 'none'))
   ) {
-    return [];
+    return []
   }
-  
+
   // If manual images, the URLs will be handled by the POST route
   if (imageSource === 'manual') {
-    return [];
+    return []
   }
+
+  // Check for character names to handle specially
+  const containsCharacterNames = /gimli|legolas|aragorn|gandalf|frodo|character|specific/i.test(imageInstructions);
+  const forceRefresh = containsNumberedFormat(imageInstructions);
   
-  // Check cached results first - simple in-memory cache with 15 minute TTL
-  const cacheKey = `${businessType}-${imageInstructions.slice(0, 100)}`;
-  const cachedResult = imageFetchCache.get(cacheKey);
-  if (cachedResult && (Date.now() - cachedResult.timestamp) < 900000) { // 15 minutes
-    console.log('🔄 Using cached image URLs');
-    return cachedResult.urls;
+  // Use cache for non-character requests
+  if (!containsCharacterNames && !forceRefresh) {
+    const cacheKey = `${businessType}-${imageInstructions.slice(0, 100)}`
+    const cachedResult = imageFetchCache.get(cacheKey)
+    if (cachedResult && Date.now() - cachedResult.timestamp < 900000) { // 15 minutes
+      logDebug('Using cached image URLs');
+      return cachedResult.urls
+    }
   }
-  
-  console.log(`🖼️ Processing AI image instructions for ${businessType}...`);
-  
+
   try {
-    // Process the requirements with enhanced prompt engineering - limit to 5 images for performance
-    const imageRequests = processImageRequirements(imageInstructions, businessType).slice(0, 5);
+    // Process the requirements with prompt engineering
+    logDebug("Processing image requirements", imageInstructions);
+    const imageRequests = processImageRequirements(
+      imageInstructions,
+      businessType
+    )
     
-    // Generate URLs immediately without hitting the generation API
-    const simulatedImageUrls = imageRequests.map((req, i) => {
-      // Create a URL that will be processed later by the actual image API
-      const uniqueId = `img-${Date.now()}-${i}`;
-      const sanitizedDesc = req.description.substring(0, 20).replace(/[^a-zA-Z0-9]/g, '-');
-      
-      // Create URL with all necessary parameters
-      return `https://webweave-imagegen.onrender.com/jukka/images/${uniqueId}-${sanitizedDesc}.jpg?description=${encodeURIComponent(req.description)}&width=${req.width}&height=${req.height}&style=${req.style}&seed=${Math.floor(Math.random() * 1000000)}`;
-    });
+    logDebug(`Generated ${imageRequests.length} image requests`);
+
+    // Generate URLs for the image API
+    const imageUrls = imageRequests.map((req, i) => {
+      const uniqueId = `img-${Date.now()}-${i}`
+      const sanitizedDesc = req.description
+        .substring(0, 20)
+        .replace(/[^a-zA-Z0-9]/g, '-')
+
+      return `https://webweave-imagegen.onrender.com/jukka/images/${uniqueId}-${sanitizedDesc}.jpg?description=${encodeURIComponent(
+        req.description
+      )}&width=${req.width}&height=${req.height}&style=${
+        req.style
+      }&seed=${Math.floor(Math.random() * 1000000)}`
+    })
     
-    // Store in cache
-    imageFetchCache.set(cacheKey, {
-      urls: simulatedImageUrls,
-      timestamp: Date.now()
-    });
-    
-    return simulatedImageUrls;
+    logDebug(`Created ${imageUrls.length} image URLs`);
+
+    // Cache the results if appropriate
+    if (!containsCharacterNames) {
+      const cacheKey = `${businessType}-${imageInstructions.slice(0, 100)}`
+      imageFetchCache.set(cacheKey, {
+        urls: imageUrls,
+        timestamp: Date.now(),
+      })
+    }
+
+    return imageUrls
   } catch (error) {
-    console.error("Error generating images:", error);
-    return [];
+    console.error('Error generating images:', error)
+    return []
   }
 }
-
-// In-memory image URL cache
-interface ImageCache {
-  urls: string[];
-  timestamp: number;
-}
-
-const imageFetchCache = new Map<string, ImageCache>();
 
 /**
- * Helper function to ensure all image URLs in HTML have query parameters
- * This is crucial for the API that generates the images
+ * Helper function to check if image instructions contain a numbered format
  */
-export function ensureImageUrlsHaveParams(htmlContent: string, imageUrls: string[]): string {
-  let fixedHtml = htmlContent;
+export function containsNumberedFormat(text: string | undefined): boolean {
+  if (!text) return false;
   
-  // Regular expressions to find image URLs without query parameters
-  const bgImageRegex = /background-image:\s*url\(['"]?(https:\/\/webweave-imagegen\.onrender\.com\/[^?'"]+)['"]?\)/g;
-  const srcImageRegex = /src=["'](https:\/\/webweave-imagegen\.onrender\.com\/[^?"']+)["']/g;
-  const contentImageRegex = /content=["'](https:\/\/webweave-imagegen\.onrender\.com\/[^?"']+)["']/g;
+  // Check for common numbered patterns
+  const hasNumberedFormat = 
+    /\d+\./.test(text) || // Matches "1." format
+    /\d+\)/.test(text) || // Matches "1)" format
+    /\n\s*\d+\./.test(text) || // Matches newline + "1." format
+    /\n\s*\d+\)/.test(text); // Matches newline + "1)" format
   
-  // Create a map of truncated URLs to full URLs with parameters
-  const urlMap = new Map();
-  imageUrls.forEach(fullUrl => {
-    const baseUrl = fullUrl.split('?')[0];
-    urlMap.set(baseUrl, fullUrl);
-  });
-  
-  // Fix background-image URLs
-  fixedHtml = fixedHtml.replace(bgImageRegex, (match, url) => {
-    const fullUrl = urlMap.get(url) || `${url}?description=image&width=800&height=600&style=real&quality=high`;
-    return `background-image: url('${fullUrl}')`;
-  });
-  
-  // Fix src URLs
-  fixedHtml = fixedHtml.replace(srcImageRegex, (match, url) => {
-    const fullUrl = urlMap.get(url) || `${url}?description=image&width=800&height=600&style=real&quality=high`;
-    return `src="${fullUrl}"`;
-  });
-  
-  // Fix content URLs
-  fixedHtml = fixedHtml.replace(contentImageRegex, (match, url) => {
-    const fullUrl = urlMap.get(url) || `${url}?description=image&width=800&height=600&style=real&quality=high`;
-    return `content="${fullUrl}"`;
-  });
-  
-  return fixedHtml;
+  console.log(`Checking numbered format in text: "${text.substring(0, 50)}..." Result: ${hasNumberedFormat}`);
+  return hasNumberedFormat;
+}
+
+/**
+ * Ensure all image URLs in HTML have query parameters
+ */
+export function ensureImageUrlsHaveParams(
+  htmlContent: string,
+  imageUrls: string[]
+): string {
+  if (!htmlContent || !imageUrls.length) return htmlContent
+
+  let fixedHtml = htmlContent
+
+  // Create a map of base URLs to full URLs with parameters
+  const urlMap = new Map()
+  imageUrls.forEach((fullUrl) => {
+    const baseUrl = fullUrl.split('?')[0]
+    urlMap.set(baseUrl, fullUrl)
+  })
+
+  // Fix image src URLs
+  fixedHtml = fixedHtml.replace(
+    /src=["'](https:\/\/webweave-imagegen\.onrender\.com\/[^?"']+)["']/g,
+    (match, url) => {
+      const fullUrl =
+        urlMap.get(url) ||
+        `${url}?description=image&width=800&height=600&style=real`
+      return `src="${fullUrl}"`
+    }
+  )
+
+  // Fix background image URLs
+  fixedHtml = fixedHtml.replace(
+    /background-image:\s*url\(['"]?(https:\/\/webweave-imagegen\.onrender\.com\/[^?'"]+)['"]?\)/g,
+    (match, url) => {
+      const fullUrl =
+        urlMap.get(url) ||
+        `${url}?description=image&width=800&height=600&style=real`
+      return `background-image: url('${fullUrl}')`
+    }
+  )
+
+  return fixedHtml
 }

@@ -389,7 +389,7 @@ export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(
                   window.parent.postMessage({type: 'IMAGES_LOADED', success: true}, '*');
                 }
                 
-                // If loading takes too long, hide overlay anyway after 15 seconds
+                // If loading takes too long, hide overlay anyway after 5 seconds (was 15s)
                 setTimeout(() => {
                   document.getElementById('loading-overlay').style.display = 'none';
                   window.parent.postMessage({
@@ -401,7 +401,7 @@ export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(
                       backgrounds: { total: backgroundImagesToLoad, loaded: loadedBackgrounds }
                     }
                   }, '*');
-                }, 15000);
+                }, 5000); // 5 seconds
               })();
             </script>
           </body>

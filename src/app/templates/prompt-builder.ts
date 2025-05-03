@@ -23,227 +23,223 @@ export function buildPrompt(
   // Generate color scheme guidance from the layout variations
   const colorGuidance = layoutVariations.colorScheme
     ? processColorScheme(layoutVariations.colorScheme, templateType)
-    : 'Use a professional, business-appropriate color scheme with good contrast and readability'
+    : 'Use a professional color scheme aligned with 2025 design trends, ensuring WCAG AA contrast compliance'
 
+  // --- NEW STRICT PROMPT ---
   return `
-    You are an expert frontend developer specializing in creating modern, visually stunning, conversion-optimized websites. Create a production-ready HTML webpage using the Bootstrap 5.3.2 framework for a ${templateType} business.
-    
-    BUSINESS DETAILS:
-    - Name: ${businessDetails.name ?? 'Company Name'}
-    - Address: ${businessDetails.address}
-    - Phone: ${businessDetails.phone}
-    - Email: ${businessDetails.email}
-    
-    SPECIFIC CONTENT:
-    ${specificPrompt}
-    
-    IMAGE INTEGRATION:
-    ${imageInstructions}
-    
-    DESIGN SPECIFICATIONS:
-    - Color Scheme: ${colorGuidance}
-    - Layout Structure: ${layoutVariations.layoutStructure}
-    - Structural Organization: ${layoutVariations.structuralElement}
-    - Visual Style: ${layoutVariations.visualStyle}
-    - Interactive Elements: ${layoutVariations.interactiveElements}
-    - Specialty Section: ${layoutVariations.specialtySection}
-    
-    BOOTSTRAP INTEGRATION:
-    1. Use the following exact CDN links in the <head> section:
-       <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-       <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
-    2. For additional interactivity, include:
-       <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js" defer></script>
-    3. Ensure Bootstrap classes are applied consistently throughout the document
-    4. Leverage Bootstrap's utility classes (flex, spacing, etc.) for modern layouts
-    5. Use Bootstrap components like cards, modals, and accordions where appropriate
-    
-    MODERN DESIGN REQUIREMENTS:
-    1. Create a hero section with compelling headline and clear value proposition
-    2. Use clean, minimalist design with strategic use of whitespace
-    3. Implement a consistent vertical rhythm with proper spacing between sections
-    4. Use card-based layouts for content grouping where appropriate
-    5. Create balanced, asymmetrical layouts for visual interest
-    6. Implement subtle parallax or scroll effects for key sections
-    7. Use gradient overlays for image-based sections to ensure text readability
+You are an expert frontend developer and designer. Generate a complete, production-ready HTML5 website for a real business, using Bootstrap 5.3.2 and modern best practices.
 
-    IMPORTANT GRADIENT USAGE INSTRUCTION:
-    - When using CSS gradients, use \`background: linear-gradient(...)\` or \`background-image: linear-gradient(...)\` directly, NOT inside \`url()\`, and never as an <img src>.
-    - Do NOT use \`linear-gradient(...)\` as a value for \`src\` attributes or inside \`url()\`.
-    
-    FOOTER REQUIREMENT:
-    Include a professionally designed footer with multiple columns:
-    - Contact information (address, phone, email) with appropriate icons
-    - Quick links to sections appropriate to the business type
-    - Social media links with appropriate icons from the selected icon library
-    - Copyright information with current year (2025)
-    - Newsletter subscription field with proper validation
-    
-    TECHNICAL REQUIREMENTS:
-    1. Implement a fully semantic HTML5 structure (header, nav, main, section, article, aside, footer)
-    2. Embed all custom CSS directly into a <style> tag within the <head> of the HTML file
-    3. Include comprehensive meta tags for SEO optimization including Open Graph and Twitter Card tags
-    4. Create a fully responsive design with optimized breakpoints for all devices (mobile-first approach)
-    5. Implement ARIA attributes and semantic elements for full accessibility (WCAG 2.1 AA compliance)
-    6. For icons, use ${getIconLibraryInstructions(layoutVariations.iconSet)}
-    7. Create elegant hover animations and transitions using CSS (subtle, professional, not flashy)
-    8. Add schema.org JSON-LD structured data appropriate for the business type
-    9. Implement form validation with user-friendly error handling and focus states
-    10. Use defer attribute for non-critical scripts to improve page load performance
-    11. Use relative font sizes (rem/em) for better accessibility and responsiveness
-    12. Implement CSS custom properties for color themes and consistent styling
-    
-    ADVANCED FEATURES:
-    1. Create a sticky header that minimizes on scroll
-    2. Implement lazy loading for images with the loading="lazy" attribute
-    3. Add subtle scroll animations for key content elements using Intersection Observer API
-    4. Implement a mobile-friendly hamburger menu with smooth transitions
-    5. Create microinteractions for buttons and interactive elements
-    6. Use CSS Grid for complex layout sections alongside Bootstrap's grid system
-    7. Implement color mode toggle (light/dark) using CSS variables if appropriate for the business
-    
-    CUTTING-EDGE ELEMENTS:
-    1. Use CSS clip-path for creating unique section dividers and shapes
-    2. Implement subtle background animations using CSS
-    3. Use modern CSS techniques like backdrop-filter for frosted glass effects
-    4. Create depth with subtle shadows and layering techniques
-    5. Implement CSS scroll-snap for certain scrollable sections if appropriate
-    
-    ONLY return the complete HTML file with no markdown, explanations, or additional text.
-    The code must be production-ready with no placeholders or TODO comments.
+BUSINESS DETAILS:
+- Name: ${businessDetails.name ?? 'Company Name'}
+- Address: ${businessDetails.address}
+- Phone: ${businessDetails.phone}
+- Email: ${businessDetails.email}
+
+SPECIFIC CONTENT REQUIREMENTS:
+${specificPrompt}
+
+IMAGE INTEGRATION:
+${imageInstructions}
+
+DESIGN SPECIFICATIONS:
+- Color Scheme: ${colorGuidance}
+- Layout Structure: ${layoutVariations.layoutStructure}
+- Structural Organization: ${layoutVariations.structuralElement}
+- Visual Style: ${layoutVariations.visualStyle}
+- Interactive Elements: ${layoutVariations.interactiveElements}
+- Specialty Section: ${layoutVariations.specialtySection}
+
+STRICT REQUIREMENTS:
+- Use only valid, semantic HTML5.
+- Use Bootstrap 5.3.2 for layout, grid, and components. Do not use deprecated or custom frameworks.
+- Use a visually appealing, modern, and professional design. Use a harmonious color palette and consistent spacing.
+- Use real, plausible business content and copywriting. Do not use placeholder text like "Lorem Ipsum" or generic dish names. Use realistic menu items, chef names, testimonials, and business details.
+- Include a responsive navigation bar with a logo, business name, and links to all main sections. On mobile, use a hamburger menu.
+- The hero section must have a visually striking background image (use a real image URL or ./images/image-1.png), a clear headline, and a strong call-to-action button.
+- Menu section: List at least 6 real, creative dishes with descriptions and prices, using Bootstrap cards or grid.
+- Reservation section: Include a real, working reservation form with fields for name, email, date, time, party size, and special requests.
+- Chefs section: Show at least 2 chef profiles with real names, photos (./images/chef1.jpg, etc.), and short bios.
+- Gallery: Use a Bootstrap carousel with at least 5 real food images (./images/dish1.jpg, etc.).
+- Testimonials: Show at least 2 real-sounding customer reviews with names and photos.
+- Contact section: Show real business address, phone, email, and a Google Maps embed (use a real embed code or a placeholder div).
+- Footer: Include business info, social media links (with real icons), and copyright.
+- Use visually appealing CSS variables for colors, spacing, and transitions. All colors must be accessible (WCAG AA).
+- Add subtle animations (e.g., fade-in, hover effects) using Bootstrap and CSS.
+- All images must use the provided ./images/ paths.
+- Do not use any placeholder or generic text. All content must be realistic and tailored to the business type.
+- Do not include any markdown, explanations, or comments. Return only the final HTML.
+
+Example structure:
+<html>
+  <head> ... </head>
+  <body>
+    <nav>...</nav>
+    <section class="hero">...</section>
+    <section id="menu">...</section>
+    <section id="reservation">...</section>
+    <section id="chefs">...</section>
+    <section id="gallery">...</section>
+    <section id="testimonials">...</section>
+    <section id="contact">...</section>
+    <footer>...</footer>
+    <script src="..."></script>
+  </body>
+</html>
+
+ONLY return the complete HTML file with no markdown, explanations, or additional text.
+The code must be production-ready with absolutely no placeholder content, lorem ipsum text, or TODO comments.
   `
 }
 
 /**
- * Processes color scheme information for the AI generator
- * @param colorScheme - Raw color scheme from form data
- * @param templateType - Business template type
- * @returns Formatted color guidance for the AI
+ * Enhanced image instructions for premium websites
+ */
+function getImageInstructions(
+  imageUrls: string[],
+  imageSource?: string
+): string {
+  // No images case
+  if (imageSource === 'none') {
+    return `
+    SOPHISTICATED NO-IMAGE DESIGN APPROACH:
+    - Create a premium typography-focused design that uses color, shape, and whitespace instead of images
+    - Implement creative CSS-based visual elements including:
+      - Sophisticated gradient backgrounds with multiple color stops
+      - Elegant geometric shapes and patterns using CSS
+      - Custom animated SVG illustrations for visual interest
+      - Interactive text effects and animations
+      - Advanced border treatments and decorative elements
+    - Emphasize premium typography with variable fonts and advanced text styling
+    - Use strategic white space to create visual breathing room and hierarchy
+    - NO image elements, placeholders, or stock photo references should be included
+    `
+  }
+
+  // User uploaded images
+  if (imageSource === 'manual' && imageUrls.length > 0) {
+    return `
+    PREMIUM CUSTOM IMAGE INTEGRATION:
+    I've uploaded ${
+      imageUrls.length
+    } high-quality images that must be featured prominently:
+    ${imageUrls.map((url, i) => `${i + 1}. ${url}`).join('\n')}
+    
+    IMPLEMENT WITH THESE PREMIUM TECHNIQUES:
+    - The first image (${imageUrls[0]}) MUST BE the hero background with:
+      - Proper image optimization attributes (loading="lazy", fetchpriority="high")
+      - Strategic gradient overlay for text contrast
+      - Subtle parallax effect on scroll
+    - Secondary images must be implemented with:
+      - Art-directed responsive images using picture/source elements
+      - Modern aspect-ratio preservation techniques
+      - Elegant hover animations and transitions
+      - Strategic cropping and positioning for maximum impact
+    
+    Example hero implementation:
+    \`\`\`html
+    <section class="hero" style="background-image: url('${
+      imageUrls[0]
+    }'); background-size: cover; background-position: center;">
+      <div class="hero-gradient-overlay"></div>
+      <!-- Hero content -->
+    </section>
+    \`\`\`
+    
+    Example content image implementation:
+    \`\`\`html
+    <picture>
+      <source media="(max-width: 768px)" srcset="${
+        imageUrls.length > 1 ? imageUrls[1] : imageUrls[0]
+      }">
+      <img src="${
+        imageUrls.length > 1 ? imageUrls[1] : imageUrls[0]
+      }" alt="[Descriptive text]" loading="lazy" class="premium-image">
+    </picture>
+    \`\`\`
+    
+    These exact images MUST be integrated with premium presentation techniques.
+    `
+  }
+
+  // AI-generated images
+  if (imageUrls.length > 0) {
+    return `
+    PREMIUM AI-GENERATED IMAGE INTEGRATION:
+    I've created these professional images specifically for this website:
+    ${imageUrls.map((url, i) => `${i + 1}. ${url}`).join('\n')}
+ 
+    IMPLEMENT USING THESE TECHNIQUES:
+    - The first image (${imageUrls[0]}) MUST be the hero background with:
+      - Advanced CSS background techniques (multiple layers, blend modes)
+      - Strategic text positioning for maximum impact
+      - Subtle animation effects on page load
+    - All provided images must be implemented with:
+      - Modern lazy loading and priority hints
+      - Subtle hover effects and transitions
+      - Art-directed responsive design via picture element
+      - Strategic cropping and focal points
+    
+    All image URLs must be implemented exactly as provided, with proper alt text for accessibility.
+    `
+  }
+
+  // Default with minimal images
+  return `
+  PREMIUM DESIGN WITHOUT IMAGES:
+  - Create a sophisticated design that leverages modern CSS techniques instead of relying on photos
+  - Implement visual interest through:
+    - Custom animated SVG illustrations and icons
+    - Sophisticated gradient backgrounds and color transitions
+    - Strategic use of whitespace and typography
+    - Decorative geometric shapes and patterns
+    - Subtle animated elements and micro-interactions
+  - Focus on creating an impressive experience through layout, typography, and animation
+  `
+}
+
+/**
+ * Advanced color scheme processor that generates sophisticated palettes
  */
 function processColorScheme(colorScheme: string, templateType: string): string {
-  // If we have a list of user-provided colors
+  // If we have user-provided colors
   if (colorScheme?.includes(',')) {
     const colors = colorScheme.split(',').filter(Boolean)
 
-    // If we have valid colors, generate specific CSS variable guidance
+    // Generate professional palette with color theory principles
     if (colors.length > 0) {
       // Use the first color as primary
       const palette = generateColorPalette(colors[0], templateType)
       const cssVariables = generateCssVariables(palette)
 
       return `
-        Use this specific CSS variables setup in your design:
+        Implement this premium color system with CSS variables:
         \`\`\`css
         ${cssVariables}
         \`\`\`
         
-        These variables are professionally designed to ensure proper contrast and color harmony.
-        
-        Base the site's color scheme around these primary colors: ${colors.join(
+        Use these variables to create a sophisticated color system with:
+        - Strategic color hierarchy (primary, secondary, accent)
+        - Proper contrast ratios for accessibility (WCAG AA)
+        - Elegant color transitions and hover states
+        - Subtle gradient variations using the primary colors: ${colors.join(
           ', '
         )}
       `
     }
   }
 
-  // Default color guidance based on business type
+  // Enhanced industry-specific color guidance
   switch (templateType.toLowerCase()) {
     case 'restaurant':
-      return 'Use warm, appetizing colors that evoke the dining experience while maintaining readability. Consider rich reds, warm earthy tones, or colors that complement food photography.'
+      return 'Create a sophisticated culinary-inspired color scheme with rich, appetizing colors that evoke the dining experience. Balance warm tones that highlight food photography with elegant neutrals for readability, with strategic accent colors that reflect the cuisine style.'
+
     case 'logistics':
-      return 'Use a professional, trustworthy color scheme with blues, grays, and subtle accent colors that convey reliability and efficiency. Maintain high contrast for readability.'
+      return 'Implement a premium, trustworthy color scheme with deep blues, strategic accent colors, and data visualization-optimized secondary palette. Create color hierarchy that conveys reliability, efficiency, and global capability while ensuring excellent readability.'
+
     case 'professional':
-      return 'Use a sophisticated, executive color palette with deep blues, charcoal grays, and understated accent colors that convey expertise and professionalism.'
+      return 'Design an executive-level color system with sophisticated blues, elegant neutrals, and refined accent colors that convey authority and expertise. Use color strategically to highlight key information and create visual hierarchy while maintaining a premium aesthetic.'
+
     default:
-      return 'Use a balanced color scheme with good contrast, professional appearance, and industry-appropriate colors.'
+      return 'Implement a premium color scheme with strategic primary, secondary, and accent colors that create visual hierarchy, ensure accessibility, and convey brand personality through thoughtful application.'
   }
-}
-
-function getImageInstructions(
-  imageUrls: string[],
-  imageSource?: string
-): string {
-  // If imageSource is 'none', explicitly instruct not to use any images
-  if (imageSource === 'none') {
-    return `
-    NO IMAGES INSTRUCTION:
-    - Do NOT use any images or create image placeholders in the design
-    - Instead, focus on creating an elegant, typography-focused design with:
-      - Creative use of color blocks and gradients
-      - Thoughtful whitespace and layout composition
-      - Strong typography hierarchy with varied weights and sizes
-      - Subtle background patterns or shapes where appropriate
-      - Icon-based visual elements instead of photographs
-    - Do NOT include any <img> tags or empty image containers
-    - Do NOT use any stock photos or placeholder services like placeholder.com
-    `
-  }
-
-  // Enhanced instructions for user-uploaded (manual) images
-  if (imageSource === 'manual' && imageUrls.length > 0) {
-    return `
-    MANDATORY USER UPLOADED IMAGES - CRITICAL INSTRUCTIONS:
-    I have uploaded ${
-      imageUrls.length
-    } custom image(s) that MUST be used prominently in the website:
-    ${imageUrls.map((url, i) => `${i + 1}. ${url}`).join('\n')}
-    
-    THESE INSTRUCTIONS ARE MANDATORY:
-    - The first image (${
-      imageUrls[0]
-    }) MUST BE USED as the hero/banner background at the top of the page
-    - You MUST use background-image: url('${imageUrls[0]}') for the hero section
-    - You MUST use ALL provided images in prominent positions
-    - DO NOT substitute or ignore these images
-    - DO NOT use any placeholder images or AI-generated images
-    - Do not modify or change these image paths in any way
-    
-    For hero/banner image implementation, use this exact pattern:
-    \`\`\`html
-    <section class="hero" style="background-image: url('${
-      imageUrls[0]
-    }'); background-size: cover; background-position: center;">
-      <!-- Hero content here -->
-    </section>
-    \`\`\`
-    
-    For other images, use:
-    \`\`\`html
-    <img src="${
-      imageUrls.length > 1 ? imageUrls[1] : imageUrls[0]
-    }" alt="Descriptive text" class="img-fluid">
-    \`\`\`
-    
-    The website design MUST feature these exact images prominently - this is a strict requirement.
-    `
-  }
-
-  // If we have AI-generated image URLs, use them
-  if (imageUrls.length > 0) {
-    return `CRITICAL IMAGE INSTRUCTIONS:
-  I have pre-generated these exact image URLs that MUST be used in the website:
-  ${imageUrls.map((url, i) => `${i + 1}. ${url}`).join('\n')}
- 
-  MANDATORY IMPLEMENTATION:
-  - The first image (${imageUrls[0]}) MUST be used as the hero/banner background
-  - Implement the hero section with: background-image: url('${imageUrls[0]}')
-  - You MUST use ALL provided images in the website
-  - Copy and paste the EXACT URLs as provided
-  - DO NOT modify the URLs in any way
-  - DO NOT replace these URLs with placeholder images
-  - All images must be implemented either as <img> tags or CSS background images
-  - These images will load correctly when viewed in a browser
-  - Ensure all images have meaningful, descriptive alt text for accessibility
-  - Use appropriate image optimization techniques (lazy loading, responsive images)
-  `
-  }
-
-  // Default case with no images
-  return `
-  MINIMAL IMAGE INSTRUCTION:
-  - Use a minimal approach with typography and layout instead of relying on images
-  - Do NOT use placeholder services like placeholder.com or placehold.it
-  - If absolutely necessary for the design, use free SVG illustrations or icons from the Bootstrap icon library
-  - Focus on creating an elegant design through typography, spacing, and interactive elements
-  `
 }

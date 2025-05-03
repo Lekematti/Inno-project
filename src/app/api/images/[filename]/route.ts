@@ -4,11 +4,11 @@ import path from 'path'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { filename: string } }
+  context: { params: { filename: string } }
 ) {
   try {
-    // Fix: Properly use params - don't need to await for object destructuring
-    const filename = params.filename
+    // Fix: Use await context.params.filename as per Next.js 14+ app directory API requirements
+    const { filename } = await context.params
     console.log(`Fallback image request for: ${filename}`)
 
     // Find the image in the most recent gen_comp folder

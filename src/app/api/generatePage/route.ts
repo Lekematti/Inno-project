@@ -5,6 +5,7 @@ import path from 'path'
 import {
   fetchImages,
   ensureImageUrlsHaveParams,
+  containsNumberedFormat,
 } from '@/app/build/imageProcessor'
 import { generateLayoutVariations } from '@/app/api/generatePage/utils/layout-generator'
 import { getBusinessPrompt } from '@/app/templates/business-prompts'
@@ -46,17 +47,21 @@ export async function generateCustomPage(
   const answers = []
 
   // Include image URLs in the cache key to avoid regeneration
-  const cacheKeyObj = { 
-    ...formData, 
+  const cacheKeyObj = {
+    ...formData,
     imageUrlsLength: imageUrls.length,
-    hasImages: imageUrls.length > 0
+    hasImages: imageUrls.length > 0,
   }
   const requestKey = JSON.stringify(cacheKeyObj)
 
   // Get the business type specific cache
   const cacheKey = templateType || 'default'
   if (!generationCache[cacheKey]) {
-    generationCache[cacheKey] = { lastRequest: '', lastResult: '', timestamp: 0 }
+    generationCache[cacheKey] = {
+      lastRequest: '',
+      lastResult: '',
+      timestamp: 0,
+    }
   }
 
   // Return cached result if it's recent
@@ -73,7 +78,7 @@ export async function generateCustomPage(
   if (generationInProgress[cacheKey]) {
     console.log(`🔄 Generation already in progress for ${cacheKey}, waiting...`)
     // Wait for the existing generation to complete
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       const checkInterval = setInterval(() => {
         if (!generationInProgress[cacheKey]) {
           clearInterval(checkInterval)
@@ -128,24 +133,16 @@ export async function generateCustomPage(
       imageSource
     )
 
-    console.log(`\n🔄 Generating ${templateType} website with ${imageUrls.length} images...`)
+    console.log(
+      `\n🔄 Generating ${templateType} website with ${imageUrls.length} images...`
+    )
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {
           role: 'system',
-          content: `You are an expert frontend developer specializing in creating cutting-edge, visually stunning websites using Bootstrap 5.3.2. 
-          You excel at creating modern designs with:
-          - Clean, semantic HTML5 structure
-          - Proper Bootstrap grid system implementation
-          - Professional CSS styling with consistent variables
-          - Responsive design for all devices
-          - Elegant animations and microinteractions
-          - Glass morphism and modern UI techniques
-          - Accessibility and performance best practices
-          
-          Your code is production-ready and follows all current web standards.`,
+          content: `You are an expert frontend developer specializing in production-ready, visually stunning HTML5 websites using Bootstrap 5.3.2. You always follow the user's prompt exactly, returning only the HTML, with no markdown, explanations, or comments.`,
         },
         { role: 'user', content: prompt },
       ],
@@ -179,9 +176,9 @@ export async function generateCustomPage(
 
       // Update cache with business type specific entries
       generationCache[cacheKey] = {
-        lastRequest: requestKey, 
+        lastRequest: requestKey,
         lastResult: htmlContent,
-        timestamp: now
+        timestamp: now,
       }
 
       return htmlContent
@@ -237,25 +234,41 @@ export async function PUT(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Rate limiting - prevent multiple requests in quick succession
-    const now = Date.now();
-    
+    const now = Date.now()
+
     // Use the properly typed global variable
     if (global.lastRequestTime && now - global.lastRequestTime < 2000) {
-      console.log('⚠️ Request throttled - too many requests in quick succession')
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      console.log(
+        '⚠️ Request throttled - too many requests in quick succession'
+      )
+      await new Promise((resolve) => setTimeout(resolve, 2000))
     }
-    global.lastRequestTime = now;
-    
+    global.lastRequestTime = now
+
     const formData = await request.formData()
     const requestData = Object.fromEntries(formData.entries())
 
     // Extract image information
     const imageSource = requestData.imageSource as ImageSourceType
-    const imageInstructions = requestData.imageInstructions as string
+    let imageInstructions = requestData.imageInstructions as string
+
+    // Extract image descriptions array if provided by the new UI
+    let imageDescriptions: string[] = []
+    if (requestData.imageDescriptions) {
+      try {
+        imageDescriptions = JSON.parse(requestData.imageDescriptions as string)
+        console.log('Found image descriptions array:', imageDescriptions)
+      } catch (error) {
+        console.error('Error parsing image descriptions:', error)
+      }
+    }
+
+    // Log the actual image instructions for debugging
+    console.log('📝 Image Instructions:', imageInstructions)
 
     // Create timestamp and folder info first for consistent naming
     // Add clientId to prevent race conditions
-    const clientId = requestData.clientId as string || randomString(6)
+    const clientId = (requestData.clientId as string) || randomString(6)
     const nowDate = new Date()
     const timestamp = `${nowDate.getFullYear()}-${String(
       nowDate.getMonth() + 1
@@ -279,7 +292,7 @@ export async function POST(request: NextRequest) {
     if (!fs.existsSync(imagesDir)) {
       fs.mkdirSync(imagesDir, { recursive: true })
     }
-    
+
     // Format the form data for processing
     const processedFormData: Record<string, string | string[]> = {
       businessType: requestData.businessType as string,
@@ -292,6 +305,11 @@ export async function POST(request: NextRequest) {
       timestamp: Date.now().toString(), // Add timestamp to avoid false cache hits
     }
 
+    // Add image descriptions to the processed form data if available
+    if (imageDescriptions.length > 0) {
+      processedFormData.imageDescriptions = imageDescriptions
+    }
+
     // Add questions to the form data
     for (let i = 1; i <= 10; i++) {
       const key = `question${i}`
@@ -301,16 +319,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Process images first - we'll only generate the HTML once with the final image paths
-    let localImageUrls: string[] = [];
-    
+    let localImageUrls: string[] = []
+
     if (imageSource === 'manual') {
       // Process uploaded images
       const files = formData.getAll('uploadedImages') as File[]
-      
+
       const uploadPromises = files.map(async (file, i) => {
         try {
           const buffer = Buffer.from(await file.arrayBuffer())
-          const safeFilename = `image-${i + 1}${path.extname(file.name)}`.replace(/\s+/g, '-')
+          const safeFilename = `image-${i + 1}${path.extname(
+            file.name
+          )}`.replace(/\s+/g, '-')
           const imagePath = path.join(imagesDir, safeFilename)
           fs.writeFileSync(imagePath, buffer)
           return `./images/${safeFilename}`
@@ -319,59 +339,127 @@ export async function POST(request: NextRequest) {
           return null
         }
       })
-      
+
       // Wait for all uploads to complete
       const results = await Promise.all(uploadPromises)
       localImageUrls = results.filter(Boolean) as string[]
       console.log(`Processed ${localImageUrls.length} uploaded images`)
-    } 
-    else if (imageSource === 'ai') {
-      // Fetch AI image URLs using a separate process
+    } else if (imageSource === 'ai') {
+      // Check if we have structured image descriptions from the new UI
+      if (imageDescriptions.length > 0) {
+        // Format the image descriptions into the expected numbered format
+        const formattedInstructions = imageDescriptions
+          .filter((desc) => desc.trim() !== '')
+          .map((desc, index) => `${index + 1}.${desc.trim()}`)
+          .join(' ')
+
+        console.log(
+          'Using structured image descriptions:',
+          formattedInstructions
+        )
+
+        // Use our formatted instructions instead of the raw ones
+        if (formattedInstructions) {
+          imageInstructions = formattedInstructions
+        }
+      }
+
+      // Use the improved detection logic from imageProcessor
+      let containsNumberedImages = false
+      if (imageInstructions) {
+        containsNumberedImages = containsNumberedFormat(imageInstructions)
+
+        // Print the full instructions for debugging
+        console.log('Raw image instructions:', imageInstructions)
+
+        // Additional debugging - explicitly check some basic patterns
+        const hasDigitPeriod = /\d\./.test(imageInstructions)
+        const hasDigitParen = /\d\)/.test(imageInstructions)
+        const hasNewlineDigit = /\n\s*\d/.test(imageInstructions)
+        console.log(
+          `Contains: digit+period: ${hasDigitPeriod}, digit+paren: ${hasDigitParen}, newline+digit: ${hasNewlineDigit}`
+        )
+      }
+
+      // Log whether we detected a numbered list
+      console.log(
+        `Image instructions ${
+          containsNumberedImages ? 'CONTAIN' : 'DO NOT CONTAIN'
+        } numbered format`
+      )
+
+      // Fetch AI image URLs using improved fetchImages function
+      console.log('Calling fetchImages with the image instructions...')
       const aiImageUrls = await fetchImages(
         imageInstructions ?? '',
         requestData.businessType as string,
         'ai'
       )
-      
+
+      // Log the number of images detected
+      console.log(
+        `Detected ${aiImageUrls.length} image requests from instructions`
+      )
+
       // Download all AI images in parallel
       if (aiImageUrls.length > 0) {
         console.log(`Downloading ${aiImageUrls.length} AI images...`)
-        
+
         const downloadPromises = aiImageUrls.map(async (url, i) => {
           const localFilename = `image-${i + 1}.png`
           const imagePath = path.join(imagesDir, localFilename)
-          
+
           try {
+            console.log(
+              `Fetching image ${i + 1} from URL: ${url.substring(0, 100)}...`
+            )
             const response = await fetch(url)
-            if (!response.ok) return null
-            
+            if (!response.ok) {
+              console.error(
+                `Failed to download image ${i + 1} from URL: ${url}. Status: ${
+                  response.status
+                }`
+              )
+              return null
+            }
+
             const imageBuffer = Buffer.from(await response.arrayBuffer())
             fs.writeFileSync(imagePath, imageBuffer)
+            console.log(`Successfully saved image ${i + 1} to ${localFilename}`)
             return `./images/${localFilename}`
           } catch (err) {
             console.error(`Error downloading AI image ${i + 1}:`, err)
             return null
           }
         })
-        
+
         const results = await Promise.all(downloadPromises)
         localImageUrls = results.filter(Boolean) as string[]
+        console.log(
+          `Successfully downloaded ${localImageUrls.length} of ${aiImageUrls.length} images`
+        )
+      } else {
+        console.warn('⚠️ No image URLs were generated from the instructions')
       }
     }
 
     // Generate HTML with the images paths - only once!
-    console.log(`Generating HTML with ${localImageUrls.length} images...`);
-    processedFormData.imageUrls = localImageUrls;
-    
+    console.log(`Generating HTML with ${localImageUrls.length} images...`)
+    processedFormData.imageUrls = localImageUrls
+
     // Do a single HTML generation with all image paths included
     const finalHtml = await generateCustomPage(
       processedFormData as FormData,
       imageSource,
       localImageUrls
-    );
+    )
 
     // Validate HTML content
-    if (!finalHtml || finalHtml === 'Error generating page. Please check your inputs and try again.') {
+    if (
+      !finalHtml ||
+      finalHtml ===
+        'Error generating page. Please check your inputs and try again.'
+    ) {
       throw new Error('Failed to generate HTML content')
     }
 
@@ -384,6 +472,10 @@ export async function POST(request: NextRequest) {
 
     // Save the HTML file
     const filePath = path.join(outputDir, 'index.html')
+    // Ensure outputDir exists before writing
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true })
+    }
     fs.writeFileSync(filePath, processedHTML)
 
     // Map image URLs for the response
@@ -402,7 +494,7 @@ export async function POST(request: NextRequest) {
       folderPath: `/gen_comp/${folderName}`,
       imageUrls: mappedImageUrls,
       imageSource,
-      standaloneHtml: standaloneHTML
+      standaloneHtml: standaloneHTML,
     }
 
     console.log('Generated website successfully saved to:', outputDir)
@@ -422,10 +514,10 @@ export async function POST(request: NextRequest) {
 
 // Helper function to generate random string
 function randomString(length: number): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  let result = ''
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
   }
-  return result;
+  return result
 }

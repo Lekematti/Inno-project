@@ -94,14 +94,39 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
     try {
       const el = doc.querySelector(elementPath)
       if (el) {
-        el.textContent = content
+        // Update attributes (style, class, etc.)
         Object.entries(attributes).forEach(([key, value]) => {
-          if (value) {
+          if (key === 'style') {
+            el.setAttribute('style', value)
+          } else if (key === 'class') {
+            el.setAttribute('class', value)
+          } else if (value) {
             el.setAttribute(key, value)
           } else {
             el.removeAttribute(key)
           }
         })
+
+        // Only update text if it has changed
+        if (typeof content === 'string' && content.trim() !== '') {
+          // If the element has no child elements, update textContent
+          if (!el.children || el.children.length === 0) {
+            el.textContent = content
+          } else {
+            // If the element has children, only update the first text node
+            let textNodeFound = false
+            el.childNodes.forEach((node) => {
+              if (node.nodeType === Node.TEXT_NODE && !textNodeFound) {
+                node.textContent = content
+                textNodeFound = true
+              }
+            })
+            // If no text node found, optionally insert one at the start
+            if (!textNodeFound) {
+              el.insertBefore(doc.createTextNode(content), el.firstChild)
+            }
+          }
+        }
         // Update the HTML in parent state
         if (typeof onUpdateGeneratedHtml === 'function') {
           onUpdateGeneratedHtml(doc.documentElement.outerHTML)

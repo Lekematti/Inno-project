@@ -44,9 +44,97 @@ export const DownloadSection = ({
   generatedHtml: string
   formData: GlobalFormData
 }) => {
+  // Function to fix both image paths and positioning issues
+  const fixHtmlForStandalone = (html: string) => {
+    let fixedHtml = html;
+    
+    // Fix standard upload paths
+    fixedHtml = fixedHtml.replace(
+      /src="\/uploads\//g,
+      `src="${window.location.origin}/uploads/`
+    );
+    
+    // Fix background image paths
+    fixedHtml = fixedHtml.replace(
+      /background-image:\s*url\(['"]?\/uploads\//g,
+      `background-image: url('${window.location.origin}/uploads/`
+    );
+    
+    // Fix meta tag content paths
+    fixedHtml = fixedHtml.replace(
+      /content="\/uploads\//g,
+      `content="${window.location.origin}/uploads/`
+    );
+    
+    // Fix API static paths
+    fixedHtml = fixedHtml.replace(
+      /src="\/api\/static\/([\w-]+)\/images\//g, 
+      `src="${window.location.origin}/api/static/$1/images/`
+    );
+    
+    // Fix relative image paths to use the fallback API
+    fixedHtml = fixedHtml.replace(
+      /src=["'](\.\/images\/|\/images\/)(image-\d+\.(?:png|jpg|jpeg|gif|svg))["']/g,
+      `src="${window.location.origin}/api/images/$2"`
+    );
+    
+    // Fix background images with relative paths
+    fixedHtml = fixedHtml.replace(
+      /background-image:\s*url\(['"]?(\.\/images\/|\/images\/)(image-\d+\.(?:png|jpg|jpeg|gif|svg))['"]?\)/g,
+      `background-image: url('${window.location.origin}/api/images/$2')`
+    );
+    
+    // Ensure all background elements have proper positioning
+    fixedHtml = fixedHtml.replace(
+      /<div([^>]*)style="([^"]*background-image:[^"]*)"([^>]*)>/g,
+      '<div$1style="$2; background-position: center; background-size: cover; background-repeat: no-repeat"$3>'
+    );
+    
+    // Add viewport meta tag if not present
+    if (!fixedHtml.includes('viewport')) {
+      fixedHtml = fixedHtml.replace(
+        /<head>/i,
+        '<head>\n<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+      );
+    }
+    
+    // Add consistent container styles
+    fixedHtml = fixedHtml.replace(
+      /<body([^>]*)>/i,
+      '<body$1>\n<style>\n' +
+      '  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }\n' +
+      '  .container, .container-fluid { max-width: 100%; overflow-x: hidden; }\n' +
+      '  [class*="bg-"], .hero-section, .hero-image, [style*="background-image"] { background-position: center !important; background-size: cover !important; }\n' +
+      '  img { max-width: 100%; height: auto; }\n' +
+      '</style>\n'
+    );
+    
+    // Special fix for hero sections
+    fixedHtml = fixedHtml.replace(
+      /<section([^>]*)(class="[^"]*hero[^"]*")([^>]*)>/gi,
+      '<section$1$2$3 style="background-position: center !important; background-size: cover !important">'
+    );
+    
+    // Fix image dimensions and positioning
+    fixedHtml = fixedHtml.replace(
+      /<img([^>]*)>/gi,
+      '<img$1 style="max-width: 100%; height: auto; display: block;">'
+    );
+    
+    return fixedHtml;
+  };
+
   const handleShare = async () => {
     try {
-      const blob = new Blob([generatedHtml], { type: 'text/html' })
+      // Use standaloneHtml for sharing if available
+      let htmlToShare = formData.standaloneHtml || generatedHtml;
+      
+      // If not using standaloneHtml, fix the paths and positioning
+      if (!formData.standaloneHtml) {
+        htmlToShare = fixHtmlForStandalone(htmlToShare);
+      }
+      
+      const blob = new Blob([htmlToShare], { type: 'text/html' })
       const file = new File(
         [blob],
         `${formData.businessType || 'website'}-site.html`,
@@ -78,28 +166,19 @@ export const DownloadSection = ({
         <Button
           variant="primary"
           onClick={() => {
-            let htmlWithAbsolutePaths = generatedHtml
-
-            htmlWithAbsolutePaths = htmlWithAbsolutePaths.replace(
-              /src="\/uploads\//g,
-              `src="${window.location.origin}/uploads/`
-            )
-
-            htmlWithAbsolutePaths = htmlWithAbsolutePaths.replace(
-              /background-image:\s*url\(['"]?\/uploads\//g,
-              `background-image: url('${window.location.origin}/uploads/`
-            )
-
-            htmlWithAbsolutePaths = htmlWithAbsolutePaths.replace(
-              /content="\/uploads\//g,
-              `content="${window.location.origin}/uploads/`
-            )
-
-            const blob = new Blob([htmlWithAbsolutePaths], {
+            // Use the standaloneHtml which has embedded base64 images if available
+            let htmlToDisplay = formData.standaloneHtml || generatedHtml;
+            
+            // If not using standaloneHtml, fix the paths and positioning
+            if (!formData.standaloneHtml) {
+              htmlToDisplay = fixHtmlForStandalone(htmlToDisplay);
+            }
+            
+            const blob = new Blob([htmlToDisplay], {
               type: 'text/html',
-            })
-            const url = URL.createObjectURL(blob)
-            window.open(url, '_blank')
+            });
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
           }}
         >
           Open in New Tab
@@ -107,34 +186,25 @@ export const DownloadSection = ({
         <Button
           variant="outline-secondary"
           onClick={() => {
-            let htmlWithAbsolutePaths = generatedHtml
-
-            htmlWithAbsolutePaths = htmlWithAbsolutePaths.replace(
-              /src="\/uploads\//g,
-              `src="${window.location.origin}/uploads/`
-            )
-
-            htmlWithAbsolutePaths = htmlWithAbsolutePaths.replace(
-              /background-image:\s*url\(['"]?\/uploads\//g,
-              `background-image: url('${window.location.origin}/uploads/`
-            )
-
-            htmlWithAbsolutePaths = htmlWithAbsolutePaths.replace(
-              /content="\/uploads\//g,
-              `content="${window.location.origin}/uploads/`
-            )
-
-            const blob = new Blob([htmlWithAbsolutePaths], {
+            // Use the standaloneHtml for downloading if available
+            let htmlToDownload = formData.standaloneHtml || generatedHtml;
+            
+            // If not using standaloneHtml, fix the paths and positioning
+            if (!formData.standaloneHtml) {
+              htmlToDownload = fixHtmlForStandalone(htmlToDownload);
+            }
+            
+            const blob = new Blob([htmlToDownload], {
               type: 'text/html',
-            })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `${formData.businessType || 'website'}-site.html`
-            document.body.appendChild(a)
-            a.click()
-            URL.revokeObjectURL(url)
-            document.body.removeChild(a)
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${formData.businessType || 'website'}-site.html`;
+            document.body.appendChild(a);
+            a.click();
+            URL.revokeObjectURL(url);
+            document.body.removeChild(a);
           }}
         >
           Download HTML

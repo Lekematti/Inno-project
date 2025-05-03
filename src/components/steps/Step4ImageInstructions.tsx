@@ -6,7 +6,6 @@ import { ImageSourceType } from '@/types/formData';
 
 export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
   formData,
-  handleChange,
   handleSubmit,
   handleBack,
   error,
@@ -17,6 +16,11 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [localError, setLocalError] = useState<string>('');
+  const [imageDescriptions, setImageDescriptions] = useState<string[]>(
+    formData.imageDescriptions || ['']
+  );
+
+  const MAX_IMAGES = 5;
 
   // Initialize from existing form data if available
   useEffect(() => {
@@ -33,7 +37,49 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
     if (formData.uploadedImages) {
       setUploadedImages(formData.uploadedImages);
     }
-  }, [formData.imageSource, formData.userImageUrls, formData.uploadedImages]);
+
+    // If we have image descriptions in the form data, use them
+    if (formData.imageDescriptions) {
+      setImageDescriptions(formData.imageDescriptions);
+    }
+  }, [formData.imageSource, formData.userImageUrls, formData.uploadedImages, formData.imageDescriptions]);
+
+  /**
+   * Validates image requirements based on source
+   * With improved error messages for clarity
+   */
+  const validateImageRequirements = (): { isValid: boolean; error: string } => {
+    if (imageSource === 'ai') {
+      // Check if we have valid image descriptions
+      const validDescriptions = imageDescriptions.filter(desc => desc.trim().length > 0);
+      
+      if (validDescriptions.length === 0) {
+        return { 
+          isValid: false, 
+          error: 'Please provide at least one image description or choose a different image source.' 
+        };
+      }
+      
+      // Check if all descriptions are filled
+      for (let i = 0; i < imageDescriptions.length; i++) {
+        if (!imageDescriptions[i] || imageDescriptions[i].trim() === '') {
+          return {
+            isValid: false,
+            error: `Please provide a description for image ${i + 1} or remove it.`
+          };
+        }
+      }
+    }
+    
+    if (imageSource === 'manual' && (!previewUrls || previewUrls.length === 0)) {
+      return { 
+        isValid: false, 
+        error: 'Please upload at least one image or choose a different image source' 
+      };
+    }
+    
+    return { isValid: true, error: '' };
+  };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,12 +92,24 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
     };
     
     if (imageSource === 'ai') {
-      // For AI images, validate and include instructions
-      if (!formData.imageInstructions || formData.imageInstructions.trim() === '') {
-        setLocalError('Please describe your image requirements or select a different option');
+      // For AI images, validate with improved validation
+      const validation = validateImageRequirements();
+      
+      if (!validation.isValid) {
+        setLocalError(validation.error);
         return;
       }
-      updatedFormData.imageInstructions = formData.imageInstructions;
+      
+      // Filter out any empty descriptions just to be safe
+      const activeDescriptions = imageDescriptions.filter(desc => desc.trim() !== '');
+      
+      // Format the image instructions as a numbered list
+      const formattedInstructions = activeDescriptions
+        .map((desc, index) => `${index + 1}.${desc.trim()}`)
+        .join(' ');
+      
+      updatedFormData.imageInstructions = formattedInstructions;
+      updatedFormData.imageDescriptions = activeDescriptions;
     } 
     else if (imageSource === 'manual') {
       // For manual upload, validate and include uploaded images
@@ -67,6 +125,7 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
       updatedFormData.imageInstructions = '';
       updatedFormData.uploadedImages = [];
       updatedFormData.userImageUrls = [];
+      updatedFormData.imageDescriptions = [];
     }
     
     // Update form data and proceed to next step
@@ -136,6 +195,29 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
     }
   };
 
+  // Handle changes to individual image descriptions
+  const handleDescriptionChange = (index: number, value: string) => {
+    const newDescriptions = [...imageDescriptions];
+    newDescriptions[index] = value;
+    setImageDescriptions(newDescriptions);
+  };
+
+  // Add a new image description card
+  const addImageDescription = () => {
+    if (imageDescriptions.length < MAX_IMAGES) {
+      setImageDescriptions([...imageDescriptions, '']);
+    }
+  };
+
+  // Remove an image description card
+  const removeImageDescription = (index: number) => {
+    if (imageDescriptions.length > 1) {
+      const newDescriptions = [...imageDescriptions];
+      newDescriptions.splice(index, 1);
+      setImageDescriptions(newDescriptions);
+    }
+  };
+
   return (
     <div className="step-container">
       <h2>Step 4: Images for Your Website</h2>
@@ -192,34 +274,75 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
           </Card.Body>
         </Card>
         
-        {/* AI Image Instructions */}
+        {/* AI Image Instructions - NEW MODERN CARD APPROACH */}
         {imageSource === 'ai' && (
           <Card className="mb-4">
-            <Card.Header>
-              <h5 className="mb-0">Describe Your Image Requirements</h5>
+            <Card.Header className="d-flex justify-content-between align-items-center">
+              <h5 className="mb-0">Describe Your Images</h5>
+              <span className="badge bg-primary">{imageDescriptions.length}/{MAX_IMAGES}</span>
             </Card.Header>
             <Card.Body>
-              <Form.Group controlId="imageInstructions" className="mb-3">
-                <Form.Label>
-                  <strong>What kind of images would you like?</strong>
-                </Form.Label>
-                <Form.Control 
-                  as="textarea" 
-                  name="imageInstructions"
-                  placeholder="Describe the images you'd like (e.g., 'Professional photos of a modern restaurant with wooden tables and ambient lighting')"
-                  value={formData.imageInstructions || ''}
-                  onChange={handleChange}
-                  rows={5}
-                />
-                <Form.Text className="text-muted">
-                  Be specific about the subject, style, colors, and mood of images you want.
-                </Form.Text>
-              </Form.Group>
+              {/* Image Description Cards */}
+              {imageDescriptions.map((desc, index) => (
+                <Card 
+                  key={`image-desc-${index}`} 
+                  className="mb-3 border-light shadow-sm"
+                >
+                  <Card.Body>
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <h6 className="mb-0">Image {index + 1}</h6>
+                      {imageDescriptions.length > 1 && (
+                        <Button 
+                          variant="light" 
+                          size="sm" 
+                          className="text-danger p-1" 
+                          onClick={() => removeImageDescription(index)}
+                          aria-label={`Remove image ${index + 1}`}
+                        >
+                          <span aria-hidden="true">×</span>
+                        </Button>
+                      )}
+                    </div>
+                    <Form.Control
+                      type="text"
+                      value={desc}
+                      onChange={(e) => handleDescriptionChange(index, e.target.value)}
+                      placeholder="Describe what you want in this image"
+                      className="border-0 bg-light"
+                    />
+                  </Card.Body>
+                </Card>
+              ))}
+              
+              {/* Add Image Button */}
+              {imageDescriptions.length < MAX_IMAGES && (
+                <div className="text-center mt-3">
+                  <Button 
+                    variant="outline-primary" 
+                    onClick={addImageDescription}
+                    className="px-4"
+                  >
+                    <i className="bi bi-plus-circle me-2"></i>
+                    Add Another Image
+                  </Button>
+                </div>
+              )}
+              
+              {/* Show helpful tips */}
+              <Alert variant="info" className="mt-4 p-3" style={{ fontSize: '0.9rem' }}>
+                <strong>📝 Image Tips:</strong>
+                <ul className="mb-0 mt-2">
+                  <li>Be specific about what should appear in each image</li>
+                  <li>You can specify &quot;landscape&quot;, &quot;portrait&quot;, or &quot;square&quot; for aspect ratio</li>
+                  <li>Describe style preferences like &quot;professional photo&quot; or &quot;artistic rendering&quot;</li>
+                  <li>Include details about lighting, colors, and mood</li>
+                </ul>
+              </Alert>
             </Card.Body>
           </Card>
         )}
         
-        {/* Manual Image Upload */}
+        {/* Manual Image Upload - UNCHANGED */}
         {imageSource === 'manual' && (
           <Card className="mb-4">
             <Card.Header>

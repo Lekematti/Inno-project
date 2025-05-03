@@ -68,8 +68,8 @@ const LoginForm = () => {
   }
 
   return (
-    <div className="m-2 p-2 p-6 rounded-lg shadow-md">
-      <h2 className="font-bold mb-4">Login</h2>
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-4">Login</h2>
 
       {error && (
         <Alert variant="danger" className="mb-4">
@@ -79,7 +79,7 @@ const LoginForm = () => {
 
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2">
+          <label className="block text-gray-700 text-sm font-bold mb-2 x-2">
             Email:
           </label>
           <input
@@ -93,7 +93,7 @@ const LoginForm = () => {
         </div>
 
         <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2">
+          <label className="block text-gray-700 text-sm font-bold mb-2 x-2">
             Password:
           </label>
           <input

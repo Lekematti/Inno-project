@@ -1,4 +1,4 @@
-import { getIconLibraryInstructions } from '../api/generatePage/utils/icon-library'
+//import { getIconLibraryInstructions } from '../api/generatePage/utils/icon-library'
 import { LayoutVariation } from '../api/generatePage/types/website-generator'
 import {
   generateColorPalette,
@@ -18,14 +18,18 @@ export function buildPrompt(
   layoutVariations: LayoutVariation,
   imageSource?: string
 ): string {
-  const imageInstructions = getImageInstructions(imageUrls, imageSource)
+  // Strict image usage instructions
+  let imageInstruction = '';
+  if (imageSource === 'none' || !imageUrls || imageUrls.length === 0) {
+    imageInstruction = `NO IMAGES: Do not include any <img> tags, background images, or references to images. The website must be visually appealing using only text, color, layout, gradients, SVG, and CSS. Do not reference any image filenames or stock photos.`;
+  } else {
+    imageInstruction = `IMAGE USAGE: Use ONLY these image files for all images in the website: ${imageUrls.join(', ')}. Do not reference any other images or filenames. If you need more images than provided, reuse these or leave the image blank. Do not invent filenames. All <img> and background-image URLs must be from this list.`;
+  }
 
-  // Generate color scheme guidance from the layout variations
   const colorGuidance = layoutVariations.colorScheme
     ? processColorScheme(layoutVariations.colorScheme, templateType)
     : 'Use a professional color scheme aligned with 2025 design trends, ensuring WCAG AA contrast compliance'
 
-  // --- NEW STRICT PROMPT ---
   return `
 You are an expert frontend developer and designer. Generate a complete, production-ready HTML5 website for a real business, using Bootstrap 5.3.2 and modern best practices.
 
@@ -38,8 +42,7 @@ BUSINESS DETAILS:
 SPECIFIC CONTENT REQUIREMENTS:
 ${specificPrompt}
 
-IMAGE INTEGRATION:
-${imageInstructions}
+${imageInstruction}
 
 DESIGN SPECIFICATIONS:
 - Color Scheme: ${colorGuidance}
@@ -55,36 +58,19 @@ STRICT REQUIREMENTS:
 - Use a visually appealing, modern, and professional design. Use a harmonious color palette and consistent spacing.
 - Use real, plausible business content and copywriting. Do not use placeholder text like "Lorem Ipsum" or generic dish names. Use realistic menu items, chef names, testimonials, and business details.
 - Include a responsive navigation bar with a logo, business name, and links to all main sections. On mobile, use a hamburger menu.
-- The hero section must have a visually striking background image (use a real image URL or ./images/image-1.png), a clear headline, and a strong call-to-action button.
+- The hero section must have a visually striking background image (if images are provided) or a premium gradient background (if not).
 - Menu section: List at least 6 real, creative dishes with descriptions and prices, using Bootstrap cards or grid.
 - Reservation section: Include a real, working reservation form with fields for name, email, date, time, party size, and special requests.
-- Chefs section: Show at least 2 chef profiles with real names, photos (./images/chef1.jpg, etc.), and short bios.
-- Gallery: Use a Bootstrap carousel with at least 5 real food images (./images/dish1.jpg, etc.).
-- Testimonials: Show at least 2 real-sounding customer reviews with names and photos.
+- Chefs section: Show at least 2 chef profiles with real names, photos (from provided images if available), and short bios.
+- Gallery: Use a Bootstrap carousel with provided images (if any).
+- Testimonials: Show at least 2 real-sounding customer reviews with names and (if images are available) photos.
 - Contact section: Show real business address, phone, email, and a Google Maps embed (use a real embed code or a placeholder div).
 - Footer: Include business info, social media links (with real icons), and copyright.
 - Use visually appealing CSS variables for colors, spacing, and transitions. All colors must be accessible (WCAG AA).
 - Add subtle animations (e.g., fade-in, hover effects) using Bootstrap and CSS.
-- All images must use the provided ./images/ paths.
+- All images must use the provided image filenames only.
 - Do not use any placeholder or generic text. All content must be realistic and tailored to the business type.
 - Do not include any markdown, explanations, or comments. Return only the final HTML.
-
-Example structure:
-<html>
-  <head> ... </head>
-  <body>
-    <nav>...</nav>
-    <section class="hero">...</section>
-    <section id="menu">...</section>
-    <section id="reservation">...</section>
-    <section id="chefs">...</section>
-    <section id="gallery">...</section>
-    <section id="testimonials">...</section>
-    <section id="contact">...</section>
-    <footer>...</footer>
-    <script src="..."></script>
-  </body>
-</html>
 
 ONLY return the complete HTML file with no markdown, explanations, or additional text.
 The code must be production-ready with absolutely no placeholder content, lorem ipsum text, or TODO comments.
@@ -207,7 +193,6 @@ function processColorScheme(colorScheme: string, templateType: string): string {
 
     // Generate professional palette with color theory principles
     if (colors.length > 0) {
-      // Use the first color as primary
       const palette = generateColorPalette(colors[0], templateType)
       const cssVariables = generateCssVariables(palette)
 

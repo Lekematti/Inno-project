@@ -8,8 +8,7 @@ import {
   ElementEditRequest,
   ElementEditInstructions,
 } from '@/types/formData'
-import { clearFormData } from '../functions/usePageRefreshHandler' // <-- Add this import
-import { EditModeOverlay } from './EditModeOverlay'
+import { clearFormData } from '../functions/usePageRefreshHandler'
 import { EditElementForm } from './EditElementForm'
 
 export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
@@ -20,10 +19,9 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   formData,
   onEditElement,
   onUpdateGeneratedHtml,
-  loadingComponent, // New prop for custom loading indicator
+  loadingComponent,
 }) => {
   const [previewError, setPreviewError] = useState<string | null>(null)
-  const [isRendering, setIsRendering] = useState<boolean>(false)
   const [editMode, setEditMode] = useState<boolean>(false)
   const [selectedElement, setSelectedElement] =
     useState<ElementEditRequest | null>(null)
@@ -36,9 +34,7 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
     // Reset error state when new content arrives
     if (generatedHtml) {
       setPreviewError(null)
-      // Set a rendering state to help with potential timing issues
-      setIsRendering(true)
-      const timer = setTimeout(() => setIsRendering(false), 500)
+      const timer = setTimeout(() => {}, 500)
       return () => clearTimeout(timer)
     }
   }, [generatedHtml])
@@ -47,10 +43,6 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   const handleRenderingError = (err: string) => {
     console.error('Rendering error:', err)
     setPreviewError(err)
-  }
-
-  const handleElementSelect = (element: ElementEditRequest) => {
-    setSelectedElement(element)
   }
 
   const handleEditSave = async (instructions: ElementEditInstructions) => {
@@ -139,13 +131,15 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
 
   if (isLoading) {
     // Use custom loading component if provided, otherwise use default
-    return loadingComponent || (
-      <div className="d-flex flex-column align-items-center justify-content-center p-5">
-        <output className="spinner-border">
-          <Spinner animation="border" variant="primary" />
-        </output>
-        <p className="mt-3">Generating your custom website...</p>
-      </div>
+    return (
+      loadingComponent || (
+        <div className="loading-container">
+          <output className="spinner-border">
+            <Spinner animation="border" variant="primary" />
+          </output>
+          <p className="mt-3">Generating your custom website...</p>
+        </div>
+      )
     )
   }
 
@@ -187,25 +181,17 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
 
   if (isReady && generatedHtml) {
     return (
-      <>
-        <button
-          className="btn btn-success mb-3"
-          onClick={() => {
-            clearFormData()
-            window.location.href = '/build'
-          }}
-        >
-          Back to form
-        </button>
-
-        {isRendering ? (
-          <div className="text-center p-3">
-            <Spinner animation="border" size="sm" />
-            <span className="ms-2">Rendering preview...</span>
-          </div>
-        ) : null}
-
-        <div className="d-flex justify-content-end mb-2">
+      <div className="website-preview-container-full">
+        <div className="website-preview-toolbar">
+          <button
+            className="btn btn-outline-success"
+            onClick={() => {
+              clearFormData()
+              window.location.href = '/build'
+            }}
+          >
+            Back to form
+          </button>
           <Button
             variant={editMode ? 'warning' : 'outline-primary'}
             size="sm"
@@ -229,47 +215,29 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
             {editMode ? 'Exit Edit Mode' : 'Edit Website'}
           </Button>
         </div>
-
-        <div
-          className="preview-container position-relative"
-          style={{
-            height: '70vh',
-            width: '100%',
-            border: '1px solid #e0e0e0',
-            overflow: 'hidden',
-          }}
-        >
+        <div className="website-preview-frame">
           <AiGenComponent
             htmlContent={generatedHtml}
             onError={handleRenderingError}
             editMode={editMode}
             ref={iframeRef}
+            width="100%"
+            height="100%"
           />
-
-          {editMode && (
-            <EditModeOverlay
-              isActive={editMode}
-              onExit={toggleEditMode}
-              onElementSelect={handleElementSelect}
-              iframeRef={iframeRef}
-            />
-          )}
         </div>
-
         {selectedElement && (
           <EditElementForm
             editRequest={selectedElement}
             onClose={() => setSelectedElement(null)}
             onSave={handleEditSave}
             isSubmitting={isSubmittingEdit}
-            onDirectEditDomUpdate={handleDirectEditDomUpdate} // <-- Add this prop
+            onDirectEditDomUpdate={handleDirectEditDomUpdate}
           />
         )}
-
-        <div className="mt-4">
+        <div className="mt-4 text-center">
           <DownloadSection generatedHtml={generatedHtml} formData={formData} />
         </div>
-      </>
+      </div>
     )
   }
 

@@ -35,9 +35,6 @@ function getRestaurantPrompt(
         ? 'Implement a luxury reservation experience with date/time selection, party size options, special requests, and confirmation animation'
         : 'Include elegant reservation call-to-action section'
     }
-    - Business hours: ${
-      typeof answers[4] === 'string' ? answers[4] : 'Tuesday-Sunday, 5pm-11pm'
-    }
     - Chef/team profiles: ${
       answers[5] === 'yes'
         ? 'Create sophisticated chef profiles with elegant hover effects, professional photography placement, and culinary background stories'

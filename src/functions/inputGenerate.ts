@@ -75,12 +75,6 @@ export const templates: Record<BusinessType, Template> = {
                 placeholder: 'e.g., House-made pasta, Wood-fired pizza'
             },
             {
-                id: 'hours',
-                text: "What are your business hours?",
-                type: 'text',
-                placeholder: 'e.g., Mon-Fri: 11am-10pm, Sat-Sun: 10am-11pm'
-            },
-            {
                 id: 'colorScheme',
                 text: "Choose your brand's color scheme:",
                 type: 'color'

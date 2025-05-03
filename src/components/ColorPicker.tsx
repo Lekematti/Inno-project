@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Form, Row, Col, Button, Alert } from 'react-bootstrap'
 import {
-  industryColorPalettes,
   validateColor,
   processUserColors,
   generateRandomColorSet,
@@ -27,8 +26,6 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
 
   const fieldName = `question${index + 1}` as keyof FormData
   const businessType = formData.businessType || 'professional'
-  const currentPresets =
-    industryColorPalettes[businessType] || industryColorPalettes.professional
 
   const MAX_COLORS = 4
 
@@ -122,39 +119,6 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
     }
   }
 
-  const handlePresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selected = currentPresets.find((p) => p.name === e.target.value)
-    if (selected?.colors) {
-      // Clear previous colors and set new ones
-      setSelectedPreset(e.target.value)
-
-      // Presets are already curated, but run them through processing to ensure consistency
-      const processedColors = processUserColors(selected.colors, businessType)
-      setSelectedColors(processedColors)
-
-      // Update form data with the preset colors
-      setFormData((prev) => ({
-        ...prev,
-        [fieldName]: processedColors.join(','),
-      }))
-
-      // Reset current color to first color in preset
-      setCurrentColor(processedColors[0])
-      // Reset manual color input and warnings
-      setManualColor('')
-      setColorWarning(null)
-      setAdjustedColors({})
-    } else {
-      // Reset everything if no preset is selected
-      setSelectedPreset('')
-      setSelectedColors([])
-      setFormData((prev) => ({
-        ...prev,
-        [fieldName]: '',
-      }))
-    }
-  }
-
   // Generate random WCAG-compliant color set
   const handleRandomize = () => {
     setIsRandomizing(true)
@@ -183,7 +147,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
     setFormData((prev) => ({
       ...prev,
       [fieldName]: randomColors.join(','),
-      colorScheme: randomColors.join(',')
+      colorScheme: randomColors.join(','),
     }))
 
     // Update UI state
@@ -245,83 +209,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
                 display: 'flex',
                 flexDirection: 'column',
               }}
-            >
-              <Form.Control
-                type="text"
-                placeholder="#HEX color (e.g., #FF5733)"
-                value={manualColor}
-                onChange={(e) => setManualColor(e.target.value)}
-                pattern="^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
-                className="mb-2"
-              />
-              <Button
-                variant="outline-primary"
-                onClick={handleManualColorSubmit}
-                disabled={selectedColors.length >= MAX_COLORS}
-                className="w-100"
-              >
-                Add Manual Color
-              </Button>
-            </div>
+            ></div>
           </Col>
-
-          <Col md={3}>
-            <div
-              style={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              <h6 className="mb-2">Industry-specific palettes:</h6>
-              <Form.Select
-                value={selectedPreset}
-                onChange={handlePresetChange}
-                className="mb-2"
-              >
-                <option value="">Select a color palette</option>
-                {currentPresets.map((preset) => (
-                  <option key={preset.name} value={preset.name}>
-                    {preset.name}
-                  </option>
-                ))}
-              </Form.Select>
-
-              {/* Preview of selected preset */}
-              {selectedPreset &&
-                currentPresets.find((p) => p.name === selectedPreset)
-                  ?.colors && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: '0.5rem',
-                      marginTop: '0.5rem',
-                      padding: '0.5rem',
-                      border: '1px solid #dee2e6',
-                      borderRadius: '4px',
-                    }}
-                  >
-                    {currentPresets
-                      .find((p) => p.name === selectedPreset)
-                      ?.colors.map((color, index) => (
-                        <div
-                          key={`${color}-${index}`}
-                          style={{
-                            backgroundColor: color,
-                            width: '30px',
-                            height: '30px',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(0,0,0,0.1)',
-                            flexGrow: 1,
-                          }}
-                          title={color}
-                        />
-                      ))}
-                  </div>
-                )}
-            </div>
-          </Col>
-
           <Col md={3}>
             <div
               style={{

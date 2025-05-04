@@ -53,6 +53,11 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   }
 
   const handleEditSave = async (instructions: ElementEditInstructions) => {
+    // If this is a direct DOM edit, do not show loading
+    if (instructions.editMode === 'simple' && !onEditElement) {
+      // Direct DOM update already handled, skip loading
+      return
+    }
     setIsSubmittingEdit(true)
     try {
       if (onEditElement) {
@@ -120,7 +125,31 @@ export const WebsitePreview: React.FC<WebsitePreviewProps> = ({
           }
         }
         if (typeof onUpdateGeneratedHtml === 'function') {
-          onUpdateGeneratedHtml(doc.documentElement.outerHTML)
+          const updatedHtml = doc.documentElement.outerHTML
+          onUpdateGeneratedHtml(updatedHtml)
+
+          // --- Save to backend ---
+          // Get the file path from formData
+          const filePath = formData.filePath
+          if (filePath) {
+            fetch('/api/editSave', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                formData,
+                htmlContent: updatedHtml,
+                originalFilePath: filePath,
+              }),
+            })
+              .then((res) => {
+                if (!res.ok) {
+                  console.error('Failed to save direct edit')
+                }
+              })
+              .catch((err) => {
+                console.error('Error saving direct edit:', err)
+              })
+          }
         }
       }
     } catch (err) {

@@ -69,50 +69,54 @@ const LoginForm = () => {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md w-75 text-center shadow p-3 rounded-2 h-100">
-      <h2 className="text-2xl font-bold mb-4 text-center">Login</h2>
+      <form onSubmit={handleSubmit} className="d-flex flex-column h-100">
+        <div>
+          <h2 className="text-2xl font-bold mb-4 text-center">Login</h2>
 
-      {error && (
-        <Alert variant="danger" className="mb-4">
-          {error}
-        </Alert>
-      )}
+          {error && (
+            <Alert variant="danger" className="mb-4">
+              {error}
+            </Alert>
+          )}
 
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4 d-flex justify-content-between">
-          <label className="block text-gray-700 text-sm font-bold mb-2 x-2">
-            Email:
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-            className="w-full p-2 border rounded mx-2"
-          />
+          <div className="mb-4 d-flex justify-content-between">
+            <label className="block text-gray-700 text-sm font-bold mb-2 x-2">
+              Email:
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              className="w-full p-2 border rounded mx-2"
+            />
+          </div>
+
+          <div className="mb-4 d-flex justify-content-between">
+            <label className="block text-gray-700 text-sm font-bold mb-2 x-2">
+              Password:
+            </label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              className="w-full p-2 border rounded mx-2"
+            />
+          </div>
         </div>
 
-        <div className="mb-4 d-flex justify-content-between">
-          <label className="block text-gray-700 text-sm font-bold mb-2 x-2">
-            Password:
-          </label>
-          <input
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            className="w-full p-2 border rounded mx-2"
-          />
+        <div className="mt-auto mb-3">
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 "
+          >
+            {loading ? 'Signing in...' : 'Login'}
+          </Button>
         </div>
-
-        <Button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 "
-        >
-          {loading ? 'Signing in...' : 'Login'}
-        </Button>
       </form>
     </div>
   )

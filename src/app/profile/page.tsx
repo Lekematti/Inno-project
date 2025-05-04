@@ -124,128 +124,174 @@ export default function ProfilePage() {
 
   // If authenticated, show user profile
   return (
-    <div>
+    <div className="dashboard-container">
       <Header />
-      <Container className="mt-8">
+      <Container fluid className="mt-4 px-4">
         <Row>
-          <Col className="text-center">
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h1 className="text-2xl font-bold mb-4">
-                Welcome, {userData?.name ?? userData?.email ?? 'User'}
-              </h1>
-            </div>
-            <Button
-              onClick={handleLogout}
-              className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600"
-            >
-              Log out
-            </Button>
-          </Col>
-        </Row>
-        <Row className=" row-cols-1 justify-content-center">
-          <Col className="my-5 text-center col-4">
-            <div>
-              <h1>Add images to use on your website:</h1>
-              <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                  <label htmlFor="formFile" className="form-label">
-                    Add png or jpg files:
-                  </label>
-                  <input
-                    className="form-control"
-                    type="file"
-                    id="formFile"
-                    onChange={handleFileChange}
-                  />
-                </div>
-                <Button type="submit" className="btn btn-primary">
-                  Submit image
+          <Col lg={12} className="mb-4">
+            <div className="bg-white p-4 rounded-lg shadow-sm border-start border-5 border-primary">
+              <div className="d-flex justify-content-between align-items-center">
+                <h1 className="h3 mb-0">
+                  Welcome, {userData?.name ?? userData?.email ?? 'User'}
+                </h1>
+                <Button
+                  onClick={handleLogout}
+                  variant="outline-danger"
+                  size="sm"
+                >
+                  <i className="bi bi-box-arrow-right me-1"></i> Log out
                 </Button>
-              </form>
+              </div>
             </div>
           </Col>
         </Row>
-        <Row className="justify-content-center">
-          <Col md={8}>
-            <h2 className="mb-3">Your Generated Websites</h2>
-            <div
-              style={{
-                maxHeight: 300,
-                overflowY: 'auto',
-                border: '1px solid #eee',
-                borderRadius: 8,
-                padding: 16,
-                background: '#fafbfc',
-              }}
-            >
-              {websiteFolders.length === 0 ? (
-                <div className="text-muted">No generated websites found.</div>
-              ) : (
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {websiteFolders.map((folder) => (
-                    <li key={folder.name} style={{ marginBottom: 12 }}>
-                      <button
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#2563eb',
-                          textDecoration: 'underline',
-                          cursor: 'pointer',
-                          fontWeight: 'bold',
-                        }}
-                        onClick={() =>
-                          setExpanded(
-                            expanded === folder.name ? null : folder.name
-                          )
-                        }
-                      >
-                        {folder.name}
-                      </button>
-                      {expanded === folder.name && (
-                        <ul style={{ marginTop: 8, marginLeft: 16 }}>
-                          {folder.html.map((file: string) => (
-                            <li key={file}>
-                              <a
-                                href={`/gen_comp/${folder.name}/${file}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  color: '#2563eb',
-                                  textDecoration: 'underline',
-                                }}
-                              >
-                                {file}
-                              </a>
-                            </li>
-                          ))}
-                          {folder.images.length > 0 && (
-                            <li>
-                              <strong>Images:</strong>
-                              <ul>
-                                {folder.images.map((img: string) => (
-                                  <li key={img}>
+
+        <Row>
+          <Col lg={4} md={6} className="mb-4">
+            <div className="card h-100 shadow-sm">
+              <div className="card-header bg-light">
+                <h5 className="card-title mb-0">
+                  <i className="bi bi-image me-2"></i>
+                  Upload Website Images
+                </h5>
+              </div>
+              <div className="card-body">
+                <form onSubmit={handleSubmit}>
+                  <div className="mb-3">
+                    <label htmlFor="formFile" className="form-label">
+                      Add png or jpg files:
+                    </label>
+                    <div className="input-group">
+                      <input
+                        className="form-control"
+                        type="file"
+                        id="formFile"
+                        onChange={handleFileChange}
+                      />
+                    </div>
+                    <small className="text-muted">Max file size: 5MB</small>
+                  </div>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    className="w-100"
+                    disabled={!selectedFile}
+                  >
+                    <i className="bi bi-cloud-arrow-up me-1"></i>
+                    Upload Image
+                  </Button>
+                </form>
+              </div>
+            </div>
+          </Col>
+
+          <Col lg={8} md={6} className="mb-4">
+            <div className="card h-100 shadow-sm">
+              <div className="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 className="card-title mb-0">
+                  <i className="bi bi-globe me-2"></i>
+                  Your Generated Websites
+                </h5>
+                <span className="badge bg-primary rounded-pill">
+                  {websiteFolders.length}
+                </span>
+              </div>
+              <div className="card-body p-0">
+                {websiteFolders.length === 0 ? (
+                  <div className="text-center p-4">
+                    <i
+                      className="bi bi-folder-x text-muted"
+                      style={{ fontSize: '2rem' }}
+                    ></i>
+                    <p className="text-muted mt-2">
+                      No generated websites found.
+                    </p>
+                  </div>
+                ) : (
+                  <div
+                    className="list-group list-group-flush"
+                    style={{ maxHeight: '400px', overflowY: 'auto' }}
+                  >
+                    {websiteFolders.map((folder) => (
+                      <div key={folder.name} className="list-group-item">
+                        <div
+                          className="d-flex align-items-center cursor-pointer"
+                          onClick={() =>
+                            setExpanded(
+                              expanded === folder.name ? null : folder.name
+                            )
+                          }
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <i
+                            className={`bi ${
+                              expanded === folder.name
+                                ? 'bi-folder2-open'
+                                : 'bi-folder'
+                            } me-2 text-warning`}
+                          ></i>
+                          <span className="fw-bold">{folder.name}</span>
+                          <i
+                            className={`bi ${
+                              expanded === folder.name
+                                ? 'bi-chevron-down'
+                                : 'bi-chevron-right'
+                            } ms-auto`}
+                          ></i>
+                        </div>
+
+                        {expanded === folder.name && (
+                          <div className="ms-4 mt-2">
+                            <div className="mb-2">
+                              <span className="text-muted small">
+                                HTML Files:
+                              </span>
+                              <ul className="list-unstyled ms-3 mb-0">
+                                {folder.html.map((file: string) => (
+                                  <li key={file} className="mb-1">
                                     <a
-                                      href={`/gen_comp/${folder.name}/${img}`}
+                                      href={`/gen_comp/${folder.name}/${file}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      style={{
-                                        color: '#2563eb',
-                                        textDecoration: 'underline',
-                                      }}
+                                      className="text-decoration-none"
                                     >
-                                      {img}
+                                      <i className="bi bi-file-earmark-code me-1 text-primary"></i>
+                                      {file}
                                     </a>
                                   </li>
                                 ))}
                               </ul>
-                            </li>
-                          )}
-                        </ul>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
+                            </div>
+
+                            {folder.images.length > 0 && (
+                              <div>
+                                <span className="text-muted small">
+                                  Images:
+                                </span>
+                                <ul className="list-unstyled ms-3 mb-0">
+                                  {folder.images.map((img: string) => (
+                                    <li key={img} className="mb-1">
+                                      <a
+                                        href={`/gen_comp/${folder.name}/${img}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-decoration-none"
+                                      >
+                                        <i className="bi bi-file-earmark-image me-1 text-success"></i>
+                                        {img}
+                                      </a>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </Col>
         </Row>

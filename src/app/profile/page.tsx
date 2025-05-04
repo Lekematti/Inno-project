@@ -89,15 +89,15 @@ export default function ProfilePage() {
     return (
       <div>
         <Header />
-        <Container className="mt-8">
+        <Container className="mt-8 my-3 p-3 ">
           <Row>
-            <Col className="text-center">
-              <div className="my-4">
+            <Col className="  ">
+              <div className="my-2 h-100 p-2 d-flex justify-content-center">
                 <LoginForm />
               </div>
             </Col>
             <Col>
-              <div className="my-4">
+              <div className="my-2 h-100 p-2 d-flex justify-content-center">
                 <RegisterForm />
               </div>
             </Col>

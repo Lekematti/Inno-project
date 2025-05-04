@@ -68,8 +68,8 @@ const LoginForm = () => {
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-4">Login</h2>
+    <div className="bg-white p-6 rounded-lg shadow-md w-75 text-center shadow p-3 rounded-2 h-100">
+      <h2 className="text-2xl font-bold mb-4 text-center">Login</h2>
 
       {error && (
         <Alert variant="danger" className="mb-4">
@@ -78,7 +78,7 @@ const LoginForm = () => {
       )}
 
       <form onSubmit={handleSubmit}>
-        <div className="mb-4">
+        <div className="mb-4 d-flex justify-content-between">
           <label className="block text-gray-700 text-sm font-bold mb-2 x-2">
             Email:
           </label>
@@ -92,7 +92,7 @@ const LoginForm = () => {
           />
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4 d-flex justify-content-between">
           <label className="block text-gray-700 text-sm font-bold mb-2 x-2">
             Password:
           </label>
@@ -109,7 +109,7 @@ const LoginForm = () => {
         <Button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
+          className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 "
         >
           {loading ? 'Signing in...' : 'Login'}
         </Button>

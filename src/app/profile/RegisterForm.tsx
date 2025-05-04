@@ -78,7 +78,7 @@ const RegisterForm = () => {
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
+    <div className="bg-white p-6 rounded-lg shadow-md w-75 text-center shadow p-3 rounded-2 h-100">
       <h2 className="text-2xl font-bold mb-4">Register</h2>
 
       {error && (
@@ -94,8 +94,8 @@ const RegisterForm = () => {
       )}
 
       <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label className="block text-gray-700 text-sm font-bold mb-2 mx-2">
+        <div className="mb-4 d-flex justify-content-between">
+          <label className="block text-gray-700 text-sm font-bold mb-2 mx-2 d-flex justify-content-between">
             Name:
           </label>
           <input
@@ -107,7 +107,7 @@ const RegisterForm = () => {
           />
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4 d-flex justify-content-between">
           <label className="block text-gray-700 text-sm font-bold mb-2 mx-2">
             Email:
           </label>
@@ -121,7 +121,7 @@ const RegisterForm = () => {
           />
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4 d-flex justify-content-between">
           <label className="block text-gray-700 text-sm font-bold mb-2 mx-2">
             Password:
           </label>
@@ -135,7 +135,7 @@ const RegisterForm = () => {
           />
         </div>
 
-        <div className="mb-4">
+        <div className="mb-4 d-flex justify-content-between">
           <label className="block text-gray-700 text-sm font-bold mb-2 mx-2">
             Confirm Password:
           </label>

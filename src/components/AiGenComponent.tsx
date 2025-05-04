@@ -72,6 +72,9 @@ export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(
               /* Prevent event bubbling */
               html, body {
                 pointer-events: auto !important; /* Allow scrolling */
+                height: 100%;
+                margin: 0;
+                padding: 0;
               }
               /* Disable all JavaScript execution except our loader during preview */
               script:not(#image-loader-script) {
@@ -389,7 +392,7 @@ export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(
                   window.parent.postMessage({type: 'IMAGES_LOADED', success: true}, '*');
                 }
                 
-                // If loading takes too long, hide overlay anyway after 15 seconds
+                // If loading takes too long, hide overlay anyway after 5 seconds (was 15s)
                 setTimeout(() => {
                   document.getElementById('loading-overlay').style.display = 'none';
                   window.parent.postMessage({
@@ -401,7 +404,7 @@ export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(
                       backgrounds: { total: backgroundImagesToLoad, loaded: loadedBackgrounds }
                     }
                   }, '*');
-                }, 15000);
+                }, 5000); // 5 seconds
               })();
             </script>
           </body>
@@ -465,7 +468,7 @@ export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(
         style={{
           width,
           height,
-          border: '1px solid #e0e0e0',
+          border: 'none',
           backgroundColor: 'white',
         }}
         sandbox={sandboxOptions}
@@ -476,5 +479,4 @@ export const AiGenComponent = forwardRef<HTMLIFrameElement, PreviewProps>(
   }
 )
 
-// Add display name for better debugging and React DevTools
 AiGenComponent.displayName = 'AiGenComponent'

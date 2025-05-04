@@ -70,9 +70,9 @@ export const templates: Record<BusinessType, Template> = {
             },
             {
                 id: 'specialties',
-                text: "List your signature dishes or specialties:",
+                text: "List your restaurant's signature dishes or specialties:",
                 type: 'text',
-                placeholder: 'e.g., House-made pasta, Wood-fired pizzas'
+                placeholder: 'e.g., House-made pasta, Wood-fired pizza'
             },
             {
                 id: 'colorScheme',
@@ -97,19 +97,24 @@ export const templates: Record<BusinessType, Template> = {
                 placeholder: 'e.g., Freight forwarding, Warehousing'
             },
             {
-                id: 'coverage',
-                text: "What is your service coverage area?",
-                type: 'text',
-                placeholder: 'e.g., National, International, Regional'
-            },
-            {
                 id: 'tracking',
-                text: "Would you like to include shipment tracking?",
+                text: "Do you want to include a shipment tracking feature?",
                 type: 'boolean'
             },
             {
                 id: 'fleet',
                 text: "Do you want to showcase your fleet/equipment?",
+                type: 'boolean'
+            },
+            {
+                id: 'areas',
+                text: "What geographic areas do you serve?",
+                type: 'text',
+                placeholder: 'e.g., Nationwide, North America, Global'
+            },
+            {
+                id: 'testimonials',
+                text: "Would you like to include client testimonials?",
                 type: 'boolean'
             },
             {
@@ -127,6 +132,11 @@ export const templates: Record<BusinessType, Template> = {
                 id: 'colorScheme',
                 text: "Choose your brand's color scheme:",
                 type: 'color'
+            },
+            {
+                id: 'map',
+                text: "Include an interactive service area map?",
+                type: 'boolean'
             }
         ]
     },
@@ -176,6 +186,16 @@ export const templates: Record<BusinessType, Template> = {
                 id: 'colorScheme',
                 text: "Choose your brand's color scheme:",
                 type: 'color'
+            },
+            {
+                id: 'faq',
+                text: "Include a FAQ section?",
+                type: 'boolean'
+            },
+            {
+                id: 'blog',
+                text: "Add a blog or resources section?",
+                type: 'boolean'
             }
         ]
     }

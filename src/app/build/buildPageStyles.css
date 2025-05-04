@@ -1,0 +1,154 @@
+/* Visually appealing styles for build page, stepper, and cards */
+.hero-section {
+  border-radius: 0 0 24px 24px;
+  background: linear-gradient(90deg, #f8fafc 0%, #e0e7ff 100%);
+}
+
+.stepper {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.stepper-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.95rem;
+  color: #b0b3b8;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.stepper-step.active {
+  color: #2563eb;
+}
+
+.stepper-step.completed {
+  color: #22c55e;
+}
+
+.stepper-line {
+  flex: 1 1 0;
+  height: 3px;
+  background: linear-gradient(90deg, #e0e7ff 0%, #c7d2fe 100%);
+  border-radius: 2px;
+  margin: 0 0.25rem;
+}
+
+.icon-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+}
+
+.card {
+  border-radius: 18px !important;
+}
+
+/* Preview device frame */
+.device-frame {
+  border-radius: 18px;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e0e0e0;
+  background: #fff;
+}
+
+/* Special handling for step 5 (preview) container */
+.w-100 > .card:has(.website-preview-container-full) {
+  max-width: 95% !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+/* Website Preview Container Styles */
+.website-preview-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.website-preview-container-full {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0;
+}
+
+.website-preview-frame {
+  width: 100%;
+  height: 80vh;
+  border-radius: 8px;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+  overflow: auto !important;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.website-preview-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+}
+
+/* Loading indicator styles */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 80vh;
+  margin: 0 auto;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+/* Media queries to ensure appropriate sizing on different devices */
+@media (max-width: 1200px) {
+  .website-preview-frame {
+    height: 75vh;
+  }
+  .loading-container {
+    height: 75vh;
+  }
+}
+
+@media (max-width: 992px) {
+  .website-preview-frame {
+    height: 70vh;
+  }
+  .loading-container {
+    height: 70vh;
+  }
+}
+
+@media (max-width: 768px) {
+  .website-preview-frame {
+    height: 65vh;
+  }
+  .loading-container {
+    height: 65vh;
+  }
+  .website-preview-toolbar {
+    padding: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}

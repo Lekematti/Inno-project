@@ -137,8 +137,15 @@ export const useFormHandlers = (): FormHandlerHook => {
       submitData.append('imageSource', imageSource);
       
       // Only include necessary image data based on source type
-      if (imageSource === 'ai' && formData.imageInstructions) {
-        submitData.append('imageInstructions', formData.imageInstructions);
+      if (imageSource === 'ai') {
+        if (formData.imageInstructions) {
+          submitData.append('imageInstructions', formData.imageInstructions);
+        }
+        
+        // Add the image descriptions array if available
+        if (Array.isArray(formData.imageDescriptions) && formData.imageDescriptions.length > 0) {
+          submitData.append('imageDescriptions', JSON.stringify(formData.imageDescriptions));
+        }
       } else if (imageSource === 'manual' && formData.uploadedImages && formData.uploadedImages.length > 0) {
         // Only include necessary image data to reduce payload size
         const optimizedUploads = [...formData.uploadedImages].slice(0, 10);

@@ -12,6 +12,7 @@ export interface FormData {
   email: string;
   businessName?: string;
   imageInstructions?: string;
+  imageDescriptions?: string[];
   uploadedImages?: File[];
   userImageUrls?: string[];
   generatedImageUrls?: string[];
@@ -33,7 +34,7 @@ export const DefaultTemplateStyle: TemplateStyle = {
 };
 
 // Question and template types
-export type QuestionType = 'text' | 'boolean' | 'color';
+export type QuestionType = 'text' | 'boolean' | 'color' | 'textarea';
 
 export interface Question {
   id: string;
@@ -70,6 +71,7 @@ export interface WebsitePreviewProps {
   onEditElement?: (instructions: ElementEditInstructions, formData: FormData) => Promise<void>
   onUpdateGeneratedHtml?: (updatedHtml: string) => void
   loadingComponent?: React.ReactNode 
+  style?: React.CSSProperties;
 }
 
 export interface PreviewProps {

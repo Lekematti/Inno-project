@@ -1,60 +1,103 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Alert, Card, Row, Col, Stack, Image, ButtonGroup } from 'react-bootstrap';
+import { FaRegImage } from 'react-icons/fa';
 import { StepWithBackProps } from '@/types/formData';
 import { ImageSourceType } from '@/types/formData';
 
 export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
   formData,
-  handleChange,
   handleSubmit,
   handleBack,
   error,
   setFormData
 }) => {
-  // Use TypeScript's type safety with ImageSourceType
   const [imageSource, setImageSource] = useState<ImageSourceType>(formData.imageSource || 'none');
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [localError, setLocalError] = useState<string>('');
+  const [imageDescriptions, setImageDescriptions] = useState<string[]>(
+    formData.imageDescriptions || ['']
+  );
 
-  // Initialize from existing form data if available
+  const MAX_IMAGES = 5;
+
   useEffect(() => {
     if (formData.imageSource) {
       setImageSource(formData.imageSource);
     }
     
-    // If we have userImageUrls in the form data, reconstruct the preview URLs
     if (formData.userImageUrls && formData.userImageUrls.length > 0) {
       setPreviewUrls(formData.userImageUrls);
     }
 
-    // If we have uploadedImages in the form data, use them
     if (formData.uploadedImages) {
       setUploadedImages(formData.uploadedImages);
     }
-  }, [formData.imageSource, formData.userImageUrls, formData.uploadedImages]);
+
+    if (formData.imageDescriptions) {
+      setImageDescriptions(formData.imageDescriptions);
+    }
+  }, [formData.imageSource, formData.userImageUrls, formData.uploadedImages, formData.imageDescriptions]);
+
+  const validateImageRequirements = (): { isValid: boolean; error: string } => {
+    if (imageSource === 'ai') {
+      const validDescriptions = imageDescriptions.filter(desc => desc.trim().length > 0);
+      
+      if (validDescriptions.length === 0) {
+        return { 
+          isValid: false, 
+          error: 'Please provide at least one image description or choose a different image source.' 
+        };
+      }
+      
+      for (let i = 0; i < imageDescriptions.length; i++) {
+        if (!imageDescriptions[i] || imageDescriptions[i].trim() === '') {
+          return {
+            isValid: false,
+            error: `Please provide a description for image ${i + 1} or remove it.`
+          };
+        }
+      }
+    }
+    
+    if (imageSource === 'manual' && (!previewUrls || previewUrls.length === 0)) {
+      return { 
+        isValid: false, 
+        error: 'Please upload at least one image or choose a different image source' 
+      };
+    }
+    
+    return { isValid: true, error: '' };
+  };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError('');
     
-    // Create updated form data to pass to parent
     const updatedFormData = {
       ...formData,
-      imageSource, // Always include the selected imageSource
+      imageSource,
     };
     
     if (imageSource === 'ai') {
-      // For AI images, validate and include instructions
-      if (!formData.imageInstructions || formData.imageInstructions.trim() === '') {
-        setLocalError('Please describe your image requirements or select a different option');
+      const validation = validateImageRequirements();
+      
+      if (!validation.isValid) {
+        setLocalError(validation.error);
         return;
       }
-      updatedFormData.imageInstructions = formData.imageInstructions;
+      
+      const activeDescriptions = imageDescriptions.filter(desc => desc.trim() !== '');
+      
+      const formattedInstructions = activeDescriptions
+        .map((desc, index) => `${index + 1}.${desc.trim()}`)
+        .join(' ');
+      
+      updatedFormData.imageInstructions = formattedInstructions;
+      updatedFormData.imageDescriptions = activeDescriptions;
     } 
     else if (imageSource === 'manual') {
-      // For manual upload, validate and include uploaded images
       if (previewUrls.length === 0) {
         setLocalError('Please upload at least one image or select a different option');
         return;
@@ -63,13 +106,12 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
       updatedFormData.userImageUrls = previewUrls;
     }
     else if (imageSource === 'none') {
-      // For "no images" option, make sure we clear any previous image data
       updatedFormData.imageInstructions = '';
       updatedFormData.uploadedImages = [];
       updatedFormData.userImageUrls = [];
+      updatedFormData.imageDescriptions = [];
     }
     
-    // Update form data and proceed to next step
     setFormData(updatedFormData);
     handleSubmit(updatedFormData);
   };
@@ -79,7 +121,6 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
     setImageSource(newSource);
     setLocalError('');
     
-    // Update form data when image source changes
     setFormData({
       ...formData,
       imageSource: newSource
@@ -92,19 +133,16 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
       const newUploadedImages = [...uploadedImages, ...files];
       setUploadedImages(newUploadedImages);
       
-      // Generate preview URLs
       const newPreviewUrls = files.map(file => URL.createObjectURL(file));
       const allPreviewUrls = [...previewUrls, ...newPreviewUrls];
       setPreviewUrls(allPreviewUrls);
       
-      // Update the form data
       setFormData({
         ...formData,
         uploadedImages: newUploadedImages,
         userImageUrls: allPreviewUrls
       });
       
-      // Clear any error if we now have images
       if (allPreviewUrls.length > 0) {
         setLocalError('');
       }
@@ -112,33 +150,52 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
   };
 
   const removeImage = (index: number) => {
-    // Remove the image and its preview
     const newImages = [...uploadedImages];
     newImages.splice(index, 1);
     setUploadedImages(newImages);
     
-    // Revoke the object URL to prevent memory leaks
     URL.revokeObjectURL(previewUrls[index]);
     const newPreviewUrls = [...previewUrls];
     newPreviewUrls.splice(index, 1);
     setPreviewUrls(newPreviewUrls);
     
-    // Update the form data
     setFormData({
       ...formData,
       uploadedImages: newImages,
       userImageUrls: newPreviewUrls
     });
     
-    // Set error if no images remain and source is manual
     if (newPreviewUrls.length === 0 && imageSource === 'manual') {
       setLocalError('Please upload at least one image or select a different option');
     }
   };
 
+  const handleDescriptionChange = (index: number, value: string) => {
+    const newDescriptions = [...imageDescriptions];
+    newDescriptions[index] = value;
+    setImageDescriptions(newDescriptions);
+  };
+
+  const addImageDescription = () => {
+    if (imageDescriptions.length < MAX_IMAGES) {
+      setImageDescriptions([...imageDescriptions, '']);
+    }
+  };
+
+  const removeImageDescription = (index: number) => {
+    if (imageDescriptions.length > 1) {
+      const newDescriptions = [...imageDescriptions];
+      newDescriptions.splice(index, 1);
+      setImageDescriptions(newDescriptions);
+    }
+  };
+
   return (
     <div className="step-container">
-      <h2>Step 4: Images for Your Website</h2>
+      <div className="d-flex align-items-center mb-3">
+        <div className="icon-circle bg-primary text-white me-3"><FaRegImage size={24} /></div>
+        <h2 className="mb-0">Step 4: Images for Your Website</h2>
+      </div>
       
       {error && <Alert variant="danger">{error}</Alert>}
       {localError && <Alert variant="danger">{localError}</Alert>}
@@ -192,34 +249,70 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
           </Card.Body>
         </Card>
         
-        {/* AI Image Instructions */}
         {imageSource === 'ai' && (
           <Card className="mb-4">
-            <Card.Header>
-              <h5 className="mb-0">Describe Your Image Requirements</h5>
+            <Card.Header className="d-flex justify-content-between align-items-center">
+              <h5 className="mb-0">Describe Your Images</h5>
+              <span className="badge bg-primary">{imageDescriptions.length}/{MAX_IMAGES}</span>
             </Card.Header>
             <Card.Body>
-              <Form.Group controlId="imageInstructions" className="mb-3">
-                <Form.Label>
-                  <strong>What kind of images would you like?</strong>
-                </Form.Label>
-                <Form.Control 
-                  as="textarea" 
-                  name="imageInstructions"
-                  placeholder="Describe the images you'd like (e.g., 'Professional photos of a modern restaurant with wooden tables and ambient lighting')"
-                  value={formData.imageInstructions || ''}
-                  onChange={handleChange}
-                  rows={5}
-                />
-                <Form.Text className="text-muted">
-                  Be specific about the subject, style, colors, and mood of images you want.
-                </Form.Text>
-              </Form.Group>
+              {imageDescriptions.map((desc, index) => (
+                <Card 
+                  key={`image-desc-${index}`} 
+                  className="mb-3 border-light shadow-sm"
+                >
+                  <Card.Body>
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                      <h6 className="mb-0">Image {index + 1}</h6>
+                      {imageDescriptions.length > 1 && (
+                        <Button 
+                          variant="light" 
+                          size="sm" 
+                          className="text-danger p-1" 
+                          onClick={() => removeImageDescription(index)}
+                          aria-label={`Remove image ${index + 1}`}
+                        >
+                          <span aria-hidden="true">×</span>
+                        </Button>
+                      )}
+                    </div>
+                    <Form.Control
+                      type="text"
+                      value={desc}
+                      onChange={(e) => handleDescriptionChange(index, e.target.value)}
+                      placeholder="Describe what you want in this image"
+                      className="border-0 bg-light"
+                    />
+                  </Card.Body>
+                </Card>
+              ))}
+              
+              {imageDescriptions.length < MAX_IMAGES && (
+                <div className="text-center mt-3">
+                  <Button 
+                    variant="outline-primary" 
+                    onClick={addImageDescription}
+                    className="px-4"
+                  >
+                    <i className="bi bi-plus-circle me-2"></i>
+                    Add Another Image
+                  </Button>
+                </div>
+              )}
+              
+              <Alert variant="info" className="mt-4 p-3" style={{ fontSize: '0.9rem' }}>
+                <strong>📝 Image Tips:</strong>
+                <ul className="mb-0 mt-2">
+                  <li>Be specific about what should appear in each image</li>
+                  <li>You can specify &quot;landscape&quot;, &quot;portrait&quot;, or &quot;square&quot; for aspect ratio</li>
+                  <li>Describe style preferences like &quot;professional photo&quot; or &quot;artistic rendering&quot;</li>
+                  <li>Include details about lighting, colors, and mood</li>
+                </ul>
+              </Alert>
             </Card.Body>
           </Card>
         )}
         
-        {/* Manual Image Upload */}
         {imageSource === 'manual' && (
           <Card className="mb-4">
             <Card.Header>
@@ -241,7 +334,6 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
                 </Form.Text>
               </Form.Group>
               
-              {/* Preview uploaded images */}
               {previewUrls.length > 0 && (
                 <div className="mt-4">
                   <h6>Your Uploads ({previewUrls.length}):</h6>
@@ -275,13 +367,11 @@ export const Step4ImageInstructions: React.FC<StepWithBackProps> = ({
           </Card>
         )}
         
-        {/* No Images Option - Nothing additional needed */}
-        
         <Stack direction="horizontal" gap={3} className="justify-content-between mt-4">
-          <Button variant="outline-secondary" onClick={handleBack}>
+          <Button variant="outline-secondary" onClick={handleBack} className="rounded-pill px-4">
             Back
           </Button>
-          <Button variant="primary" type="submit">
+          <Button variant="primary" type="submit" className="rounded-pill px-4">
             Continue
           </Button>
         </Stack>

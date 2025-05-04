@@ -3,7 +3,7 @@
  * with added validation for user-provided colors
  */
 
-import { ColorPalette, ColorPreset } from '@/types/formData';
+import { ColorPalette } from '@/types/formData';
 
 // =============================================================================
 // Core Color Conversion Functions
@@ -405,105 +405,6 @@ export function suggestHarmoniousAdjustment(baseColor: string, colorToAdjust: st
     l: adjustHSL.l
   });
 }
-
-// =============================================================================
-// Color Palette Definitions
-// =============================================================================
-
-/**
- * Industry-specific color palette presets
- */
-
-export const industryColorPalettes: Record<string, ColorPreset[]> = {
-  professional: [
-    {
-      name: "Corporate Blue",
-      colors: ['#1B4965', '#3C738B', '#62A8AC', '#8ED1CC']
-    },
-    {
-      name: "Modern Gray",
-      colors: ['#2C3E50', '#485C73', '#647D96', '#8FA3BA']
-    },
-    {
-      name: "Tech Green",
-      colors: ['#004D40', '#00695C', '#00897B', '#26A69A']
-    }
-  ],
-  creative: [
-    {
-      name: "Vibrant",
-      colors: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4']
-    },
-    {
-      name: "Artistic",
-      colors: ['#D92B5A', '#F26B9C', '#F9B8D4', '#FDE2E9']
-    },
-    {
-      name: "Bold",
-      colors: ['#7B2CBF', '#9D4EDD', '#C77DFF', '#E0AAFF']
-    }
-  ],
-  casual: [
-    {
-      name: "Warm",
-      colors: ['#FF9F1C', '#FFBF69', '#CBF3F0', '#2EC4B6']
-    },
-    {
-      name: "Natural",
-      colors: ['#606C38', '#8A9B68', '#DDA15E', '#BC6C25']
-    },
-    {
-      name: "Peaceful",
-      colors: ['#264653', '#2A9D8F', '#E9C46A', '#F4A261']
-    }
-  ],
-  restaurant: [
-    {
-      name: "Appetizing Red",
-      colors: ['#8D1C1C', '#B53737', '#D95454', '#F5CACA']
-    },
-    {
-      name: "Rustic Natural",
-      colors: ['#5D4037', '#8D6E63', '#BCAAA4', '#EFEBE9']
-    },
-    {
-      name: "Fresh Green",
-      colors: ['#33691E', '#558B2F', '#7CB342', '#AED581']
-    }
-  ],
-  logistics: [
-    {
-      name: "Industrial",
-      colors: ['#1A237E', '#303F9F', '#3F51B5', '#C5CAE9']
-    },
-    {
-      name: "Dependable",
-      colors: ['#004D40', '#00695C', '#00897B', '#B2DFDB']
-    },
-    {
-      name: "Precision",
-      colors: ['#263238', '#455A64', '#607D8B', '#CFD8DC']
-    }
-  ],
-  modern: [
-    {
-      name: "Oceanic",
-      colors: ['#0077B6', '#00B4D8', '#90E0EF', '#CAF0F8']
-    },
-    {
-      name: "Forest",
-      colors: ['#344E41', '#588157', '#A3B18A', '#DAD7CD']
-    },
-    {
-      name: "Sunset",
-      colors: ['#FF6B6B', '#FF9E6B', '#FFD166', '#FFEFA1']
-    },
-    {
-      name: "Monochrome",
-      colors: ['#2B2D42', '#565973', '#8D99AE', '#EDF2F4']
-    }
-  ]
-};
 
 // =============================================================================
 // Color Palette Generation

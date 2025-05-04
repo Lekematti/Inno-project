@@ -29,7 +29,12 @@ export default function Home() {
           </p>
 
           <div className="mb-5">
-            <button className="btn btn-success btn-lg shadow px-4 py-2">
+            <button
+              className="btn btn-success btn-lg shadow px-4 py-2"
+              onClick={() => {
+                window.location.href = '/build'
+              }}
+            >
               Start Building For Free
             </button>
             <p className="text-muted small mt-2">No credit card required</p>
@@ -74,7 +79,12 @@ export default function Home() {
                 Join thousands of satisfied customers building their dream
                 websites today.
               </p>
-              <button className="btn btn-light text-success fw-semibold py-2 px-4 align-self-start">
+              <button
+                className="btn btn-light text-success fw-semibold py-2 px-4 align-self-start"
+                onClick={() => {
+                  window.location.href = '/build'
+                }}
+              >
                 Try it free →
               </button>
             </div>
@@ -115,7 +125,12 @@ export default function Home() {
           <h2 className="h4 fw-bold mb-4">
             ✨ Get started today and let AI build your perfect website!
           </h2>
-          <button className="btn btn-success btn-lg shadow px-4 py-2">
+          <button
+            className="btn btn-success btn-lg shadow px-4 py-2"
+            onClick={() => {
+              window.location.href = '/build'
+            }}
+          >
             Start Building Now
           </button>
         </div>

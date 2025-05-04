@@ -129,7 +129,7 @@ export default function ProfilePage() {
       <Container fluid className="mt-4 px-4">
         <Row>
           <Col lg={12} className="mb-4">
-            <div className="bg-white p-4 rounded-lg shadow-sm border-start border-5 border-primary">
+            <div className="bg-white p-4 rounded-lg shadow-sm border-start border-5 border-success">
               <div className="d-flex justify-content-between align-items-center">
                 <h1 className="h3 mb-0">
                   Welcome, {userData?.name ?? userData?.email ?? 'User'}
@@ -192,7 +192,7 @@ export default function ProfilePage() {
                   <i className="bi bi-globe me-2"></i>
                   Your Generated Websites
                 </h5>
-                <span className="badge bg-primary rounded-pill">
+                <span className="badge bg-success rounded-pill">
                   {websiteFolders.length}
                 </span>
               </div>

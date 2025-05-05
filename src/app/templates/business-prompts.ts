@@ -124,7 +124,8 @@ function getLogisticsPrompt(
     }
     - Service area map: ${
       answers[9] === 'yes'
-        ? 'Implement an interactive global service map with coverage visualization, shipping routes, and facility locations'
+        ? `Implement an interactive global service map with coverage visualization, shipping routes, and facility locations. 
+          If a real map cannot be embedded, create a visually appealing placeholder box styled with the primary brand color, a map icon, the business address, and the message "Service area map coming soon". Do not use a generic empty div.`
         : 'Include service region overview section'
     }
     

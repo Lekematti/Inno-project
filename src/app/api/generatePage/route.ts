@@ -16,12 +16,12 @@ import {
 } from '@/app/api/generatePage/types/website-generator'
 import { ImageSourceType } from '@/types/formData'
 import { processImagePaths, mapImageUrls } from './utils/image-path-processor'
-import { writeFileSync } from 'fs'
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY as string })
 
 // Properly declare global variable by extending NodeJS namespace
 declare global {
+  // eslint-disable-next-line no-var
   var lastRequestTime: number
 }
 
@@ -157,12 +157,28 @@ export async function generateCustomPage(
       // Clean up any remaining markdown code blocks if present
       htmlContent = htmlContent.replace(/```html|```/g, '').trim()
 
-      // Ensure proper Bootstrap integration
+      // Remove any StackPath Bootstrap 5+ links/scripts (incorrect CDN)
+      htmlContent = htmlContent.replace(
+        /<link[^>]+href=["']https:\/\/stackpath\.bootstrapcdn\.com\/bootstrap\/5\.[^"']+["'][^>]*>/gi,
+        ''
+      )
+      htmlContent = htmlContent.replace(
+        /<script[^>]+src=["']https:\/\/stackpath\.bootstrapcdn\.com\/bootstrap\/5\.[^"']+["'][^>]*><\/script>/gi,
+        ''
+      )
+
+      // Ensure proper Bootstrap 5+ integration using jsDelivr CDN
       if (!htmlContent.includes('bootstrap.min.css')) {
         console.warn('⚠️ Warning: Bootstrap CSS link missing, adding it...')
         htmlContent = htmlContent.replace(
           '</head>',
           '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">\n</head>'
+        )
+      } else {
+        // Replace any other Bootstrap 5+ CSS CDN with jsDelivr
+        htmlContent = htmlContent.replace(
+          /<link[^>]+href=["'][^"']*bootstrap[^"']*5\.[^"']*min\.css[^"']*["'][^>]*>/gi,
+          '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">'
         )
       }
 
@@ -170,7 +186,13 @@ export async function generateCustomPage(
         console.warn('⚠️ Warning: Bootstrap JS missing, adding it...')
         htmlContent = htmlContent.replace(
           '</body>',
-          '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>\n</body>'
+          '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>\n</body>'
+        )
+      } else {
+        // Replace any other Bootstrap 5+ JS CDN with jsDelivr
+        htmlContent = htmlContent.replace(
+          /<script[^>]+src=["'][^"']*bootstrap[^"']*5\.[^"']*bundle\.min\.js[^"']*["'][^>]*><\/script>/gi,
+          '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>'
         )
       }
 
@@ -216,7 +238,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Write updated content to the file
-    writeFileSync(absolutePath, htmlContent)
+    fs.writeFileSync(absolutePath, htmlContent)
 
     return NextResponse.json({
       success: true,

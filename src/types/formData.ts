@@ -41,6 +41,7 @@ export interface Question {
   text: string;
   type: QuestionType;
   placeholder?: string;
+  required?: boolean;
 };
 
 export interface Template {

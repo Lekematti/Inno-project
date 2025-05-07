@@ -16,6 +16,7 @@ AI Website Builder is a full-stack web application that allows users to instantl
 - **Accessibility First**: Generated sites comply with WCAG standards for inclusivity.
 - **Download & Share**: Download your site as a standalone HTML file or share it directly.
 - **Authentication**: User authentication and profile management via NextAuth.
+- **Version Control for Generated Sites**: Automatically saves generated sites in versioned folders for easy access and updates.
 
 ## How It Works
 
@@ -25,6 +26,7 @@ AI Website Builder is a full-stack web application that allows users to instantl
 4. **Customize Colors**: Pick a color scheme or let the AI suggest harmonious palettes.
 5. **Generate Website**: The AI creates a complete, production-ready website with your content, images, and branding.
 6. **Preview & Edit**: Instantly preview your site. Use the visual editor to select and edit any element (text, images, styles) directly or with AI help.
+7. **Save & Download**: Save your generated site for future edits or download it as a standalone HTML package.
 
 ## How to Use
 
@@ -34,7 +36,7 @@ AI Website Builder is a full-stack web application that allows users to instantl
 - npm or yarn
 - OpenAI API key (for AI generation)
 - Azure BlobStorage API key
-- Supabase / nextauth
+- Supabase / NextAuth
 
 ### Setup
 
@@ -88,6 +90,7 @@ AI Website Builder is a full-stack web application that allows users to instantl
 - **Manual image uploads** are stored in `/public/uploads` and integrated into your generated site.
 - **Generated sites** are saved in `/gen_comp/<business-type>-<timestamp>/` for easy access and versioning.
 - **Edit mode** allows you to select any element in the preview and apply direct or AI-assisted changes.
+- **API Endpoints**: Extend functionality with RESTful APIs for generating, editing, and managing websites.
 
 ## Technologies Used
 
@@ -99,17 +102,22 @@ AI Website Builder is a full-stack web application that allows users to instantl
 - Custom AI prompt engineering for HTML, CSS, and image generation
 - Local file storage for generated sites and uploads
 - NextAuth for authentication
+- Azure BlobStorage for scalable image storage
 
 ## Accessibility & Best Practices
 
 - All generated sites use semantic HTML5, ARIA attributes, and pass WCAG AA color contrast checks.
 - Responsive design for all devices.
 - SEO meta tags and structured data included.
+- Optimized for performance and scalability.
 
-## Contributing
+## Next steps
 
-Pull requests are welcome! Please open an issue first to discuss major changes.
-
----
-
-*Let AI build your perfect website in minutes!*
+- Adding images through own profile for page generation.
+- Hosted in some platfrom (e.g. Azure)
+- Editing/Changing images in EditMode
+- Correct HTML routing after editing
+- More optimized website generation
+- Able to lookup all generated sites from profile
+- Template HTML which would get populated by the AI response
+- Alot more ready made component modules to be used in Edit

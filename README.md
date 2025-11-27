@@ -28,6 +28,15 @@ AI Website Builder is a full-stack web application that allows users to instantl
 6. **Preview & Edit**: Instantly preview your site. Use the visual editor to select and edit any element (text, images, styles) directly or with AI help.
 7. **Save & Download**: Save your generated site for future edits or download it as a standalone HTML package.
 
+## Demo Video
+
+<p align="center">
+  <a href="https://youtu.be/MUxC_8rCsAU">
+    <img src="https://img.youtube.com/vi/MUxC_8rCsAU/0.jpg" alt="Demo Video">
+  </a>
+</p>
+
+
 ## How to Use
 
 ### Prerequisites
